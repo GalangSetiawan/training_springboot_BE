@@ -1,0 +1,54 @@
+package co.id.sofcograha.domain.invoicing.masters.diskonkhusus.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.entities.EDiskonKhususHeader;
+
+@JsonInclude(Include.ALWAYS)
+public class DiskonKhususComplete {
+
+	public DiskonKhususHeader header;
+	public List<DiskonKhususDetail> details;
+	
+	// untuk penanda apakah data ini tertandai dipilih untuk grid yang punya checkbox select
+	// dipakai di proses bulanan (grid jurnal rutin)
+	public boolean isSelect;
+
+	@JsonIgnore
+	public EDiskonKhususHeader getEntityHeader() {
+		return header.toEntity();
+	}
+
+	public static DiskonKhususComplete setFromEntity(EDiskonKhususHeader entity) {
+		
+		DiskonKhususComplete pojo = new DiskonKhususComplete();
+		pojo.header = DiskonKhususHeader.fromEntity(entity);
+
+		// detail depth level diisi = 1, supaya sub detail ikutan diambil (karena detail punya sub detail0
+		pojo.details = DiskonKhususDetail.fromEntities(entity.getDetail(), BaseConstants.DEFAULT_QUERY_DEPTH, 1);
+		
+		pojo.isSelect = false;
+		
+		return pojo;
+	}
+	
+	public static List<DiskonKhususComplete> fromEntities(List<EDiskonKhususHeader> entities){
+	
+		if (entities == null) return new ArrayList<>();
+		
+		List<DiskonKhususComplete> pojos = new ArrayList<>();
+		
+		for (EDiskonKhususHeader entity : entities) {
+			pojos.add(setFromEntity(entity));
+		}
+		return pojos;
+		
+	}
+	
+}

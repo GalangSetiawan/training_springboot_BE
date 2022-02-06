@@ -1,0 +1,694 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.services;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+import co.id.sofcograha.domain.invoicing.admin.freemonth.entities.EAdminFreemonth;
+import co.id.sofcograha.domain.invoicing.admin.freemonth.services.AdminFreemonthService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewal;
+import co.id.sofcograha.domain.invoicing.admin.renewal.repositories.EAdminRenewalRepository;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.services.CustomerGajiIdService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifDetail;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifDetailService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifHeaderService;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.services.ProdukService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+import co.id.sofcograha.domain.invoicing.transaksi.live.entities.ETrxLive;
+
+@Service("adminRenewalService")
+public class AdminRenewalService extends BaseService {
+	
+	@Autowired private CustomerGajiIdService customerGajiIdService;
+	@Autowired private ProdukService produkService;
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	@Autowired private CustomerProdukTarifHeaderService customerProdukTarifHeaderService;
+	@Autowired private CustomerProdukTarifDetailService customerProdukTarifDetailService;
+	@Autowired private AdminFreemonthService adminFreemonthService;
+
+	@Autowired private EAdminRenewalRepository repo;
+	
+	//@Autowired private ActionAuthorizationService actionAuthorizationService;
+	
+	public EAdminRenewal findByBk(String tahun, String bulan, String idMi010, String idMi001) {
+		return repo.findByBK(tahun, bulan, idMi010, idMi001);
+	}
+	
+	public EAdminRenewal findById(final String id) {
+		return repo.getOne(id);
+	}
+
+	public EAdminRenewal getNearestRenewal(String idMi010, String idMi001, String tahunBulan) {
+		return repo.getNearestRenewal(idMi010, idMi001, tahunBulan);
+	}
+	
+	public List<EAdminRenewal> getUnprocessedRenewal(String tahun, String bulan) {
+		return repo.getUnprocessedRenewal(tahun, bulan);
+	}
+	
+	public SearchResult<EAdminRenewal> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+    
+	public List<EAdminRenewal> getRenewalPerTahunBulanFlag(String tahun, String bulan, String flproi) {
+		return repo.getRenewalPerTahunBulanFlag(tahun, bulan, flproi);
+	}
+	
+	@Transactional
+	public EAdminRenewal getNextRenewalDate(ECustomerGajiId customer, EProduk produk, Date tglive, String currTahun, String currBulan) {
+		
+		EAdminRenewal result = null;
+		
+		// bila siklus adalah periodik (n tahun atau n bulan), hitung tanggal next tagihannya
+		// bila siklus adalah bulanan (tiap 1 bulan) :
+		//    bila pra bayar hitung tanggal next tagihannnya (seperti periodik)
+		//    bila pasca bayar ini prinsip pakai dulu baru bayar (dan pasti bulanan), jadi ya tagihan pasti untuk bulan setelah
+		//    tahun bulan ini 
+		
+		// ambil header master tarif
+		CustomerProdukTarifHeader customerProdukTarifHeader = customerProdukTarifHeaderService.findByBk(customer.getId(), produk.getId());
+
+		System.out.println("getNextRenewalDate " + customerProdukTarifHeader);
+		if (customerProdukTarifHeader != null) {
+			
+			System.out.println("customerProdukTarifHeader.jnstgh " + customerProdukTarifHeader.jnstgh);
+			if (customerProdukTarifHeader.jnstgh.equals("PASCA")) {
+				Integer intTahun = Integer.valueOf(currTahun);
+				Integer intBulan = Integer.valueOf(currBulan);
+
+				if (intBulan == 12) {
+					intTahun = intTahun + 1;
+					intBulan = 1;
+				} else {
+					intBulan = intBulan + 1;
+				}
+				
+				String bln = "0" + String.valueOf(Integer.valueOf(intBulan));
+				String thn = String.valueOf(intTahun);
+
+				result = new EAdminRenewal();
+				result.setBulan(bln);
+				result.setTahun(thn);
+				result.setBulanorg(bln);
+				result.setTahunorg(thn);
+				result.setCustomer(customer);
+				result.setProduk(produk);
+				result.setFlproi(BaseConstants.TIDAK);
+				result.setInvoice(null);
+				
+			}
+
+			if (customerProdukTarifHeader.jnstgh.equals("PRA")) {
+				System.out.println("getNextRenewalDate pra bayar");
+				// acuan adalah tanggal live, jadi semisal periodik = 6 bulan, maka 6 bulan ini dihitung dari tanggal (tepatnya
+				// tahun bulan) live, dan tanggal live didapat dari saldo live (SI004)
+				
+				// ambil free month untuk range ? 
+				//    saat method ini dipanggil, kondisinya seharusnya : currTahun dan currBulan adalah satu bulan setelah bulan 
+				//    terakhir dari siklus tsb.
+				//    contoh : siklus 3 bulanan, live di januari 2021, ini artinya di April 2021 akan digenerate tagihan
+				//             jadi currTahun dan currBulan adalah April 2021
+				//             01 April 2021 ini yang dijadikan acuan pencarian range free month di master customer tarif produk
+				CustomerProdukTarifDetail detailTarifSkemaHarga = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(customer.getId(), produk.getId(), "FREEM", currTahun + currBulan + "01");
+
+				int freeMonth = 0;
+				if (detailTarifSkemaHarga != null) {
+					freeMonth = detailTarifSkemaHarga.freemo;
+				}
+				
+				int bulanSiklus = 0;
+				if (customerProdukTarifHeader.satsiklus.equals("TAHUN")) {
+					bulanSiklus = 12 * customerProdukTarifHeader.jumsiklus;
+				}
+				if (customerProdukTarifHeader.satsiklus.equals("BULAN")) {
+					bulanSiklus = customerProdukTarifHeader.jumsiklus;
+				}
+				
+				// misal tgl live = 1 januari 2021, siklus = 6 bulan, maka :
+				//    bulan 1 + 6 bulan = bulan 7
+				// dengan tentu diperhitungkan juga free month nya
+				// dan ingat, tanggal acuan awal tetap tanggal live (tepatnya bulan live) bukan bulan setelah ditambah freemonth
+				// sebelumnya
+				//    contoh : siklus 3 bulanan, live di januari 2021, dapat freemonth 2 bulan, ini artinya di Juni 2021 akan 
+				//             digenerate tagihan (seharusnya Mei 2021, tetapi karena dapat freemonth 1 bulan, maka tagihan keluar
+				//             di Juni 2021, dengan kompensasi adjustment di April dan Mei dibebaskan)
+				//             siklus berikutnya dihitung mulai Juni 2021, jadi next tagihannya adalah September 2021 (bila tidak
+				//             dapat freemonth lagi)
+				Date originalDate = TimeUtil.addMonths(TimeUtil.getDate(currTahun + currBulan + "01"), bulanSiklus);
+				Date nextRenewalDate = TimeUtil.addMonths(TimeUtil.getDate(currTahun + currBulan + "01"), bulanSiklus + freeMonth);
+				
+				result = new EAdminRenewal();
+				result.setBulan(TimeUtil.getStringMonth(nextRenewalDate));
+				result.setTahun(TimeUtil.getStringYear(nextRenewalDate));
+				result.setBulanorg(TimeUtil.getStringMonth(originalDate));
+				result.setTahunorg(TimeUtil.getStringYear(originalDate));
+				result.setCustomer(customer);
+				result.setProduk(produk);
+				result.setFlproi(BaseConstants.TIDAK);
+				result.setInvoice(null);
+				
+			}			
+		}
+		
+		return result;
+	}
+	
+	@Transactional
+    public ArrayList<Message> createNextAdmin(ECustomerGajiId customer, EProduk produk, Date tglive, String currTahun, String currBulan) {
+
+		//EAdminRenewal result = null;
+		ArrayList<Message> result = null;
+		
+		EAdminRenewal entityToAdd = getNextRenewalDate(customer, produk, tglive, currTahun, currBulan);
+		
+		if (entityToAdd != null) {
+			
+			EAdminRenewal checkEntity = repo.findByBK(entityToAdd.getTahun(), entityToAdd.getBulan(), customer.getId(), produk.getId());
+			
+			if (checkEntity == null) {
+				// bila admin renewal belum pernah ada, tambahkan
+				
+				//result = addUsedInProcess(entityToAdd);
+				entityToAdd = addUsedInProcess(entityToAdd);
+
+				if (!isAnyBatchErrors()) {
+
+					// create admin freemonth
+					int startMonth = Integer.valueOf(entityToAdd.getBulanorg());
+					int startYear  = Integer.valueOf(entityToAdd.getTahunorg());
+					int endMonth   = Integer.valueOf(entityToAdd.getBulan());
+					int endYear    = Integer.valueOf(entityToAdd.getTahun());
+					
+					int startYearMonth = Integer.valueOf(entityToAdd.getTahunorg() + entityToAdd.getBulanorg());
+					int endYearMonth = Integer.valueOf(entityToAdd.getTahun() + entityToAdd.getBulan());
+				
+					System.out.println(startMonth + " " + startYear + " " + endMonth + " " + endYear);
+					//if (startMonth != endMonth) {
+					if (startYearMonth != endYearMonth) {
+						//while (startMonth != endMonth || (startYear != endYear && startMonth == endMonth)) {
+						while (startYearMonth != endYearMonth) {
+
+							String bln = "0" + String.valueOf(Integer.valueOf(startMonth));
+							bln = bln.substring(bln.length() - 2, bln.length());
+							String thn = String.valueOf(startYear);
+
+							// tambah ke admin freemonth
+							EAdminFreemonth eAdminFreemonth = new EAdminFreemonth();
+							eAdminFreemonth.setTahun(thn);
+							eAdminFreemonth.setBulan(bln);
+							eAdminFreemonth.setCustomer(entityToAdd.getCustomer());
+							eAdminFreemonth.setProduk(entityToAdd.getProduk());
+							
+							adminFreemonthService.add(eAdminFreemonth);
+							
+							if (isAnyBatchErrors()) {			
+								for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+									
+									// khusus untuk error yang muncul di grid
+									Message message = new Message();
+									ArrayList<Object> newParameters = new ArrayList<Object>();
+									
+									for (Object object : businessException.getMessageParameters()) {
+										newParameters.add(object);
+									}
+						
+									message.setCode(businessException.getMessageCode());
+									message.setArgs(newParameters);
+									
+									if (result == null) {
+										result = new ArrayList<Message>();
+									}
+									
+									//result.clear();
+									result.add(message);					
+								}
+								
+								// bersihkan error yang ada di LocalError
+								removeBatchErrors();							
+							}
+							
+							if (startMonth == 12) {
+								startYear = startYear + 1;
+								startMonth = 1;
+							} else {
+								startMonth = startMonth + 1;
+							}
+							
+							bln = "0" + String.valueOf(Integer.valueOf(startMonth));
+							bln = bln.substring(bln.length() - 2, bln.length());
+							thn = String.valueOf(startYear);
+							
+							startYearMonth = Integer.valueOf(thn + bln);
+						}
+					}
+					
+				} else {
+					
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+						
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+						
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+			
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+						
+						if (result == null) {
+							result = new ArrayList<Message>();
+						}
+						
+						//result.clear();
+						result.add(message);					
+					}
+					
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();							
+				}
+			}
+		}
+		
+		return result;
+	}
+	
+	@Transactional
+	public EAdminRenewal getRenewalDateFromLiveDate(ECustomerGajiId customer, EProduk produk, String tanggal) {
+		
+		EAdminRenewal result = null;
+		
+		// bila siklus adalah periodik (n tahun / n bulan), hitung tanggal next tagihannya
+		// bila siklus adalah bulanan (tiap 1 bulan) :
+		//    bila pra bayar hitung tanggal next tagihannnya (seperti periodik)
+		//    bila pasca bayar ini prinsip pakai dulu baru bayar (dan pasti bulanan), jadi ya tagihan pasti untuk bulan ini 
+		
+		// ambil header master tarif
+		CustomerProdukTarifHeader customerProdukTarifHeader = customerProdukTarifHeaderService.findByBk(customer.getId(), produk.getId());
+
+		if (customerProdukTarifHeader != null) {
+			
+			if (customerProdukTarifHeader.jnstgh.equals("PASCA")) {
+				
+				result = new EAdminRenewal();
+				result.setBulan(tanggal.substring(4, 6));
+				result.setTahun(tanggal.substring(0, 4));
+				result.setBulanorg(tanggal.substring(4, 6));
+				result.setTahunorg(tanggal.substring(0, 4));
+				result.setCustomer(customer);
+				result.setProduk(produk);
+				result.setFlproi(BaseConstants.TIDAK);
+				result.setInvoice(null);
+				
+			}
+
+			if (customerProdukTarifHeader.jnstgh.equals("PRA")) {
+				// ambil free month (dengan cara seperti ambil skema tarif di HitungTarifService.java)
+				// menggunakan yang dengan range tanggal karena master customer tarif produk sudah di generate 
+				//CustomerProdukTarifDetail detailTarifSkemaHarga = customerProdukTarifDetailService.getByCustProdukAndJenisTarifTanpaRange(customer.getId(), produk.getId(), "FREEM");
+				CustomerProdukTarifDetail detailTarifSkemaHarga = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(customer.getId(), produk.getId(), "FREEM", tanggal);
+
+				int freeMonth = 0;
+				if (detailTarifSkemaHarga != null) {
+					freeMonth = detailTarifSkemaHarga.freemo;
+				}
+				
+				int bulanSiklus = 0;
+				if (customerProdukTarifHeader.satsiklus.equals("TAHUN")) {
+					bulanSiklus = 12 * customerProdukTarifHeader.jumsiklus;
+				}
+				if (customerProdukTarifHeader.satsiklus.equals("BULAN")) {
+					bulanSiklus = customerProdukTarifHeader.jumsiklus;
+				}
+				
+				// misal tgl live = 1 januari 2021, siklus = 6 bulan, maka :
+				//    bulan 1 + 6 bulan = bulan 7
+				// dengan tentu diperhitungkan juga free month nya
+				Date originalDate = TimeUtil.addMonths(TimeUtil.getDate(tanggal), bulanSiklus);
+				Date nextDate     = TimeUtil.addMonths(TimeUtil.getDate(tanggal), bulanSiklus + freeMonth);
+				
+				System.out.println(originalDate + "   " + nextDate);
+				result = new EAdminRenewal();
+				result.setBulan(TimeUtil.getStringMonth(nextDate));
+				result.setTahun(TimeUtil.getStringYear(nextDate));
+				result.setBulanorg(TimeUtil.getStringMonth(originalDate));
+				result.setTahunorg(TimeUtil.getStringYear(originalDate));
+				result.setCustomer(customer);
+				result.setProduk(produk);
+				result.setFlproi(BaseConstants.TIDAK);
+				result.setInvoice(null);
+				
+			}			
+		}
+		
+		return result;
+	}
+	
+	@Transactional
+    public EAdminRenewal createAdmin(ETrxLive eTrxLive) {
+
+		EAdminRenewal result = null;
+		
+		//Date nextRenewal = getRenewalDateFromLiveDate(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), eTrxLive.getTglive());
+		EAdminRenewal eAdminRenewal = getRenewalDateFromLiveDate(eTrxLive.getCustomer(), eTrxLive.getProduk(), eTrxLive.getTglive());
+		
+		if (eAdminRenewal != null) {
+			
+			result = add(eAdminRenewal);
+			
+			// create admin freemonth
+			int startMonth = Integer.valueOf(result.getBulanorg());
+			int startYear  = Integer.valueOf(result.getTahunorg());
+			int endMonth   = Integer.valueOf(result.getBulan());
+			int endYear    = Integer.valueOf(result.getTahun());
+			
+			int startYearMonth = Integer.valueOf(result.getTahunorg() + result.getBulanorg());
+			int endYearMonth = Integer.valueOf(result.getTahun() + result.getBulan());
+			
+			System.out.println(startMonth + " " + startYear + " " + endMonth + " " + endYear);
+//			if (startMonth != endMonth) {
+			if (startYearMonth != endYearMonth) {
+//				while (startMonth != endMonth || (startYear != endYear && startMonth == endMonth)) {
+				while (startYearMonth != endYearMonth) {
+
+					String bln = "0" + String.valueOf(Integer.valueOf(startMonth));
+					String thn = String.valueOf(startYear);
+
+					// tambah ke admin freemonth
+					EAdminFreemonth eAdminFreemonth = new EAdminFreemonth();
+					eAdminFreemonth.setTahun(thn);
+					eAdminFreemonth.setBulan(bln);
+					eAdminFreemonth.setCustomer(eAdminRenewal.getCustomer());
+					eAdminFreemonth.setProduk(eAdminRenewal.getProduk());
+					
+					adminFreemonthService.add(eAdminFreemonth);
+					
+					if (startMonth == 12) {
+						startYear = startYear + 1;
+						startMonth = 1;
+					} else {
+						startMonth = startMonth + 1;
+					}
+					
+					bln = "0" + String.valueOf(Integer.valueOf(startMonth));
+					bln = bln.substring(bln.length() - 2, bln.length());
+					thn = String.valueOf(startYear);
+					
+					startYearMonth = Integer.valueOf(thn + bln);
+				}
+			}
+		}
+		
+		return result;
+	}
+	
+	@Transactional
+    public void deleteAdmin(ETrxLive eTrxLive) {
+
+		//Date nextRenewal = getRenewalDateFromLiveDate(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), eTrxLive.getTglive());
+		EAdminRenewal eAdminRenewal = getRenewalDateFromLiveDate(eTrxLive.getCustomer(), eTrxLive.getProduk(), eTrxLive.getTglive());
+
+		if (eAdminRenewal != null) {
+			
+			String tahun = eAdminRenewal.getTahun();
+			String bulan = eAdminRenewal.getBulan();
+
+			// hapus admin freemonth
+			int startMonth = Integer.valueOf(eAdminRenewal.getBulanorg());
+			int startYear  = Integer.valueOf(eAdminRenewal.getTahunorg());
+			int endMonth   = Integer.valueOf(bulan);
+			int endYear    = Integer.valueOf(tahun);
+			
+			if (startMonth != endMonth) {
+				while (startMonth != endMonth || (startYear != endYear && startMonth == endMonth)) {
+
+					String bln = "0" + String.valueOf(Integer.valueOf(startMonth));
+					String thn = String.valueOf(startYear);
+
+					// hapus admin freemonth					
+					EAdminFreemonth eAdminFreemonth = adminFreemonthService.findByBk(thn, bln, eAdminRenewal.getCustomer().getId(), eAdminRenewal.getProduk().getId());
+
+					if (eAdminFreemonth != null) {
+						adminFreemonthService.delete(eAdminFreemonth.getId(), eAdminFreemonth.getVersion());						
+					}
+					
+					if (startMonth == 12) {
+						startYear = startYear + 1;
+						startMonth = 1;
+					} else {
+						startMonth = startMonth + 1;
+					}
+				}
+			}
+			
+			// hapus admin renewal			
+			eAdminRenewal = findByBk(tahun, bulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId());
+			
+			if (eAdminRenewal != null) {
+				delete(eAdminRenewal.getId(), eAdminRenewal.getVersion());
+			}			
+		}
+	}
+	
+	@Transactional
+    public EAdminRenewal addUsedInProcess(EAdminRenewal entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		//throwBatchError();
+		
+		manageMinMaxValues(entity);
+		//throwBatchError();
+		
+		manageReferences(entity);
+		//throwBatchError();
+		
+		valUniquenessOnAdd(entity);
+		//throwBatchError();
+		
+		EAdminRenewal addedEntity = repo.add(entity);		
+		//throwBatchError();
+		
+		return addedEntity;	
+		
+    }
+
+	@Transactional
+    public EAdminRenewal add(EAdminRenewal entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EAdminRenewal addedEntity = repo.add(entity);
+		
+		throwBatchError();
+		return addedEntity;	
+		
+    }
+       
+    //private void valOnAdd(final EAdminRenewal valuta) {
+    //}
+
+	@Transactional
+	public EAdminRenewal edit(EAdminRenewal entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EAdminRenewal toBeSaved = repo.getOne(entity.getId());
+		//EAdminRenewal oldEntity = (EAdminRenewal) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+		
+		toBeSaved = repo.edit(toBeSaved);		
+		throwBatchError();
+		
+		return toBeSaved;
+		
+	}
+
+	//private void valOnEdit(final EAdminRenewal valuta) {
+    //}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EAdminRenewal.class.getSimpleName());
+		throwBatchError();
+		
+		EAdminRenewal toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		repo.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	//private void valOnDelete(EAdminRenewal entity) {
+    //}
+	
+	//private void valAuthAdd() {
+	//  if(!actionAuthorizationService.valHakAdd()) {
+	//    error("NoRightToAdd");
+	//  }
+	//}
+	
+	//private void valAuthEdit() {
+    //  if(!actionAuthorizationService.valHakEdit()) {
+    //    error("NoRightToChange");
+    //  }
+    //}
+	
+    //private void valAuthDelete() {
+    //  if(!actionAuthorizationService.valHakDelete()) {
+    //    error("NoRightToDelete");
+    //  }
+    //}
+
+    protected void defineDefaultValuesOnAdd(EAdminRenewal entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+    
+    protected void valRequiredValues(EAdminRenewal entity) {
+	}
+    
+    protected void manageMinMaxValues(EAdminRenewal entity) {
+	}
+    
+    protected void manageReferences(EAdminRenewal entity) {
+		if (entity.getCustomer() != null) {
+			ECustomerGajiId eFromDb = customerGajiIdService.get(entity.getCustomer().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setCustomer(eFromDb);
+				} else {
+					batchError("customerGajiId.not.active");
+				}
+			} else {
+				batchError("customerGajiId.not.found");
+			}			
+		}		
+
+		if (entity.getProduk() != null) {
+			EProduk eFromDb = produkService.get(entity.getProduk().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setProduk(eFromDb);
+				} else {
+					batchError("produk.not.active");
+				}
+			} else {
+				batchError("produk.not.found");
+			}			
+		}		
+
+		if (entity.getInvoice() != null) {
+			EInvoiceHeader eFromDb = invoiceHeaderService.get(entity.getInvoice().getId());
+			if (eFromDb != null) {
+				entity.setInvoice(eFromDb);
+			} else {
+				batchError("invoice.not.found");
+			}			
+		}		
+    }
+
+    protected void valUniquenessOnAdd(EAdminRenewal addedEntity) {
+		EAdminRenewal entityFromDb = repo.findByBK(addedEntity.getTahun(), addedEntity.getBulan(), addedEntity.getCustomer().getId(), addedEntity.getProduk().getId());
+		if (entityFromDb != null) {
+			throw new BusinessException("admin.renewal.bk");
+		}
+	}
+    
+    private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EAdminRenewal dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+    
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void valUniquenessOnEdit(EAdminRenewal editedEntity) {
+		EAdminRenewal entityFromDb = repo.findByBK(editedEntity.getTahun(), editedEntity.getBulan(), editedEntity.getCustomer().getId(), editedEntity.getProduk().getId());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("admin.renewal.bk");
+			}
+		}
+	}
+	
+	protected void defineEditableValues(EAdminRenewal newValues, EAdminRenewal toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setTahun(newValues.getTahun());
+			toBeSaved.setBulan(newValues.getBulan());
+			toBeSaved.setTahunorg(newValues.getTahunorg());
+			toBeSaved.setBulanorg(newValues.getBulanorg());
+			toBeSaved.setFlproi(newValues.getFlproi());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valDelete(EAdminRenewal toBeDeleted) {	}
+    
+    
+	public EAdminRenewal get(String id) {
+		return repo.getOne(id);
+	}
+}

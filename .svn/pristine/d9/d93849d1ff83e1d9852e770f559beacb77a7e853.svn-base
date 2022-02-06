@@ -1,0 +1,62 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubDetailHslProDiskon;
+
+@Repository
+public class EInvoiceSubDetailHslProDiskonRepository extends SimpleJpaRepository<EInvoiceSubDetailHslProDiskon, String> {
+
+	protected final EntityManager em;
+
+	public EInvoiceSubDetailHslProDiskonRepository(EntityManager em) {
+		super(EInvoiceSubDetailHslProDiskon.class, em);
+		this.em = em;
+	}
+	
+	public EInvoiceSubDetailHslProDiskon findByBK(String idTi110, Integer nourut) {
+		
+		String query = "SELECT e FROM EInvoiceSubDetailHslProDiskon e " + 
+                       "WHERE e.detailHasilProses.id = :idTi110 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EInvoiceSubDetailHslProDiskon.class)
+					 .setParameter("idTi110", idTi110)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EInvoiceSubDetailHslProDiskon getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EInvoiceSubDetailHslProDiskon> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EInvoiceSubDetailHslProDiskon> search = new HqlSimpleSearchBuilder<>(EInvoiceSubDetailHslProDiskon.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EInvoiceSubDetailHslProDiskon add(EInvoiceSubDetailHslProDiskon entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+
+	public EInvoiceSubDetailHslProDiskon edit(EInvoiceSubDetailHslProDiskon entity) {
+		return save(entity);
+	}
+}

@@ -1,0 +1,154 @@
+package co.id.sofcograha.base.queue.queuenotification.repositories;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import javax.persistence.EntityManager;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.constants.enums.NotificationType;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.queue.queuenotification.entities.ESysNotification;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Repository
+public class SysNotificationRepository extends SimpleJpaRepository<ESysNotification, String> {
+
+	protected final EntityManager em;
+	
+	public SysNotificationRepository(EntityManager em) {
+		super(ESysNotification.class, em);
+		this.em = em;
+	}
+
+	public List<ESysNotification> getCurrentNotification(EUser user, ECompany company) {
+		
+		List<ESysNotification> entitys;
+		
+		String query = "SELECT e FROM ESysNotification e " + 
+                       "WHERE e.active = :active And " +
+			                 ":todayDate BETWEEN e.issueDate AND e.endIssueDate And " +
+			                 "(e.user IS NULL OR " + 
+			                 "e.user = :user) And " +
+							 "(e.company IS NULL OR " + 
+			                 "e.company = :company) " +
+					   "ORDER BY e.creationTime DESC ";
+
+		entitys = em.createQuery(query, ESysNotification.class)
+					.setParameter("active", true)
+					.setParameter("todayDate", TimeUtil.getSystemDateTime())
+					.setParameter("user", user)
+					.setParameter("company", company)
+//					.setMaxResults(10)
+					.getResultList();
+		
+		if (entitys != null && entitys.isEmpty())
+			entitys = new ArrayList<>();
+		
+		return entitys;
+	}
+
+	public SearchResult<ESysNotification> search(SearchParameter searchParameter) {
+		
+		HqlSimpleSearchBuilder<ESysNotification> search = new HqlSimpleSearchBuilder<>(ESysNotification.class, em);
+
+		String userId = (String) searchParameter.getValueFromMappedParam("user.id");
+		String companyId = (String) searchParameter.getValueFromMappedParam("company.id");
+		Date issueDate = (Date) searchParameter.getValueFromMappedParam("issueDate");
+		Date issueDateStart = (Date) searchParameter.getValueFromMappedParam("issueDateStart");
+		Date issueDateEnd = (Date) searchParameter.getValueFromMappedParam("issueDateEnd");
+		Date endIssueDate = (Date) searchParameter.getValueFromMappedParam("endIssueDate");
+		Boolean readFlag = (Boolean) searchParameter.getValueFromMappedParam("readFlag");
+		Boolean pinFlag = (Boolean) searchParameter.getValueFromMappedParam("pinFlag");
+		NotificationType notificationType = (NotificationType) searchParameter.getValueFromMappedParam("notificationType");
+		String notificationMsg = (String) searchParameter.getValueFromMappedParam("notificationMsg");
+		Boolean active = (Boolean) searchParameter.getValueFromMappedParam("active");
+
+		if (userId != null) {
+			search.addWhere("AND user.id = :userId ");
+			search.addParameter("userId", userId);
+		}
+		
+		if (companyId != null) {
+			search.addWhere("AND company.id = :companyId ");
+			search.addParameter("companyId", companyId);
+		} else {
+			search.addWhere("AND company IS NULL ");		
+		}
+		
+		if (issueDate != null) {
+			search.addWhere("AND issueDate = :issueDate ");
+			search.addParameter("issueDate", issueDate);
+		}
+		
+		if(issueDateStart!=null || issueDateEnd!=null) {
+			search.addWhere("AND cast(issueDate as date) <= cast(:issueDateEnd as date) ");
+			search.addWhere("AND cast(issueDate as date) >= cast(:issueDateStart as date) ");
+			
+			if (issueDateStart != null && issueDateEnd != null) {
+
+				search.addParameter("issueDateStart", issueDateStart);
+				search.addParameter("issueDateEnd", issueDateEnd);
+		    } else if (issueDateStart != null && issueDateEnd == null) {
+
+		        search.addParameter("issueDateStart", issueDateStart);
+		        search.addParameter("issueDateEnd", TimeUtil.getMaxDate());
+		    } else if (issueDateStart == null && issueDateEnd != null) {
+		      
+		    	search.addParameter("issueDateStart", TimeUtil.getMinDate());
+		    	search.addParameter("issueDateEnd", issueDateEnd);
+		    }			
+		}
+		
+		if (endIssueDate != null) {
+			search.addWhere("AND endIssueDate = :endIssueDate ");
+			search.addParameter("endIssueDate", endIssueDate);
+		}
+		
+		if (readFlag != null) {
+			search.addWhere("AND readFlag = :readFlag ");
+			search.addParameter("readFlag", readFlag);
+		}
+		
+		if (pinFlag != null) {
+			search.addWhere("AND pinFlag = :pinFlag ");
+			search.addParameter("pinFlag", pinFlag);
+		}
+		
+		if (notificationType != null) {
+			search.addWhere("AND notificationType = :notificationType ");
+			search.addParameter("notificationType", notificationType);
+		}
+		
+		if (!QueryUtil.isAll(notificationMsg)) {
+			search.addWhere("AND LOWER(notificationMsg) LIKE LOWER(:notificationMsg) ");
+			search.addParameter("notificationMsg", QueryUtil.formatStringForLikeFilter(notificationMsg));
+		}
+		
+		if (active != null) {
+			search.addWhere("AND active = :active ");
+			search.addParameter("active", active);
+		}
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ESysNotification add(ESysNotification entity) {
+		return save(entity);
+	}
+
+	public ESysNotification edit(ESysNotification entity) {
+		return save(entity);
+	}
+}

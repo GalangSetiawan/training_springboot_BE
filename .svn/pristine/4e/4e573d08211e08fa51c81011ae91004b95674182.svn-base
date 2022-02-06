@@ -1,0 +1,88 @@
+package co.id.sofcograha.base.queue.common;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.jms.MapMessage;
+
+//import org.apache.activemq.artemis.jms.client.ActiveMQMapMessage;
+import org.apache.activemq.command.ActiveMQMapMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.jms.core.JmsTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import co.id.sofcograha.base.queue.common.QueueConstants.Status;
+import co.id.sofcograha.base.utils.ObjectUtil;
+
+public class QueueData {
+
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	
+	private JmsTemplate jmsTemplate;
+	private QueueUtilService queueUtilService;
+	
+	private String processCode;
+	private String processNumber;
+	private String processName;
+	private String desc;
+	private Map<String, String> singleParamMaps = new HashMap<>();
+	private Map<String, List<String>> multiParamMaps = new HashMap<>();
+	private Map<String, List<String>> tableHeaderParamMaps = new HashMap<>();
+	private Map<String, List<Map<String, String>>> tableParamMaps = new HashMap<>();
+	
+	QueueData(JmsTemplate jmsTemplate, QueueUtilService queueUtilService, String processCode) {
+		this.jmsTemplate = jmsTemplate;
+		this.queueUtilService = queueUtilService;
+		this.processCode = processCode;
+		this.processNumber = processCode + System.currentTimeMillis();
+		this.processName = "";
+	}
+	
+	public void setProcessName(String processName) {
+		this.processName = processName;
+	}
+	
+	public void setDescription(String desc) {
+		this.desc = desc;
+	}
+	
+	public void putSingleParam(String key, String value) {
+		singleParamMaps.put(key, value);
+	}
+	
+	public void putMultiParam(String key, List<String> value) {
+		multiParamMaps.put(key, value);
+	}
+	
+	public void putTableParam(String key, List<String> header, List<Map<String, String>> value) {
+		tableHeaderParamMaps.put(key, header);
+		tableParamMaps.put(key, value);
+	}
+	
+	public String sendQueue() {
+		queueUtilService.setProsesStatus(processCode, processNumber, Status.OnQueue, this.desc);
+		queueUtilService.saveAllParamSingleValue(processCode, processNumber, singleParamMaps);
+		queueUtilService.saveParamMultiValue(processCode, processNumber, multiParamMaps);
+		queueUtilService.saveParamTableValue(processCode, processNumber, tableHeaderParamMaps, tableParamMaps);
+		
+		String queueDestination = queueUtilService.getCurrentQueueDestination();
+		try {
+			MapMessage data = new ActiveMQMapMessage();
+			
+			data.setString(QueueConstants.PROCESS_CODE, processCode);
+			data.setString(QueueConstants.PROCESS_ID, processNumber);
+			data.setString(QueueConstants.PROCESS_NAME, processName);
+			data.setString(QueueConstants.AUTH, ObjectUtil.objectToString(SecurityContextHolder.getContext().getAuthentication()));
+			data.setString(QueueConstants.COMPANY_CODE, queueUtilService.getCurrentCompanyCode());
+			jmsTemplate.convertAndSend(queueDestination, data);
+		} catch (Exception e) {
+			logger.error("ERROR SEND queue " + queueDestination + " for processCode:" + processCode + " - processId:" + processNumber, e);
+		}
+		logger.info("SEND queue " + queueDestination + " for processCode:" + processCode + " - processId:" + processNumber);
+		
+		return processNumber;
+	}
+	
+}

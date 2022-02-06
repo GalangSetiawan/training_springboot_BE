@@ -1,0 +1,93 @@
+package co.id.sofcograha.domain.invoicing.masters.tagihanLain.controllers;
+
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.tagihanLain.entities.ETagihanLain;
+import co.id.sofcograha.domain.invoicing.masters.tagihanLain.pojos.TagihanLain;
+import co.id.sofcograha.domain.invoicing.masters.tagihanLain.services.TagihanLainService;
+
+@RestController
+@RequestMapping("/api/tagihan-lain")
+public class TagihanLainController {
+
+	public static final Logger logger = LoggerFactory.getLogger(TagihanLainController.class);
+
+	@Autowired
+	UserService userService; //Service which will do all data retrieval/manipulation work
+	
+	@Autowired
+	private TagihanLainService tagihanLainService;
+	
+
+	// -------------------Retrieve Some ---------------------------------------------
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<ETagihanLain> searchResult = tagihanLainService.search(SearchParameter.generate(searchParameter, TagihanLain.getFieldMappings()));
+	    
+		return ApiResponse.dataWithPaging("items", TagihanLain.fromEntities(searchResult.getResult()),
+				searchResult.getPaging());
+	}
+
+	// -------------------Retrieve Single Data ------------------------------------------
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String nama) throws JsonProcessingException {
+
+		ETagihanLain entity = tagihanLainService.findByBk(nama);
+		
+		return ApiResponse.data("item", TagihanLain.fromEntity(entity));
+		
+	}
+
+	@NoAuth
+    @PostMapping
+    public ApiResponse add(@RequestBody TagihanLain pojo) {
+		
+		ETagihanLain result = tagihanLainService.add(pojo.toEntity());
+		return ApiResponse.data("item", TagihanLain.fromEntity(result));
+    }
+    
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody TagihanLain pojo) {
+		
+		ETagihanLain result = tagihanLainService.edit(pojo.toEntity());
+		return ApiResponse.data("item", TagihanLain.fromEntity(result));
+		
+	}
+
+	@NoAuth
+	@DeleteMapping
+	public ApiResponse delete(@RequestParam String id, @RequestParam(required = false) Long version) {
+		tagihanLainService.delete(id, version);
+		return ApiResponse.ok();
+	}
+
+	@NoAuth
+	@GetMapping(value = "/get-by-nama")
+	public ApiResponse getByNama(@RequestParam String nama) throws JsonProcessingException {
+		TagihanLain data = tagihanLainService.findByNama(nama);
+		return ApiResponse.data("item", data);
+	}
+}

@@ -1,0 +1,62 @@
+package co.id.sofcograha.domain.invoicing.implementasi.programKecil.entities;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Version;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+@Entity
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class ECustTanggalLive {
+
+	@Id
+	@Column(name = "id_ii002")
+	private String id;
+	
+	@Column(name = "id_mi010")
+    private String idMi010;
+	
+	@Column(name = "id_mi001")
+    private String idMi001;
+	
+	@Column(name = "tglive")
+    private String tglive;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getIdMi010() {
+		return idMi010;
+	}
+
+	public void setIdMi010(String idMi010) {
+		this.idMi010 = idMi010;
+	}
+
+	public String getIdMi001() {
+		return idMi001;
+	}
+
+	public void setIdMi001(String idMi001) {
+		this.idMi001 = idMi001;
+	}
+
+	public String getTglive() {
+		return tglive;
+	}
+
+	public void setTglive(String tglive) {
+		this.tglive = tglive;
+	}
+	
+}

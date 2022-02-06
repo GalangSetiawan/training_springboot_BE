@@ -1,0 +1,164 @@
+package co.id.sofcograha.domain.invoicing.masters.mappingExcludeCustomerProduk.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.Query;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.mappingExcludeCustomerProduk.entities.EMappingExcludeCustomerProduk;
+
+@Repository
+public class EMappingExcludeCustomerProdukRepository extends SimpleJpaRepository<EMappingExcludeCustomerProduk, String> {
+
+	protected final EntityManager em;
+
+	public EMappingExcludeCustomerProdukRepository(EntityManager em) {
+		super(EMappingExcludeCustomerProduk.class, em);
+		this.em = em;
+	}
+	
+	public EMappingExcludeCustomerProduk findByBK(String idMi011, String kodept, String npwp, String kodekp) {
+		
+		String query = "SELECT e FROM EMappingExcludeCustomerProduk e " + 
+                       "WHERE e.header.id = :idMi011 And " +
+  	                         "e.kodept = :kodept And " +
+                             "e.npwp = :npwp And " +
+                             "e.kodekp = :kodekp";
+		
+		try {
+			return em.createQuery(query, EMappingExcludeCustomerProduk.class)
+					 .setParameter("idMi011", idMi011)
+					 .setParameter("kodept", kodept)
+					 .setParameter("npwp", npwp)
+					 .setParameter("kodekp", kodekp)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public List<EMappingExcludeCustomerProduk> getMappingExcludeByCustomerProduk(String idMi010, String idMi001) {
+		
+		String query = "SELECT e FROM EMappingExcludeCustomerProduk e " + 
+                       "WHERE e.header.customer.id = :idMi010 And " +
+                             "e.header.produk.id = :idMi001 " +
+                       "ORDER BY e.kodept, e.npwp";
+	
+		try {
+			return em.createQuery(query, EMappingExcludeCustomerProduk.class)
+					.setParameter("idMi010", idMi010)
+					.setParameter("idMi001", idMi001)
+					.getResultList();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EMappingExcludeCustomerProduk getByPTNpwpKp(String kodept, String npwp, String kodekp) {
+		
+		String query = "SELECT e FROM EMappingExcludeCustomerProduk e " + 
+                       "WHERE e.kodept = :kodept And " +
+                             "e.npwp = :npwp And " + 
+                             "e.kodekp = :kodekp";
+		
+		try {
+			return em.createQuery(query, EMappingExcludeCustomerProduk.class)
+					 .setParameter("kodept", kodept)
+					 .setParameter("npwp", npwp)
+					 .setParameter("kodekp", kodekp)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public List<EMappingExcludeCustomerProduk> getByPT(String kodept) {
+		
+		String query = "SELECT e FROM EMappingExcludeCustomerProduk e " + 
+                       "WHERE e.kodept = :kodept";
+		
+		try {
+			return em.createQuery(query, EMappingExcludeCustomerProduk.class)
+					 .setParameter("kodept", kodept)
+					 .getResultList();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	/*
+	public List<EMappingExcludeCustomerProduk> getByPTDistinctNpwpKodekp(String kodept) {
+		
+		String query = "SELECT DISTINCT e.kodept, e.npwp, e.kodekp FROM EMappingExcludeCustomerProduk e " + 
+                       "WHERE e.kodept = :kodept";
+
+		try {
+			return em.createQuery(query, EMappingExcludeCustomerProduk.class)
+					 .setParameter("kodept", kodept)
+					 .getResultList();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	*/
+	
+    @SuppressWarnings("unchecked")
+	public List<EMappingExcludeCustomerProduk> getByPTDistinctNpwpKodekp(String kodept) {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select a.* "); 
+        queryStringBuilder.append("from mi013 a "); 
+        queryStringBuilder.append("where a.kodept||coalesce(a.npwp, '')||coalesce(a.kodekp, '') in "); 
+        queryStringBuilder.append("   (select kodept||coalesce(npwp, '')||coalesce(kodekp, '') "); 
+        queryStringBuilder.append("    from mi013 "); 
+        queryStringBuilder.append("    where kodept = :kodept "); 
+        queryStringBuilder.append("    group by kodept, npwp, kodekp)"); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), EMappingExcludeCustomerProduk.class);
+        
+        query.setParameter("kodept", kodept);
+        
+        List<EMappingExcludeCustomerProduk> list = query.getResultList();
+
+        if (!list.isEmpty()) {
+        	return list;
+        } else {
+        	return null;
+        }
+    }		
+	
+	public EMappingExcludeCustomerProduk getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EMappingExcludeCustomerProduk> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EMappingExcludeCustomerProduk> search = new HqlSimpleSearchBuilder<>(EMappingExcludeCustomerProduk.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EMappingExcludeCustomerProduk add(EMappingExcludeCustomerProduk entity) {
+		return save(entity);
+	}
+
+	public EMappingExcludeCustomerProduk edit(EMappingExcludeCustomerProduk entity) {
+		return save(entity);
+	}
+}

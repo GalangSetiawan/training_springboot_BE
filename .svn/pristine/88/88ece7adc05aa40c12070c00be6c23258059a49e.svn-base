@@ -1,0 +1,97 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities;
+
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import co.id.sofcograha.base.exceptions.DevException;
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(name = "am59log", uniqueConstraints = @UniqueConstraint(columnNames = { "id_am59log", "id_am90", "trx_number" }))
+public class EAutomaticNumberingLog implements Cloneable {
+
+	@Id
+	@Column(name = "id_am59log")
+	private String id;
+	
+	@OneToOne
+	@JoinColumn(name = "id_am90")
+	private EJenisTransaksi jenisTransaksi;
+	
+	@Column(name = "trx_number")
+	private String trxNumber;
+	
+	@Column(name = "used_flag")
+	private String usedFlag;
+	
+	@Version
+	@Column(name = "version")
+	private Long version;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public EJenisTransaksi getJenisTransaksi() {
+		return jenisTransaksi;
+	}
+
+	public void setJenisTransaksi(EJenisTransaksi jenisTransaksi) {
+		this.jenisTransaksi = jenisTransaksi;
+	}
+
+	public String getTrxNumber() {
+		return trxNumber;
+	}
+
+	public void setTrxNumber(String trxNumber) {
+		this.trxNumber = trxNumber;
+	}
+
+	public String getUsedFlag() {
+		return usedFlag;
+	}
+
+	public void setUsedFlag(String usedFlag) {
+		this.usedFlag = usedFlag;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+	
+	@PrePersist
+	private void prePersist() {
+		
+		this.id = UUID.randomUUID().toString();
+		
+	}
+}

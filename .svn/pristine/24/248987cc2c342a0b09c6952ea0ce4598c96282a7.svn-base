@@ -1,0 +1,80 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTghSubDetDiskon;
+
+@Repository
+public class EAdminRenewalDetTghSubDetDiskonRepository extends SimpleJpaRepository<EAdminRenewalDetTghSubDetDiskon, String> {
+
+	protected final EntityManager em;
+
+	public EAdminRenewalDetTghSubDetDiskonRepository(EntityManager em) {
+		super(EAdminRenewalDetTghSubDetDiskon.class, em);
+		this.em = em;
+	}
+	
+	public EAdminRenewalDetTghSubDetDiskon findByBK(String idAi320, Integer nourut) {
+		
+		String query = "SELECT e FROM EAdminRenewalDetTghSubDetDiskon e " + 
+                       "WHERE e.detailTagih.id = :idAi320 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EAdminRenewalDetTghSubDetDiskon.class)
+					 .setParameter("idAi320", idAi320)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public List<EAdminRenewalDetTghSubDetDiskon> findByDetailId(String idAi320) {
+		
+		String query = "SELECT e FROM EAdminRenewalDetTghSubDetDiskon e " + 
+                       "WHERE e.detailTagih.id = :idAi320 " +
+  	                   "ORDER BY e.nourut"; 
+		
+		try {
+			return em.createQuery(query, EAdminRenewalDetTghSubDetDiskon.class)
+					 .setParameter("idAi320", idAi320)
+					 .getResultList();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EAdminRenewalDetTghSubDetDiskon getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EAdminRenewalDetTghSubDetDiskon> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EAdminRenewalDetTghSubDetDiskon> search = new HqlSimpleSearchBuilder<>(EAdminRenewalDetTghSubDetDiskon.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EAdminRenewalDetTghSubDetDiskon add(EAdminRenewalDetTghSubDetDiskon entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+
+	public EAdminRenewalDetTghSubDetDiskon edit(EAdminRenewalDetTghSubDetDiskon entity) {
+		return save(entity);
+	}
+}

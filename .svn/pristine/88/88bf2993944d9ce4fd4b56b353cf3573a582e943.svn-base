@@ -1,0 +1,167 @@
+package co.id.sofcograha.base.master.company.repositories;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Repository
+public class CompanyRepository extends SimpleJpaRepository<ECompany, String> {
+
+	protected final EntityManager em;
+	
+	public CompanyRepository(EntityManager em) {
+		super(ECompany.class, em);
+		this.em = em;
+	}
+
+	public EntityManager getLocalEm() {
+		return em;
+	}
+	
+	public ECompany getOne(String id) {
+	  return super.findOne(id);
+	}
+	
+	public ECompany findByBK(String code) {
+		
+		String query = "SELECT e FROM ECompany e " + 
+	                   "WHERE e.code = :code";
+		
+		try {
+			return em.createQuery(query, ECompany.class)
+					.setParameter("code", code)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ECompany findByCode(String code) {
+		return this.findByBK(code);
+	}
+
+	public List<ECompany> getActiveListCompany() {
+
+		List<ECompany> entitys;
+
+		entitys = em
+				.createQuery("FROM ECompany e " + 
+		                     "WHERE e.active = true AND " +
+						          ":todayDate BETWEEN e.activeStartMonth AND e.activeEndMonth ", ECompany.class)
+				.setParameter("todayDate", TimeUtil.getSystemDateTime()).getResultList();
+
+		if (entitys != null && entitys.isEmpty())
+			entitys = new ArrayList<ECompany>();
+
+		return entitys;
+	}
+	
+	public SearchResult<ECompany> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ECompany> search = new HqlSimpleSearchBuilder<>(ECompany.class, em);
+
+		String code = (String) searchParameter.getValueFromMappedParam("code");
+		String name = (String) searchParameter.getValueFromMappedParam("name");
+		String customerId = (String) searchParameter.getValueFromMappedParam("customer.id");
+		String address = (String) searchParameter.getValueFromMappedParam("address");
+		String city = (String) searchParameter.getValueFromMappedParam("city");
+		String phoneNumber = (String) searchParameter.getValueFromMappedParam("phoneNumber");
+		String email = (String) searchParameter.getValueFromMappedParam("email");
+		String picName = (String) searchParameter.getValueFromMappedParam("picName");
+		String picPosition = (String) searchParameter.getValueFromMappedParam("picPosition");
+		String picEmail = (String) searchParameter.getValueFromMappedParam("picEmail");
+		Date activeStartMonth = (Date) searchParameter.getValueFromMappedParam("activeStartMonth");
+		Date activeEndMonth = (Date) searchParameter.getValueFromMappedParam("activeEndMonth");
+		Boolean active = (Boolean) searchParameter.getValueFromMappedParam("active");
+
+		if (!QueryUtil.isAll(code)) {
+			search.addWhere("AND LOWER(code) LIKE LOWER(:code) ");
+			search.addParameter("code", QueryUtil.formatStringForLikeFilter(code));
+		}
+
+		if (!QueryUtil.isAll(name)) {
+			search.addWhere("AND LOWER(name) LIKE LOWER(:name) ");
+			search.addParameter("name", QueryUtil.formatStringForLikeFilter(name));
+		}
+
+		if (customerId != null) {
+			search.addWhere("AND customer.id = :customerId ");
+			search.addParameter("customeId", customerId);
+		}
+
+		if (!QueryUtil.isAll(address)) {
+			search.addWhere("AND LOWER(address) LIKE LOWER(:address) ");
+			search.addParameter("address", QueryUtil.formatStringForLikeFilter(address));
+		}
+
+		if (!QueryUtil.isAll(city)) {
+			search.addWhere("AND LOWER(city) LIKE LOWER(:city) ");
+			search.addParameter("city", QueryUtil.formatStringForLikeFilter(city));
+		}
+
+		if (!QueryUtil.isAll(phoneNumber)) {
+			search.addWhere("AND LOWER(phoneNumber) LIKE LOWER(:phoneNumber) ");
+			search.addParameter("phoneNumber", QueryUtil.formatStringForLikeFilter(phoneNumber));
+		}
+
+		if (!QueryUtil.isAll(email)) {
+			search.addWhere("AND LOWER(email) LIKE LOWER(:email) ");
+			search.addParameter("email", QueryUtil.formatStringForLikeFilter(email));
+		}
+
+		if (!QueryUtil.isAll(picName)) {
+			search.addWhere("AND LOWER(picName) LIKE LOWER(:picName) ");
+			search.addParameter("picName", QueryUtil.formatStringForLikeFilter(picName));
+		}
+		
+		if (!QueryUtil.isAll(picPosition)) {
+			search.addWhere("AND LOWER(picPosition) LIKE LOWER(:picPosition) ");
+			search.addParameter("picPosition", QueryUtil.formatStringForLikeFilter(picPosition));
+		}
+		
+		if (!QueryUtil.isAll(picEmail)) {
+			search.addWhere("AND LOWER(picEmail) LIKE LOWER(:picEmail) ");
+			search.addParameter("picEmail", QueryUtil.formatStringForLikeFilter(picEmail));
+		}
+
+		if (activeStartMonth != null) {
+			search.addWhere("AND activeStartMonth = :activeStartMonth ");
+			search.addParameter("activeStartMonth", activeStartMonth);
+		}
+
+		if (activeEndMonth != null) {
+			search.addWhere("AND activeEndMonth = :activeEndMonth ");
+			search.addParameter("activeEndMonth", activeEndMonth);
+		}
+
+		if (active != null) {
+			search.addWhere("AND active = :active ");
+			search.addParameter("active", active);
+		}
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ECompany add(ECompany entity) {
+		return save(entity);
+	}
+
+	public ECompany edit(ECompany entity) {
+		return save(entity);
+	}
+}

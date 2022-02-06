@@ -1,0 +1,127 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.entities;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+@Entity
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class EUploadDataNotExistsRpt {
+
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@Column(name = "tahunbulan")
+	private String tahunbulan;
+
+	@Column(name = "kodept")
+    private String kodept;
+	
+	@Column(name = "namapt")
+	private String namapt;
+	
+	@Column(name = "npwp")
+    private String npwp;
+	
+	@Column(name = "namanpwp")
+	private String namanpwp;
+	
+	@Column(name = "kodekp")
+    private String kodekp;
+	
+	@Column(name = "namakp")
+    private String namakp;
+	
+	@Column(name = "flmst")
+    private String flmst;
+	
+	@Column(name = "fllive")
+    private String fllive;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getTahunbulan() {
+		return tahunbulan;
+	}
+
+	public void setTahunbulan(String tahunbulan) {
+		this.tahunbulan = tahunbulan;
+	}
+
+	public String getKodept() {
+		return kodept;
+	}
+
+	public void setKodept(String kodept) {
+		this.kodept = kodept;
+	}
+
+	public String getNamapt() {
+		return namapt;
+	}
+
+	public void setNamapt(String namapt) {
+		this.namapt = namapt;
+	}
+
+	public String getNpwp() {
+		return npwp;
+	}
+
+	public void setNpwp(String npwp) {
+		this.npwp = npwp;
+	}
+
+	public String getNamanpwp() {
+		return namanpwp;
+	}
+
+	public void setNamanpwp(String namanpwp) {
+		this.namanpwp = namanpwp;
+	}
+
+	public String getKodekp() {
+		return kodekp;
+	}
+
+	public void setKodekp(String kodekp) {
+		this.kodekp = kodekp;
+	}
+
+	public String getNamakp() {
+		return namakp;
+	}
+
+	public void setNamakp(String namakp) {
+		this.namakp = namakp;
+	}
+
+	public String getFlmst() {
+		return flmst;
+	}
+
+	public void setFlmst(String flmst) {
+		this.flmst = flmst;
+	}
+
+	public String getFllive() {
+		return fllive;
+	}
+
+	public void setFllive(String fllive) {
+		this.fllive = fllive;
+	}
+
+}

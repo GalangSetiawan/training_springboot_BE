@@ -1,0 +1,66 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.ESumNilai;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class SumNilai {
+	
+	public String id;
+	public Integer jumkar;
+	public Double bruto;
+	public Double nilpctdisc;
+	public Double nildisc;
+	public Double netto;
+	
+	public static SumNilai fromEntity (ESumNilai entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static SumNilai fromEntity(ESumNilai entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		
+		SumNilai pojo = new SumNilai();
+		
+		pojo.id = entity.getId();
+		
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.jumkar = entity.getJumkar();
+			pojo.bruto = entity.getBruto();
+			pojo.nilpctdisc = entity.getNilpctdisc();
+			pojo.nildisc = entity.getNildisc();
+			pojo.netto = entity.getNetto();
+
+		}
+
+		return pojo;
+	}
+	
+	public static List<SumNilai> fromEntities(List<ESumNilai> entities) {
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static List<SumNilai> fromEntities(List<ESumNilai> entities, int depthLevel) {
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<SumNilai> pojos = new ArrayList<>();
+		
+		for (ESumNilai entity : entities) {
+			pojos.add(SumNilai.fromEntity(entity, depthLevel));
+		}
+		return pojos;
+	}
+	
+}

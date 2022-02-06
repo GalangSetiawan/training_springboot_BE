@@ -1,0 +1,104 @@
+package co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.controllers;
+
+import java.text.ParseException;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.entities.EPenerimaanBayarHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.pojos.PenerimaanBayarComplete;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.pojos.PenerimaanBayarHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.services.PenerimaanBayarCompleteService;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.services.PenerimaanBayarHeaderService;
+
+@RestController
+@RequestMapping("/api/penerimaan-bayar")
+public class PenerimaanBayarController {
+	
+	public static final Logger logger = LoggerFactory.getLogger(PenerimaanBayarController.class);
+	
+	@Autowired private PenerimaanBayarHeaderService penerimaanBayarHeaderService;
+	@Autowired private PenerimaanBayarCompleteService penerimaanBayarCompleteService;
+	//@Autowired private KelolaInvoiceExportPdfService kelolaInvoiceExportPdfService;
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<EPenerimaanBayarHeader> searchResult = penerimaanBayarHeaderService.search(SearchParameter.generate(searchParameter, 
+				InvoiceHeader.getFieldMappings()));
+		
+		return ApiResponse.dataWithPaging("items", 
+				PenerimaanBayarHeader.fromEntities(searchResult.getResult()), 
+				searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String nomor) throws JsonProcessingException, ParseException {
+		PenerimaanBayarComplete data = penerimaanBayarCompleteService.findByBk(nomor);
+	    
+	    return ApiResponse.data("item", data);
+	}
+	
+	//@AuthAdd("TRX_PP")
+	@NoAuth
+	@PostMapping
+	public ApiResponse add(@RequestBody PenerimaanBayarComplete pojo) {
+
+		
+		EPenerimaanBayarHeader header = penerimaanBayarCompleteService.add(pojo, BaseConstants.JENIS_TRX_TERIMA_BAYAR);
+		
+		return ApiResponse.data("item", PenerimaanBayarComplete.setFromEntity(header));
+	}
+	
+	//@AuthEdit("TRX_PP")
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody PenerimaanBayarComplete pojo) {
+		
+		EPenerimaanBayarHeader header = penerimaanBayarCompleteService.edit(pojo);
+		
+		return ApiResponse.data("item", PenerimaanBayarComplete.setFromEntity(header));
+	}
+
+	//@AuthDelete("TRX_PP")
+	@NoAuth
+	@DeleteMapping
+	public ApiResponse delete(@RequestParam String id, @RequestParam(required = false) Long version) {
+		
+		penerimaanBayarCompleteService.delete(id, version);
+		
+		return ApiResponse.ok();
+	}
+	
+	/*
+	@NoAuth
+    @GetMapping("/pdf")
+    public ApiResponse createAndSendPdf(@RequestParam String nomor) throws ParseException {
+		
+	    //Base64StringEncodedPojo result = invoiceManualExportPdfService.pdfReport(nomor);
+	    Base64StringEncodedPojo result = kelolaInvoiceExportPdfService.pdfReport(nomor);
+	    
+	    return ApiResponse.data("item", result);		
+    }
+	*/
+}

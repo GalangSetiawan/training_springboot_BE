@@ -1,0 +1,274 @@
+package co.id.sofcograha.domain.invoicing.masters.skemaharga.services;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.entities.ESkemaHargaDetail;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.entities.ESkemaHargaHeader;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.pojos.SkemaHargaComplete;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.pojos.SkemaHargaDetail;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.repositories.ESkemaHargaHeaderRepository;
+
+@Service("skemaHargaCompleteService")
+public class SkemaHargaCompleteService extends BaseService {
+	
+	@Autowired private SkemaHargaHeaderService skemaHargaHeaderService;
+	@Autowired private SkemaHargaDetailService skemaHargaDetailService;
+
+	@Autowired private ESkemaHargaHeaderRepository eSkemaHargaHeaderRepository;
+	
+	public SkemaHargaComplete findByBk(String noJurnal) {
+		return SkemaHargaComplete.setFromEntity(eSkemaHargaHeaderRepository.findByBK(noJurnal));
+	}
+
+	public SearchResult<ESkemaHargaHeader> search(SearchParameter searchParameter) {
+		return eSkemaHargaHeaderRepository.search(searchParameter);
+	}
+	
+	@Transactional
+	public ESkemaHargaHeader add(SkemaHargaComplete pojo) {
+		
+		ESkemaHargaHeader entityHeader = pojo.getEntityHeader();
+		
+		valAdaData(entityHeader);
+		valDetailNotEmpty(pojo.details);
+		throwBatchError();
+		
+		ESkemaHargaHeader eSkemaHargaHeader = skemaHargaHeaderService.add(entityHeader);
+		throwBatchError();
+		
+		addDetails(eSkemaHargaHeader, pojo);
+		throwBatchError();
+		
+		return eSkemaHargaHeader;
+
+	}
+	
+	private void valAdaData(ESkemaHargaHeader entity) {
+		if (entity == null) {
+			batchError("skemaharga.komplit.no.data");
+		}
+	}
+	
+	private void valDetailNotEmpty(List<SkemaHargaDetail> detailList) {
+		if (detailList == null || detailList.isEmpty()) {
+			batchError("skemaharga.komplit.no.detail");
+		}
+	}
+	
+	private void addDetails(ESkemaHargaHeader eSkemaHargaHeader, SkemaHargaComplete pojo) {
+		
+		List<SkemaHargaDetail> details = pojo.details;
+		
+		boolean isErrorDetail = false;
+		boolean isErrorSubDetail = false;
+		
+		for (SkemaHargaDetail detail: details) {
+			
+			if (!detail.isSelect) {
+				// hanya simpan untuk yang tidak dicentang hapus
+				
+				ESkemaHargaDetail eSkemaHargaDetail = detail.toEntity();
+				
+				eSkemaHargaDetail.setHeader(eSkemaHargaHeader);
+				
+				// method .add di detail ini tanpa ada throwBatchError(), supaya batchError nya terkumpul dan tidak serta merta di
+				// throw exception
+				eSkemaHargaDetail = skemaHargaDetailService.add(eSkemaHargaDetail);
+				
+				if (isAnyBatchErrors()) {
+					isErrorDetail = true;
+					
+					// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+					
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+						
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+						
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+			
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+						
+						if (detail.errorMsg == null) {
+							detail.errorMsg = new ArrayList<Message>();
+						}
+			
+						detail.errorMsg.clear();
+						detail.errorMsg.add(message);					
+					}
+					
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();
+					
+					continue;
+					// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
+					// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
+					// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik 
+					// satu satu sampai anak ter dalam
+				}
+										
+			}			
+		}
+		
+		// untuk error di grid
+		if (isErrorDetail) {
+			batchErrorWithData("skemaharga.komplit.error.in.detail", pojo);
+		}
+		if (isErrorSubDetail) {
+			batchErrorWithData("skemaharga.komplit.error.in.subdetail", pojo);
+		}
+	}	
+	
+	@Transactional
+	public ESkemaHargaHeader edit(SkemaHargaComplete pojo) {
+		
+		ESkemaHargaHeader entityHeader = pojo.getEntityHeader();
+		
+		valAdaData(entityHeader);
+		valDetailNotEmpty(pojo.details);
+		throwBatchError();
+		
+		ESkemaHargaHeader newETransaksiJurnalHeader = skemaHargaHeaderService.get(entityHeader.getId());
+		
+		editDetails(newETransaksiJurnalHeader, pojo);
+		throwBatchError();
+
+		newETransaksiJurnalHeader = skemaHargaHeaderService.edit(entityHeader);
+		throwBatchError();
+		
+		return newETransaksiJurnalHeader;
+	}
+	
+	private void editDetails(ESkemaHargaHeader eTransaksiJurnalHeader, SkemaHargaComplete pojo) {
+		
+		boolean isErrorDetail = false;
+		
+		List<SkemaHargaDetail> detailJurnals = pojo.details;
+		for (SkemaHargaDetail detailJurnal: detailJurnals) {
+			
+			if (detailJurnal.id != null && !detailJurnal.id.equals("")) {
+				skemaHargaDetailService.delete(detailJurnal.id, detailJurnal.version);
+			}
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detailJurnal.errorMsg == null) {
+						detailJurnal.errorMsg = new ArrayList<Message>();
+					}
+		
+					detailJurnal.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+		// untuk error di grid
+		if (isErrorDetail) {
+			batchErrorWithData("skemaharga.komplit.error.in.detail", pojo);
+		}
+		throwBatchError();		
+		
+		addDetails(eTransaksiJurnalHeader, pojo);
+	}
+	
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valRootVersion(id, version);
+		throwBatchError();
+		
+		ESkemaHargaHeader eTransaksiJurnalHeader = skemaHargaHeaderService.get(id);
+				
+		SkemaHargaComplete pojo = SkemaHargaComplete.setFromEntity(eTransaksiJurnalHeader);
+		
+		// delete detail jurnal
+		boolean isErrorDetail = false;
+		for (SkemaHargaDetail detailJurnal: pojo.details) {
+			skemaHargaDetailService.delete(detailJurnal.id, detailJurnal.version);
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detailJurnal.errorMsg == null) {
+						detailJurnal.errorMsg = new ArrayList<Message>();
+					}
+		
+					detailJurnal.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+		// untuk error di grid
+		if (isErrorDetail) {
+			batchErrorWithData("skemaharga.komplit.error.in.detail", pojo);
+		}
+		throwBatchError();		
+		
+		// delete trx header
+		skemaHargaHeaderService.delete(id, version);
+	}
+	
+	protected void valRootVersion(String id, Long version) {
+		valEntityExists(id);
+		ESkemaHargaHeader dbEntity = skemaHargaHeaderService.get(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id) {
+		if (skemaHargaHeaderService.get(id) == null) {
+			throw new BusinessException("data.not.found", id);
+		}
+	}
+	
+}

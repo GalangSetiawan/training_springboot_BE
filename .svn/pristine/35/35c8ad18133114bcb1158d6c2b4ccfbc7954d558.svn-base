@@ -1,0 +1,81 @@
+package co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifDetailGrupAkumulasi;
+
+@Repository
+public class ECustomerProdukTarifDetailGrupAkumulasiRepository extends SimpleJpaRepository<ECustomerProdukTarifDetailGrupAkumulasi, String> {
+
+	protected final EntityManager em;
+
+	public ECustomerProdukTarifDetailGrupAkumulasiRepository(EntityManager em) {
+		super(ECustomerProdukTarifDetailGrupAkumulasi.class, em);
+		this.em = em;
+	}
+	
+	public ECustomerProdukTarifDetailGrupAkumulasi findByBK(String idMi011, Integer nourut) {
+		
+		String query = "SELECT e FROM ECustomerProdukTarifDetailGrupAkumulasi e " + 
+                       "WHERE e.header.id = :idMi011 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, ECustomerProdukTarifDetailGrupAkumulasi.class)
+					 .setParameter("idMi011", idMi011)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ECustomerProdukTarifDetailGrupAkumulasi getByCustProdukAndRange(String idMi010, String idMi001, String tanggal) {
+		
+		String query = "SELECT e FROM ECustomerProdukTarifDetailGrupAkumulasi e " + 
+                       "WHERE e.header.customer.id = :idMi010 And " +
+                             "e.header.produk.id = :idMi001 And " +
+                             "((:tanggal between e.header.tglstart And e.header.tglstop) Or (:tanggal >= e.header.tglstart and e.header.tglstop is null)) And " +
+                             "((:tanggal between e.tglstart And e.tglstop) Or (:tanggal >= e.tglstart and e.tglstop is null))";
+		
+		try {
+			return em.createQuery(query, ECustomerProdukTarifDetailGrupAkumulasi.class)
+					 .setParameter("idMi010", idMi010)
+					 .setParameter("idMi001", idMi001)
+					 .setParameter("tanggal", tanggal)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ECustomerProdukTarifDetailGrupAkumulasi getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<ECustomerProdukTarifDetailGrupAkumulasi> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ECustomerProdukTarifDetailGrupAkumulasi> search = new HqlSimpleSearchBuilder<>(ECustomerProdukTarifDetailGrupAkumulasi.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ECustomerProdukTarifDetailGrupAkumulasi add(ECustomerProdukTarifDetailGrupAkumulasi entity) {
+		return save(entity);
+	}
+
+	public ECustomerProdukTarifDetailGrupAkumulasi edit(ECustomerProdukTarifDetailGrupAkumulasi entity) {
+		return save(entity);
+	}
+}

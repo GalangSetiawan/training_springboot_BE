@@ -1,0 +1,108 @@
+package co.id.sofcograha.base.authorization;
+
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.AuthAdd;
+import co.id.sofcograha.base.authorization.annotation.AuthCancelConfirm;
+import co.id.sofcograha.base.authorization.annotation.AuthConfirm;
+import co.id.sofcograha.base.authorization.annotation.AuthDelete;
+import co.id.sofcograha.base.authorization.annotation.AuthEdit;
+import co.id.sofcograha.base.authorization.annotation.AuthRead;
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.utils.ApiResponse;
+
+/**
+ * Dummy controller for testing
+ */
+@RestController
+@RequestMapping(value = "api/testDummy")
+public class AuthorizationDummyController {
+	
+	@GetMapping(value = "/noAnno")
+	public ApiResponse getAnnotation() {
+		return ApiResponse.ok();
+	}
+	
+	@NoAuth
+	@GetMapping(value = "/noAuth")
+	public ApiResponse getNoAuth() {
+		return ApiResponse.ok();
+	}
+	
+	@AuthRead("test_dummy")
+	@GetMapping
+	public ApiResponse get() {
+		return ApiResponse.ok();
+	}
+
+	@AuthAdd("test_dummy")
+	@PostMapping
+	public ApiResponse add() {
+		return ApiResponse.ok();
+	}
+
+	@AuthEdit("test_dummy")
+	@PutMapping
+	public ApiResponse edit() {
+		return ApiResponse.ok();
+	}
+
+	@AuthDelete("test_dummy")
+	@DeleteMapping
+	public ApiResponse delete() {
+		return ApiResponse.ok();
+	}
+	
+	@AuthConfirm("test_dummy")
+	@PutMapping(value = "/confirm")
+	public ApiResponse confirm() {
+		return ApiResponse.ok();
+	}
+	
+	@AuthCancelConfirm("test_dummy")
+	@PutMapping(value = "/cancelConfirm")
+	public ApiResponse cancelConfirm() {
+		return ApiResponse.ok();
+	}
+	
+	@AuthRead("test_dummy_no_regist")
+	@GetMapping(value = "/noRegist")
+	public ApiResponse getNoRegist() {
+		return ApiResponse.ok();
+	}
+
+	@AuthAdd("test_dummy_no_regist")
+	@PostMapping(value = "/noRegist")
+	public ApiResponse addNoRegist() {
+		return ApiResponse.ok();
+	}
+
+	@AuthEdit("test_dummy_no_regist")
+	@PutMapping(value = "/noRegist")
+	public ApiResponse editNoRegist() {
+		return ApiResponse.ok();
+	}
+
+	@AuthDelete("test_dummy_no_regist")
+	@DeleteMapping(value = "/noRegist")
+	public ApiResponse deleteNoRegist() {
+		return ApiResponse.ok();
+	}
+	
+	@AuthConfirm("test_dummy_no_regist")
+	@PutMapping(value = "/confirm/noRegist")
+	public ApiResponse confirmNoRegist() {
+		return ApiResponse.ok();
+	}
+	
+	@AuthCancelConfirm("test_dummy_no_regist")
+	@PutMapping(value = "/cancelConfirm/noRegist")
+	public ApiResponse cancelConfirmNoRegist() {
+		return ApiResponse.ok();
+	}
+}

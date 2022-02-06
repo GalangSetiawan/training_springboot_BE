@@ -1,0 +1,274 @@
+package co.id.sofcograha.domain.invoicing.masters.diskonkhusus.services;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.entities.EDiskonKhususDetail;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.entities.EDiskonKhususHeader;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.pojos.DiskonKhususComplete;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.pojos.DiskonKhususDetail;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.repositories.EDiskonKhususHeaderRepository;
+
+@Service("diskonKhususCompleteService")
+public class DiskonKhususCompleteService extends BaseService {
+	
+	@Autowired private DiskonKhususHeaderService diskonKhususHeaderService;
+	@Autowired private DiskonKhususDetailService diskonKhususDetailService;
+
+	@Autowired private EDiskonKhususHeaderRepository eDiskonKhususHeaderRepository;
+	
+	public DiskonKhususComplete findByBk(String noJurnal) {
+		return DiskonKhususComplete.setFromEntity(eDiskonKhususHeaderRepository.findByBK(noJurnal));
+	}
+
+	public SearchResult<EDiskonKhususHeader> search(SearchParameter searchParameter) {
+		return eDiskonKhususHeaderRepository.search(searchParameter);
+	}
+	
+	@Transactional
+	public EDiskonKhususHeader add(DiskonKhususComplete pojo) {
+		
+		EDiskonKhususHeader entityHeader = pojo.getEntityHeader();
+		
+		valAdaData(entityHeader);
+		valDetailNotEmpty(pojo.details);
+		throwBatchError();
+		
+		EDiskonKhususHeader eSkemaHargaHeader = diskonKhususHeaderService.add(entityHeader);
+		throwBatchError();
+		
+		addDetails(eSkemaHargaHeader, pojo);
+		throwBatchError();
+		
+		return eSkemaHargaHeader;
+
+	}
+	
+	private void valAdaData(EDiskonKhususHeader entity) {
+		if (entity == null) {
+			batchError("diskonkhusus.komplit.no.data");
+		}
+	}
+	
+	private void valDetailNotEmpty(List<DiskonKhususDetail> detailList) {
+		if (detailList == null || detailList.isEmpty()) {
+			batchError("diskonkhusus.komplit.no.detail");
+		}
+	}
+	
+	private void addDetails(EDiskonKhususHeader eSkemaHargaHeader, DiskonKhususComplete pojo) {
+		
+		List<DiskonKhususDetail> details = pojo.details;
+		
+		boolean isErrorDetail = false;
+		boolean isErrorSubDetail = false;
+		
+		for (DiskonKhususDetail detail: details) {
+			
+			if (!detail.isSelect) {
+				// hanya simpan untuk yang tidak dicentang hapus
+				
+				EDiskonKhususDetail eSkemaHargaDetail = detail.toEntity();
+				
+				eSkemaHargaDetail.setHeader(eSkemaHargaHeader);
+				
+				// method .add di detail ini tanpa ada throwBatchError(), supaya batchError nya terkumpul dan tidak serta merta di
+				// throw exception
+				eSkemaHargaDetail = diskonKhususDetailService.add(eSkemaHargaDetail);
+				
+				if (isAnyBatchErrors()) {
+					isErrorDetail = true;
+					
+					// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+					
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+						
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+						
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+			
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+						
+						if (detail.errorMsg == null) {
+							detail.errorMsg = new ArrayList<Message>();
+						}
+			
+						detail.errorMsg.clear();
+						detail.errorMsg.add(message);					
+					}
+					
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();
+					
+					continue;
+					// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
+					// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
+					// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik 
+					// satu satu sampai anak ter dalam
+				}
+										
+			}			
+		}
+		
+		// untuk error di grid
+		if (isErrorDetail) {
+			batchErrorWithData("diskonkhusus.komplit.error.in.detail", pojo);
+		}
+		if (isErrorSubDetail) {
+			batchErrorWithData("diskonkhusus.komplit.error.in.subdetail", pojo);
+		}
+	}	
+	
+	@Transactional
+	public EDiskonKhususHeader edit(DiskonKhususComplete pojo) {
+		
+		EDiskonKhususHeader entityHeader = pojo.getEntityHeader();
+		
+		valAdaData(entityHeader);
+		valDetailNotEmpty(pojo.details);
+		throwBatchError();
+		
+		EDiskonKhususHeader newETransaksiJurnalHeader = diskonKhususHeaderService.get(entityHeader.getId());
+		
+		editDetails(newETransaksiJurnalHeader, pojo);
+		throwBatchError();
+
+		newETransaksiJurnalHeader = diskonKhususHeaderService.edit(entityHeader);
+		throwBatchError();
+		
+		return newETransaksiJurnalHeader;
+	}
+	
+	private void editDetails(EDiskonKhususHeader eTransaksiJurnalHeader, DiskonKhususComplete pojo) {
+		
+		boolean isErrorDetail = false;
+		
+		List<DiskonKhususDetail> detailJurnals = pojo.details;
+		for (DiskonKhususDetail detailJurnal: detailJurnals) {
+			
+			if (detailJurnal.id != null && !detailJurnal.id.equals("")) {
+				diskonKhususDetailService.delete(detailJurnal.id, detailJurnal.version);
+			}
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detailJurnal.errorMsg == null) {
+						detailJurnal.errorMsg = new ArrayList<Message>();
+					}
+		
+					detailJurnal.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+		// untuk error di grid
+		if (isErrorDetail) {
+			batchErrorWithData("diskonkhusus.komplit.error.in.detail", pojo);
+		}
+		throwBatchError();		
+		
+		addDetails(eTransaksiJurnalHeader, pojo);
+	}
+	
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valRootVersion(id, version);
+		throwBatchError();
+		
+		EDiskonKhususHeader eTransaksiJurnalHeader = diskonKhususHeaderService.get(id);
+				
+		DiskonKhususComplete pojo = DiskonKhususComplete.setFromEntity(eTransaksiJurnalHeader);
+		
+		// delete detail jurnal
+		boolean isErrorDetail = false;
+		for (DiskonKhususDetail detailJurnal: pojo.details) {
+			diskonKhususDetailService.delete(detailJurnal.id, detailJurnal.version);
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detailJurnal.errorMsg == null) {
+						detailJurnal.errorMsg = new ArrayList<Message>();
+					}
+		
+					detailJurnal.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+		// untuk error di grid
+		if (isErrorDetail) {
+			batchErrorWithData("diskonkhusus.komplit.error.in.detail", pojo);
+		}
+		throwBatchError();		
+		
+		// delete trx header
+		diskonKhususHeaderService.delete(id, version);
+	}
+	
+	protected void valRootVersion(String id, Long version) {
+		valEntityExists(id);
+		EDiskonKhususHeader dbEntity = diskonKhususHeaderService.get(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id) {
+		if (diskonKhususHeaderService.get(id) == null) {
+			throw new BusinessException("data.not.found", id);
+		}
+	}
+	
+}

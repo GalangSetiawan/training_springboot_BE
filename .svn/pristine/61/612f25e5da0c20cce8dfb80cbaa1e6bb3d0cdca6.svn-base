@@ -1,0 +1,244 @@
+package co.id.sofcograha.domain.invoicing.report.invoice.repositories;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.persistence.EntityManager;
+import javax.persistence.Query;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.utils.ProcedureExecutorUtil;
+import co.id.sofcograha.domain.invoicing.report.invoice.entities.ERptRekapCustomerPerTahun;
+import co.id.sofcograha.domain.invoicing.report.invoice.pojos.RptRekapVirtualAccountPerBulan;
+
+@Repository
+public class RekapInvoiceRepository {
+
+	@Autowired EntityManager em;
+	
+	@Autowired private ProcedureExecutorUtil procedureExecutorUtil;
+	
+	protected List<Object> spParameters;
+
+	public RekapInvoiceRepository() {
+	}
+
+	@SuppressWarnings("unchecked")
+	public Map<String, Integer> getJumlahKaryawanPerBulanPerCustomer(String idMi010, String idMi001, String tahun, String bulan) {
+		
+        Query query;
+        
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select e.nama, d.id_mi010, b.tahun, b.bulan, d.jnstgh, d.adjkary, ");
+        queryStringBuilder.append("       case "); 
+        queryStringBuilder.append("          when d.jnstgh = 'PRA' then "); 
+        queryStringBuilder.append("             sum(a.jkbulini) + d.adjkary "); 
+        queryStringBuilder.append("          when d.jnstgh = 'PASCA' then "); 
+        queryStringBuilder.append("             sum(a.revjkbullalu) + d.adjkary "); 
+        queryStringBuilder.append("       end kary, "); 
+        queryStringBuilder.append("       case "); 
+        queryStringBuilder.append("          when d.jnstgh = 'PRA' then "); 
+        queryStringBuilder.append("             sum(a.revjnkbullalu) "); 
+        queryStringBuilder.append("          when d.jnstgh = 'PASCA' then "); 
+        queryStringBuilder.append("             sum(a.revjnkbullalu) "); 
+        queryStringBuilder.append("       end nonkary "); 
+        queryStringBuilder.append("from ai002 a "); 
+        queryStringBuilder.append("left join ai001 b on b.id_ai001 = a.id_ai001 "); 
+        queryStringBuilder.append("left join mi013 c on c.id_mi013 = b.id_mi013 "); 
+        queryStringBuilder.append("left join mi011 d on d.id_mi011 = c.id_mi011 "); 
+        queryStringBuilder.append("left join mi010 e on e.id_mi010 = d.id_mi010 "); 
+        queryStringBuilder.append("where b.tahun = :tahun and b.bulan = :bulan and "); 
+        queryStringBuilder.append("      d.id_mi010 = :idMi010 and "); 
+        queryStringBuilder.append("      d.id_mi001 = :idMi001 "); 
+        queryStringBuilder.append("group by e.nama, d.id_mi010, b.tahun, b.bulan, d.jnstgh, d.adjkary "); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString());
+        
+        query.setParameter("idMi010", idMi010);
+        query.setParameter("idMi001", idMi001);
+        query.setParameter("tahun", tahun);
+        query.setParameter("bulan", bulan);
+        
+        List<Object[]> list = query.getResultList();
+    	
+        if (!list.isEmpty()) {
+        	Integer kary = Integer.valueOf(list.get(0)[6].toString());
+        	Integer nonKary = Integer.valueOf(list.get(0)[7].toString());
+        	
+        	Map<String, Integer> hasil = new HashMap<String, Integer>();
+        	hasil.put("kary", kary);
+        	hasil.put("nonKary", nonKary);
+        	
+        	return hasil;
+        } else {
+        	return null;
+        }
+	}
+	
+	@SuppressWarnings("unchecked")
+	public List<RptRekapVirtualAccountPerBulan> getRekapVirtualAccountPerBulan(String idMi001, String tahun, String bulan) {
+		
+        Query query;
+        
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select x.nama, x.vabca, y.netto from mi010 x "); 
+        queryStringBuilder.append("left join (select c.vabca, sum(a.netto) netto from ti001 a "); 
+        queryStringBuilder.append("           left join public.am90 b on b.id_am90 = a.id_am90 "); 
+        queryStringBuilder.append("           left join mi010 c on c.id_mi010 = a.id_mi010 "); 
+        queryStringBuilder.append("           where a.id_mi001 = :idMi001 and "); 
+        queryStringBuilder.append("                 (b.kode = 'INV005' or b.kode = 'INV001') and "); 
+        queryStringBuilder.append("                 substring(a.tgtrn, 1, 6) = :tahunBulan and "); 
+        queryStringBuilder.append("                (c.vabca <> '' or c.vabca is not null) and length(c.vabca) > 1 "); 
+        queryStringBuilder.append("           group by c.vabca "); 
+        queryStringBuilder.append("           ) y on y.vabca = x.vabca "); 
+        queryStringBuilder.append("where y.vabca is not null and x.flmainva = 'Y' "); 
+        queryStringBuilder.append("order by x.nama ");
+
+        /*
+        queryStringBuilder.append("select c.nama, c.vabca, sum(a.netto) from ti001 a "); 
+        queryStringBuilder.append("left join public.am90 b on b.id_am90 = a.id_am90 "); 
+        queryStringBuilder.append("left join mi010 c on c.id_mi010 = a.id_mi010 "); 
+        queryStringBuilder.append("where a.id_mi001 = :idMi001 and "); 
+        queryStringBuilder.append("      (b.kode = 'INV005' or b.kode = 'INV001') and "); 
+        queryStringBuilder.append("      substring(a.tgtrn, 1, 6) = :tahunBulan and "); 
+        queryStringBuilder.append("      (c.vabca <> '' or c.vabca is not null) and length(c.vabca) > 1 "); 
+        queryStringBuilder.append("group by c.nama, c.vabca;");
+        */
+        
+        query = em.createNativeQuery(queryStringBuilder.toString());
+        
+        query.setParameter("idMi001", idMi001);
+        query.setParameter("tahunBulan", tahun+bulan);
+        
+        List<Object[]> list = (List<Object[]>) query.getResultList();
+        List<RptRekapVirtualAccountPerBulan> hasil = new ArrayList<RptRekapVirtualAccountPerBulan>();
+        
+        if (!list.isEmpty()) {
+        	for (Object[] item : list) {
+        		RptRekapVirtualAccountPerBulan rptRekapVirtualAccountPerBulan = new RptRekapVirtualAccountPerBulan();
+        		rptRekapVirtualAccountPerBulan.nama = (String) item[0];
+        		rptRekapVirtualAccountPerBulan.vabca = (String) item[1];
+        		rptRekapVirtualAccountPerBulan.nilaiBulanLalu = 0.0;
+        		BigDecimal nilaiBulanIni = (BigDecimal) item[2];
+        		rptRekapVirtualAccountPerBulan.nilaiBulanIni = nilaiBulanIni.doubleValue();
+        		
+        		hasil.add(rptRekapVirtualAccountPerBulan);
+        	}
+        	
+        	return hasil;
+        } else {
+        	return null;
+        }
+	}
+	
+	/* yang berada dalam remark ini belum digunakan, karena belum didapat cara bagaimana supaya
+	 * tabel hasil rekap via sp bisa diakses secara lazy load dari front end
+	 * secara, bila isi tabel temp tidak dihapus, lalu kapan hapusnya ?
+	public String prosesRekapCustomerPerTahun(String tahun, String idMi001) {
+
+		String IdProses = UUID.randomUUID().toString();
+		
+		this.spParameters = new ArrayList<>();
+		this.spParameters.add(IdProses);
+		this.spParameters.add(tahun);
+		this.spParameters.add(idMi001);
+		
+		em.flush();
+		procedureExecutorUtil.executeProcedure(this.spParameters, "public.spRekapCustomerPerTahun", em);
+		
+		return IdProses;
+		
+	}
+	
+	public SearchResult<ERptRekapCustomerPerTahun> getRekapCustomerPerTahun(SearchParameter searchParameter, String pProsesId) {
+		
+		StringBuilder queryStringBuilder = new StringBuilder();
+		
+		queryStringBuilder.append("Select public.sys_guid() id, nama, tglive, tgstop, status, ");
+		queryStringBuilder.append("       siklus, tipe, jnstgh, diskon, bulan_renewal, ");
+		queryStringBuilder.append("       last_jumkar, default_nilai, januari, pebruari, maret, ");
+		queryStringBuilder.append("       april, mei, juni, juli, agustus, ");
+		queryStringBuilder.append("       september, oktober, november, desember ");
+		queryStringBuilder.append("From rekap_customer_tahun_tmp ");
+        queryStringBuilder.append("Where process_id = :pProsesId ");
+		    
+        NativeSearchBuilder<ERptRekapCustomerPerTahun> search = new NativeSearchBuilder<>(ERptRekapCustomerPerTahun.class, em);
+        search.addParameter("pProsesId", pProsesId);
+
+        search.setQueryString(queryStringBuilder);
+        search.setPagination(searchParameter.getPagination());
+        search.setSort(searchParameter.getSort());
+
+        return search.getSearchResult();
+	}
+    */
+	
+	@Transactional
+	public List<ERptRekapCustomerPerTahun> prosesRekapCustomerPerTahun(String tahun, String idMi001) {
+
+		String IdProses = UUID.randomUUID().toString();
+		
+		this.spParameters = new ArrayList<>();
+		this.spParameters.add(IdProses);
+		this.spParameters.add(tahun);
+		this.spParameters.add(idMi001);
+		
+		System.out.println(IdProses + " " + tahun + " " + idMi001);
+		
+		em.flush();
+	    List<Object[]> results = procedureExecutorUtil.executeProcedure(this.spParameters, "public.spRekapCustomerPerTahun", em);
+	    
+	    List<ERptRekapCustomerPerTahun> resultList = new ArrayList<ERptRekapCustomerPerTahun>();
+	    for (Object[] obj: results) {
+	    	ERptRekapCustomerPerTahun entity = new ERptRekapCustomerPerTahun();
+	    	entity.setId(obj[0].toString());
+	    	entity.setNama(obj[1].toString());
+	    	if (obj[2] != null) {
+		    	entity.setTglive(obj[2].toString());	    		
+	    	} else {
+		    	entity.setTglive(null);	    		
+	    	}
+	    	if (obj[3] != null) {
+		    	entity.setTgstop(obj[3].toString());	    		
+	    	} else {
+		    	entity.setTgstop(null);	    		
+	    	}
+	    	entity.setStatus(obj[4].toString().trim());
+	    	entity.setSiklus(obj[5].toString());
+	    	entity.setTipe(obj[6].toString());
+	    	entity.setJnstgh(obj[7].toString());
+	    	entity.setDiskon(obj[8].toString());
+	    	if (obj[9] != null) {
+		    	entity.setBulanRenewal(obj[9].toString());	    		
+	    	} else {
+		    	entity.setBulanRenewal(null);	    		
+	    	}
+	    	Double lastJumkar = Double.parseDouble(obj[10].toString());
+	    	entity.setLastJumkar(lastJumkar.intValue());
+	    	entity.setDefaultNilai(Double.parseDouble(obj[11].toString()));
+	    	entity.setJanuari(Double.parseDouble(obj[12].toString()));
+	    	entity.setPebruari(Double.parseDouble(obj[13].toString()));
+	    	entity.setMaret(Double.parseDouble(obj[14].toString()));
+	    	entity.setApril(Double.parseDouble(obj[15].toString()));
+	    	entity.setMei(Double.parseDouble(obj[16].toString()));
+	    	entity.setJuni(Double.parseDouble(obj[17].toString()));
+	    	entity.setJuli(Double.parseDouble(obj[18].toString()));
+	    	entity.setAgustus(Double.parseDouble(obj[19].toString()));
+	    	entity.setSeptember(Double.parseDouble(obj[20].toString()));
+	    	entity.setOktober(Double.parseDouble(obj[21].toString()));
+	    	entity.setNovember(Double.parseDouble(obj[22].toString()));
+	    	entity.setDesember(Double.parseDouble(obj[23].toString()));
+	    	resultList.add(entity);
+	    }
+
+	    return resultList;
+		
+	}
+}

@@ -1,0 +1,114 @@
+package co.id.sofcograha.domain.invoicing.masters.implementasi.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.masters.implementasi.entities.EImplementasi;
+
+@JsonInclude(Include.ALWAYS)
+public class Implementasi {
+
+    public String id;
+	public String nama;
+	public String keterangan;
+	public Integer jumdur;
+	public String satdur;
+	public String tipe;
+	public Double harga;
+	public String satuan;
+	public Boolean flakt;
+    public Long version;
+    public boolean isDeleted;
+    
+    public EImplementasi toEntity() {
+		
+    	EImplementasi entity = new EImplementasi();
+  		
+  	    entity.setId(id);
+  		entity.setNama(nama);
+  		entity.setKeterangan(keterangan);
+  		entity.setJumdur(jumdur);
+  		entity.setSatdur(satdur);
+  		entity.setTipe(tipe);
+  		entity.setHarga(harga);
+  		entity.setSatuan(satuan);
+  		
+  		if (flakt == true) {
+  		  entity.setFlakt("Y");
+  		} else {
+  		  entity.setFlakt("T");
+  		}
+  		
+        entity.setVersion(version);
+          
+  		return entity;
+  	}
+    
+	public static Implementasi fromEntity (EImplementasi entity) {
+		return fromEntity(entity,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static Implementasi fromEntity(EImplementasi entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		
+		Implementasi pojo = new Implementasi();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.nama = entity.getNama();
+			pojo.keterangan = entity.getKeterangan();
+			pojo.jumdur = entity.getJumdur();
+			pojo.satdur = entity.getSatdur();
+			pojo.tipe = entity.getTipe();
+			pojo.harga = entity.getHarga();
+			pojo.satuan = entity.getSatuan();
+		    
+		    if (entity.getFlakt().equals("Y")) {
+		      pojo.flakt = true;
+		    } else {
+		      pojo.flakt = false;
+		    }
+		    
+	        pojo.version = entity.getVersion();
+		}
+
+		return pojo;
+	}
+	
+	public static List<Implementasi> fromEntities(List<EImplementasi> entities){
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static List<Implementasi> fromEntities(List<EImplementasi> entities, int depthLevel){
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<Implementasi> pojos = new ArrayList<>();
+		
+		for (EImplementasi entity : entities) {
+			pojos.add(Implementasi.fromEntity(entity, depthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+	
+		mappings.add(new SearchFieldMapping("nama", "nama"));
+		mappings.add(new SearchFieldMapping("keterangan", "keterangan"));
+		mappings.add(new SearchFieldMapping("tipe", "tipe"));
+		mappings.add(new SearchFieldMapping("flakt", "flakt").searchOnly());
+//		mappings.add(new SearchFieldMapping("urutan", "urutan", Integer.class).sortOnly());
+	
+		return mappings;
+	} 
+	
+}

@@ -1,0 +1,101 @@
+package co.id.sofcograha.base.master.menu.entities;
+
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(schema="public", name = "std_menu")
+public class EMenu {
+
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@Column(name = "menu_code")
+	private String menuCode;
+
+	@Column(name = "label")
+	private String label;
+
+	@Column(name = "icon")
+	private String icon;
+
+	@Column(name = "path")
+	private String path;
+
+	@Column(name = "component")
+	private String component;
+
+	@Column(name = "breadcrumb")
+	private String breadcrumb;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getMenuCode() {
+		return menuCode;
+	}
+
+	public void setMenuCode(String menuCode) {
+		this.menuCode = menuCode;
+	}
+
+	public String getLabel() {
+		return label;
+	}
+
+	public void setLabel(String label) {
+		this.label = label;
+	}
+
+	public String getIcon() {
+		return icon;
+	}
+
+	public void setIcon(String icon) {
+		this.icon = icon;
+	}
+
+	public String getPath() {
+		return path;
+	}
+
+	public void setPath(String path) {
+		this.path = path;
+	}
+
+	public String getComponent() {
+		return component;
+	}
+
+	public void setComponent(String component) {
+		this.component = component;
+	}
+
+	public String getBreadcrumb() {
+		return breadcrumb;
+	}
+
+	public void setBreadcrumb(String breadcrumb) {
+		this.breadcrumb = breadcrumb;
+	}
+
+	@PrePersist
+	private void prePersist() {
+		
+		this.id = UUID.randomUUID().toString();
+	}
+}

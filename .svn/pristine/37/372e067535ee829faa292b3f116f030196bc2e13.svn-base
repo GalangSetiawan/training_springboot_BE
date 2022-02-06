@@ -1,0 +1,242 @@
+package co.id.sofcograha.domain.invoicing.admin.upload.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.EAdminUploadHeader;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.entities.EMappingCustomerProduk;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.pojos.MappingCustomerProduk;
+
+@JsonInclude(Include.ALWAYS)
+public class AdminUploadHeader {
+	
+	public String id;
+	public String tahun;
+	public String bulan;
+	public Boolean flver1;
+    public Date tgver1;
+	public Boolean flver2;
+    public Date tgver2;
+	public String flown;
+	public Boolean flproi;
+	public Long version;  
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+	
+	public MappingCustomerProduk mappingCustomerProduk;
+
+	public List<AdminUploadDetail> detail;
+
+	public EAdminUploadHeader toEntity() {
+		
+		EAdminUploadHeader entity = new EAdminUploadHeader();
+		
+		entity.setId(id);
+		entity.setTahun(tahun);
+		entity.setBulan(bulan);
+		
+  		if (flver1 == true) {
+  			entity.setFlver1("Y");
+  		} else {
+  			entity.setFlver1("T");
+  		}
+		
+		if (tgver1 != null) {
+			entity.setTgver1(TimeUtil.convertDateToYyyyMmDd(tgver1)); 
+		}
+		
+  		if (flver2 == true) {
+  			entity.setFlver2("Y");
+  		} else {
+  			entity.setFlver2("T");
+  		}
+		
+		if (tgver2 != null) {
+			entity.setTgver2(TimeUtil.convertDateToYyyyMmDd(tgver2)); 
+		}
+		
+		entity.setFlown(flown);
+		
+  		if (flproi == true) {
+  			entity.setFlproi("Y");
+  		} else {
+  			entity.setFlproi("T");
+  		}
+
+  		entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+		
+		if (mappingCustomerProduk != null && !StringUtils.isEmpty(mappingCustomerProduk.id)) {
+			EMappingCustomerProduk entityRef = new EMappingCustomerProduk();
+		
+			entityRef.setId(mappingCustomerProduk.id);
+			entityRef.setVersion(mappingCustomerProduk.version);
+		
+			entity.setMappingCustomerProduk(entityRef);
+		
+		} else {
+			entity.setMappingCustomerProduk(null);
+		}
+        
+		return entity;
+	}
+	
+	public static List<EAdminUploadHeader> toEntities(List<AdminUploadHeader> pojos) {
+		if (pojos == null) return null;
+
+		List<EAdminUploadHeader> entities = new ArrayList<EAdminUploadHeader>();
+		for (AdminUploadHeader pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static AdminUploadHeader fromEntity (EAdminUploadHeader entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static AdminUploadHeader fromEntity (EAdminUploadHeader entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static AdminUploadHeader fromEntity(EAdminUploadHeader entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		AdminUploadHeader pojo = new AdminUploadHeader();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.tahun = entity.getTahun();
+			pojo.bulan = entity.getBulan();
+					    
+		    if (entity.getFlver1().equals("Y")) {
+		      pojo.flver1 = true;
+		    } else {
+		      pojo.flver1 = false;
+		    }
+
+			if (entity.getTgver1() != null && !entity.getTgver1().trim().equals("")) {
+				pojo.tgver1 = TimeUtil.getDate(entity.getTgver1());				
+			} else {
+				pojo.tgver1 = null;
+			}
+		    
+		    if (entity.getFlver2().equals("Y")) {
+		    	pojo.flver2 = true;
+		    } else {
+		    	pojo.flver2 = false;
+		    }
+
+			if (entity.getTgver2() != null && !entity.getTgver2().trim().equals("")) {
+				pojo.tgver2 = TimeUtil.getDate(entity.getTgver2());				
+			} else {
+				pojo.tgver2 = null;
+			}		    
+			
+			pojo.flown = entity.getFlown();
+			
+		    if (entity.getFlproi().equals("Y")) {
+		    	pojo.flproi = true;
+		    } else {
+		    	pojo.flproi = false;
+		    }
+			
+			pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+	      
+			pojo.mappingCustomerProduk = MappingCustomerProduk.fromEntity(entity.getMappingCustomerProduk());
+
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+				pojo.detail = AdminUploadDetail.fromEntities(entity.getDetail(), depthLevel + 1, detailDepthLevel);
+			}
+		}
+
+		return pojo;
+	}
+	
+	public static List<AdminUploadHeader> fromEntities(List<EAdminUploadHeader> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static List<AdminUploadHeader> fromEntities(List<EAdminUploadHeader> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<AdminUploadHeader> pojos = new ArrayList<>();
+		
+		for (EAdminUploadHeader entity : entities) {
+			pojos.add(AdminUploadHeader.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("tahun", "tahun"));
+		mappings.add(new SearchFieldMapping("bulan", "bulan"));
+		mappings.add(new SearchFieldMapping("flver1", "flver1"));
+		mappings.add(new SearchFieldMapping("flver2", "flver2"));
+		mappings.add(new SearchFieldMapping("flown", "flown"));
+		mappings.add(new SearchFieldMapping("flproi", "flproi"));
+//		mappings.add(new SearchFieldMapping("flakt", "flakt").searchOnly());
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}	

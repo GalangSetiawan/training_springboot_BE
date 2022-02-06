@@ -1,0 +1,271 @@
+package co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.services.ProdukService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.entities.EPenerimaanBayarSubDetailAlokasi;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.pojos.PenerimaanBayarSubDetailAlokasi;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.repositories.EPenerimaanBayarSubDetailAlokasiRepository;
+
+@Service("penerimaanBayarSubDetailAlokasiService")
+public class PenerimaanBayarSubDetailAlokasiService extends BaseService {
+	
+	@Autowired private EPenerimaanBayarSubDetailAlokasiRepository repo;
+	
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	@Autowired private ProdukService produkService;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public PenerimaanBayarSubDetailAlokasi findByBk(String idTi610, Integer nourut) {
+		return PenerimaanBayarSubDetailAlokasi.fromEntity(repo.findByBK(idTi610, nourut));
+	}
+
+	public SearchResult<EPenerimaanBayarSubDetailAlokasi> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	public EPenerimaanBayarSubDetailAlokasi get(String id) {
+		return repo.getOne(id);
+	}
+
+	@Transactional
+	public EPenerimaanBayarSubDetailAlokasi add(EPenerimaanBayarSubDetailAlokasi entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		manageMinMaxValues(entity);
+		//throwBatchError();
+		
+		manageReferences(entity);
+		//throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		//throwBatchError();
+		
+		if (!isAnyBatchErrors()) {
+			preAdd(entity);
+			EPenerimaanBayarSubDetailAlokasi addedEntity = repo.add(entity);
+			postAdd(addedEntity);
+			
+			return addedEntity;	
+		}
+			
+		//throwBatchError();
+		return entity;	
+
+	}
+	
+	@Transactional
+	public EPenerimaanBayarSubDetailAlokasi edit(EPenerimaanBayarSubDetailAlokasi entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		EPenerimaanBayarSubDetailAlokasi toBeSaved = repo.getOne(entity.getId());
+		EPenerimaanBayarSubDetailAlokasi oldEntity = (EPenerimaanBayarSubDetailAlokasi) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EPenerimaanBayarSubDetailAlokasi.class.getSimpleName());
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		EPenerimaanBayarSubDetailAlokasi toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		//throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		//throwBatchError();
+		
+	}
+	
+	// terkait manipulasi data
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EPenerimaanBayarSubDetailAlokasi dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EPenerimaanBayarSubDetailAlokasi entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(EPenerimaanBayarSubDetailAlokasi newValues, EPenerimaanBayarSubDetailAlokasi toBeSaved) {
+
+		if (toBeSaved != null) {
+			toBeSaved.setNourut(newValues.getNourut());
+			toBeSaved.setJenis(newValues.getJenis());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+			toBeSaved.setNilalok(newValues.getNilalok());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(EPenerimaanBayarSubDetailAlokasi entity) {
+		valRequiredInteger(entity.getNourut(), "penerimaan.bayar.sub.detail.alokasi.tarif.nourut.required");
+		valRequiredString(entity.getJenis(), "penerimaan.bayar.sub.detail.alokasi.tarif.jenis.required");		
+		valRequiredDouble(entity.getNilalok(), "penerimaan.bayar.sub.detail.alokasi.tarif.nilalok.required");
+		valRequiredString(entity.getKeterangan(), "penerimaan.bayar.sub.detail.alokasi.tarif.keterangan.required");		
+	}
+	
+	protected void manageMinMaxValues(EPenerimaanBayarSubDetailAlokasi entity) {
+		valMinInteger(entity.getNourut(), 0, "penerimaan.bayar.sub.detail.alokasi.tarif.nourut.min.length");
+		valMaxInteger(entity.getNourut(), 999, "penerimaan.bayar.sub.detail.alokasi.tarif.nourut.max.length");
+		valMaxString(entity.getJenis(), 10, "penerimaan.bayar.sub.detail.alokasi.tarif.jenis.max.length");
+		valMaxString(entity.getKeterangan(), 200, "penerimaan.bayar.sub.detail.alokasi.tarif.keterangan.max.length");
+		valMinDouble(entity.getNilalok(), 0D, "penerimaan.bayar.sub.detail.alokasi.tarif.nilalok.min.length");
+		valMaxDouble(entity.getNilalok(), 999999999D, "penerimaan.bayar.sub.detail.alokasi.tarif.nilalok.max.length");
+	}
+
+	protected void manageReferences(EPenerimaanBayarSubDetailAlokasi entity) {
+		if (entity.getInvoice() != null) {
+			EInvoiceHeader eFromDb = invoiceHeaderService.get(entity.getInvoice().getId());
+			if (eFromDb == null) {
+				batchError("invoice.not.found");
+			} else {
+				entity.setInvoice(eFromDb);
+			}
+		}
+		
+		if (entity.getProduk() != null) {
+			EProduk eFromDb = produkService.get(entity.getProduk().getId());
+			if (eFromDb == null) {
+				batchError("produk.not.found");
+			} else {
+				entity.setProduk(eFromDb);
+			}
+		}		
+	}
+
+	protected void valDelete(EPenerimaanBayarSubDetailAlokasi toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(EPenerimaanBayarSubDetailAlokasi addedEntity) {
+		EPenerimaanBayarSubDetailAlokasi entityFromDb = repo.findByBK(addedEntity.getDetailCustomer().getId(), addedEntity.getNourut());
+		if (entityFromDb != null) {
+			throw new BusinessException("penerimaan.bayar.sub.detail.alokasi.tarif.bk", addedEntity.getNourut());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EPenerimaanBayarSubDetailAlokasi editedEntity) {
+		EPenerimaanBayarSubDetailAlokasi entityFromDb = repo.findByBK(editedEntity.getDetailCustomer().getId(), editedEntity.getNourut());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("penerimaan.bayar.sub.detail.alokasi.tarif.bk", editedEntity.getNourut());
+			}
+		}
+	}
+
+	protected void preAdd(EPenerimaanBayarSubDetailAlokasi entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(EPenerimaanBayarSubDetailAlokasi entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(EPenerimaanBayarSubDetailAlokasi toBeSaved, EPenerimaanBayarSubDetailAlokasi oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(EPenerimaanBayarSubDetailAlokasi toBeSaved, EPenerimaanBayarSubDetailAlokasi oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(EPenerimaanBayarSubDetailAlokasi entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(EPenerimaanBayarSubDetailAlokasi entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	// ----
+	
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya	
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+}

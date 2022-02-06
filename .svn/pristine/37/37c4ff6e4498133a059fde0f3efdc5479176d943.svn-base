@@ -1,0 +1,49 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.setting.pojos;
+
+import java.text.ParseException;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.entities.ECompanyLogo;
+import co.id.sofcograha.base.master.company.pojos.CompanyLogoPojo;
+import co.id.sofcograha.base.master.company.pojos.CompanyPojo;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingComponent;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.pojos.AutomaticNumbering;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.entities.ESetting;
+
+@JsonInclude(Include.ALWAYS)
+public class SettingComplete {
+	
+	public Setting setting;
+	public CompanyPojo company;
+	public CompanyLogoPojo companyLogo;
+	public List<AutomaticNumbering> automaticNumberings;
+  
+	@JsonIgnore
+	public ESetting getEntitySetting() {
+		return setting.toEntity();
+	}
+
+	public static SettingComplete setFromEntity(ESetting eSetting, ECompany eCompany, 
+			ECompanyLogo eCompanyLogo, List<EAutomaticNumberingComponent> eAutomaticNumberingComponents) throws ParseException {
+    
+		int depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+    
+		SettingComplete pojo = new SettingComplete();
+		pojo.setting = Setting.fromEntity(eSetting, depthLevel);
+		pojo.company = CompanyPojo.fromEntity(eCompany, depthLevel);
+		pojo.companyLogo = CompanyLogoPojo.fromEntity(eCompanyLogo, depthLevel);
+		pojo.automaticNumberings = AutomaticNumbering.fromEntities(eAutomaticNumberingComponents);
+    
+		return pojo;
+	}
+  
+	public static List<Setting> fromEntities(List<ESetting> entities){
+		return Setting.fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH,BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+}

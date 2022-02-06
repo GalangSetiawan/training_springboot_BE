@@ -1,0 +1,183 @@
+package co.id.sofcograha.base.queue.common;
+
+import javax.jms.MapMessage;
+import javax.jms.Message;
+import javax.jms.MessageListener;
+
+import org.apache.commons.lang3.exception.ExceptionUtils;
+//import org.apache.commons.lang.exception.ExceptionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.constants.enums.NotificationType;
+import co.id.sofcograha.base.exceptions.BatchBusinessException;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.pojos.CompanyPojo;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.master.user.pojos.UserInfo;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.multitenancy.TenantContext;
+import co.id.sofcograha.base.queue.common.QueueConstants.Status;
+import co.id.sofcograha.base.queue.notification.NotificationMainService;
+import co.id.sofcograha.base.queue.process.pojos.ProcessPojo;
+import co.id.sofcograha.base.queue.queuenotification.entities.ESysNotification;
+import co.id.sofcograha.base.queue.queuenotification.pojos.SysNotificationPojo;
+import co.id.sofcograha.base.queue.queuenotification.services.SysNotificationService;
+import co.id.sofcograha.base.utils.ObjectUtil;
+import co.id.sofcograha.base.utils.StringUtil;
+import co.id.sofcograha.base.utils.TimeUtil;
+
+public class QueueDefaultConsumer implements MessageListener {
+
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+	@Autowired private NotificationMainService notificationMainService;
+	
+	private QueueUtilService queueUtilService;
+	private SysNotificationService sysNotificationService;
+	private UserService userService;
+	private CompanyService companyService;
+	private ApplicationContext applicationContext;
+	
+	private String processCode;
+	private String processNumber;
+	private String processName;
+	private ProcessPojo processPojo;
+	
+	QueueDefaultConsumer(QueueUtilService queueUtilService, SysNotificationService sysNotificationService, UserService userService, CompanyService companyService, ApplicationContext applicationContext) {
+		this.queueUtilService = queueUtilService;
+		this.sysNotificationService = sysNotificationService;
+		this.userService = userService;
+		this.companyService = companyService;
+		this.applicationContext = applicationContext;
+		initLocalVariable();
+	}
+	
+	private void initLocalVariable() {
+		processCode = null;
+		processNumber = null;
+		processName = null;
+		processPojo = null;
+	}
+	
+	@Override
+	public void onMessage(Message message) {
+		initLocalVariable();
+		logger.info("BEGIN : QueueDefaultConsumer");
+		
+		try {
+			if (message instanceof MapMessage) {
+				MapMessage queueDataMap = (MapMessage)message;
+				processCode = queueDataMap.getString(QueueConstants.PROCESS_CODE);
+				processNumber = queueDataMap.getString(QueueConstants.PROCESS_ID);
+				processName = queueDataMap.getString(QueueConstants.PROCESS_NAME);
+				
+				logger.info("Get processCode:" + processCode + " - processId:" + processNumber);
+				
+				Authentication auth = ObjectUtil.stringToObject(queueDataMap.getString(QueueConstants.AUTH), Authentication.class);
+				SecurityContextHolder.getContext().setAuthentication(auth);
+				
+				String companyCode = queueDataMap.getString(QueueConstants.COMPANY_CODE);
+				TenantContext.setCurrentTenant(companyCode);
+				
+				queueUtilService.setProsesStatus(processCode, processNumber, Status.OnProces);
+				queueUtilService.validateProcesActive(processCode);
+				processPojo = queueUtilService.getProcesPojo(processCode);
+				
+				ProcessExecutors processExecutors = (ProcessExecutors)applicationContext.getBean(processPojo.processClass);
+				
+				sendPendingNotification();
+				processExecutors.mainRun(processCode, processNumber);
+				
+				//queueUtilService.setProsesStatus(processCode, processNumber, Status.Done);
+				queueUtilService.updateProsesStatusFinish(processCode, processNumber);				
+				sendDoneNotification();
+			} else {
+				logger.error("ERROR QUEUE get unknown message type : " + message.getClass());
+            }
+		} catch (Exception e) {
+			queueUtilService.setProsesStatus(processCode, processNumber, Status.Error,
+					e.getMessage(), ExceptionUtils.getStackTrace(e));
+			sendErrorNotification();
+			if (e instanceof BusinessException) { 
+				BusinessException errorBE = (BusinessException)e;
+				queueUtilService.addStatusError(processCode, processNumber, errorBE.getMessageCode(),
+						StringUtil.objArrayToString(errorBE.getMessageParameters()));
+			} else if (e instanceof BatchBusinessException) {
+				BatchBusinessException errorBBE = (BatchBusinessException)e;
+				for (BusinessException errorBE : errorBBE.getBusinessExceptions()) {
+					queueUtilService.addStatusError(processCode, processNumber, errorBE.getMessageCode(),
+							StringUtil.objArrayToString(errorBE.getMessageParameters()));
+				}
+			} else {				
+				logger.error("ERROR QUEUE processCode:" + processCode + " - processId:" + processNumber, e);
+//				queueUtilService.addStatusError(processCode, processNumber, "process.error.unknow");
+				// ditambahkan |String, karena format untuk error argument dari sp adalah : 'ABC|String;201711|YearMonth'
+				queueUtilService.addStatusError(processCode, processNumber, "process.error.unknow", e.getMessage() + "|String");
+			}
+		} finally {
+			logger.info("END : QueueDefaultConsumer");			
+		}
+	}
+	
+	private void sendPendingNotification() {
+		SysNotificationPojo sysNotificationPojo = new SysNotificationPojo();
+		sysNotificationPojo.user = UserInfo.fromEntity(userService.get(CurrentUser.getUserId()));
+		ECompany eCompany = companyService.get(CurrentUser.getCompanyId());
+		sysNotificationPojo.company = CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId()));
+		sysNotificationPojo.issueDate = TimeUtil.getSystemDateTime();
+		sysNotificationPojo.endIssueDate = TimeUtil.getMaxDate();
+		sysNotificationPojo.readFlag = false;
+		sysNotificationPojo.pinFlag = false;
+		sysNotificationPojo.notificationType = NotificationType.msg_linkDialog.toString();
+		sysNotificationPojo.notificationMsg = "Proses " + processName + " masuk dalam antrian.";
+		sysNotificationPojo.param1 = processCode;
+		sysNotificationPojo.param2 = processNumber;
+		sysNotificationPojo.active = true;
+		ESysNotification eSysNotification = sysNotificationService.add(sysNotificationPojo.toEntity());
+		notificationMainService.sendNotification(SysNotificationPojo.fromEntity(eSysNotification));
+		
+	}
+	
+	private void sendDoneNotification() {
+		SysNotificationPojo sysNotificationPojo = new SysNotificationPojo();
+		sysNotificationPojo.user = UserInfo.fromEntity(userService.get(CurrentUser.getUserId()));
+		sysNotificationPojo.company = CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId()));
+		sysNotificationPojo.issueDate = TimeUtil.getSystemDateTime();
+		sysNotificationPojo.endIssueDate = TimeUtil.getMaxDate();
+		sysNotificationPojo.readFlag = false;
+		sysNotificationPojo.pinFlag = false;
+		sysNotificationPojo.notificationType = NotificationType.msg_linkDialog.toString();
+		sysNotificationPojo.notificationMsg = "Proses " + processName + " telah selesai.";
+		sysNotificationPojo.param1 = processCode;
+		sysNotificationPojo.param2 = processNumber;
+		sysNotificationPojo.active = true;
+		ESysNotification eSysNotification = sysNotificationService.add(sysNotificationPojo.toEntity());
+		notificationMainService.sendNotification(SysNotificationPojo.fromEntity(eSysNotification));
+	}
+	
+	private void sendErrorNotification() {
+		
+		SysNotificationPojo sysNotificationPojo = new SysNotificationPojo();
+		sysNotificationPojo.user = UserInfo.fromEntity(userService.get(CurrentUser.getUserId()));
+		sysNotificationPojo.company = CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId()));
+		sysNotificationPojo.issueDate = TimeUtil.getSystemDateTime();
+		sysNotificationPojo.endIssueDate = TimeUtil.getMaxDate();
+		sysNotificationPojo.readFlag = false;
+		sysNotificationPojo.pinFlag = false;
+		sysNotificationPojo.notificationType = NotificationType.msg_linkDialog.toString();
+		sysNotificationPojo.notificationMsg = "Terjadi kesalahan pada proses " + processName + ". Lihat info proses untuk detail lebih lengkap.";
+		sysNotificationPojo.param1 = processCode;
+		sysNotificationPojo.param2 = processNumber;
+		sysNotificationPojo.active = true;
+		ESysNotification eSysNotification = sysNotificationService.add(sysNotificationPojo.toEntity());
+		notificationMainService.sendNotification(SysNotificationPojo.fromEntity(eSysNotification));
+	}
+	
+}

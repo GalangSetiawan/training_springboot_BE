@@ -1,0 +1,54 @@
+server:
+  port: 8080
+  contextPath: /inv-gaji-id-Api
+
+spring:
+  jpa:
+    show-sql: true
+    generate-ddl: false
+  datasource:
+    platform: postgres
+    url: jdbc:postgresql://localhost:5432/inv_gaji_id
+    username: sofco
+    password: s3234
+    driverClassName: org.postgresql.Driver
+  servlet:
+    multipart:
+      enabled: true
+      file-size-threshold: 2KB
+      max-file-size: 200MB
+      max-request-size: 215MB
+  mail:
+    host: smtp.sofcograha.co.id
+    port: 587
+    username: sofco_sb@sofcograha.co.id
+    password: pjiwo315
+    properties:
+      mail:
+        transport:
+          protocol: smtp
+        smtp:
+          auth: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+          starttls:
+            enable: true
+  activemq:
+    broker-url: failover:tcp://127.0.0.1:61616?keepAlive=true
+
+paketgl:
+  activemq:
+    suffix: Qsuffix
+
+hibernate:
+  show_sql: true
+
+file:
+ upload-dir: /home/user/Project/traininggenerator/files
+
+gaji-id-user: abc
+gaji-id-pwd: abc
+gaji-id-token-address: http://localhost:8082/gaji-id-data/public/token/request
+gaji-id-upload-address: http://localhost:8082/gaji-id-data/api/transfer-data
+ 

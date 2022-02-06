@@ -1,0 +1,212 @@
+package co.id.sofcograha.domain.invoicing.transaksi.berhenti.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+import co.id.sofcograha.base.master.jenisTransaksi.services.JenisTransaksiService;
+import co.id.sofcograha.base.utils.StringUtil;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalService;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingComponent;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.services.AutomaticNumberingService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifCompleteService;
+import co.id.sofcograha.domain.invoicing.saldo.live.pojos.SaldoLive;
+import co.id.sofcograha.domain.invoicing.saldo.live.services.SaldoLiveCompleteService;
+import co.id.sofcograha.domain.invoicing.saldo.live.services.SaldoLiveService;
+import co.id.sofcograha.domain.invoicing.transaksi.berhenti.entities.ETrxBerhenti;
+import co.id.sofcograha.domain.invoicing.transaksi.berhenti.pojos.TrxBerhenti;
+import co.id.sofcograha.domain.invoicing.transaksi.berhenti.repositories.ETrxBerhentiRepository;
+import co.id.sofcograha.domain.invoicing.transaksi.live.entities.ETrxLive;
+
+@Service("trxBerhentiCompleteService")
+public class TrxBerhentiCompleteService extends BaseService {
+	
+	@Autowired private TrxBerhentiService trxBerhentiService;
+	@Autowired private SaldoLiveCompleteService saldoLiveCompleteService;
+	@Autowired private CustomerProdukTarifCompleteService customerProdukTarifCompleteService;
+	
+	//@Autowired private SaldoDepositCompleteService saldoDepositCompleteService;
+
+	@Autowired private JenisTransaksiService jenisTransaksiService;
+	@Autowired private AutomaticNumberingService automaticNumberingService;
+	@Autowired private SaldoLiveService saldoLiveService;
+	@Autowired private AdminRenewalService adminRenewalService;
+
+	@Autowired private ETrxBerhentiRepository eTrxBerhentiRepository;
+	
+	public TrxBerhenti findByBk(String nomor) {
+		return TrxBerhenti.fromEntity(eTrxBerhentiRepository.findByBK(nomor));
+	}
+
+	public SearchResult<ETrxBerhenti> search(SearchParameter searchParameter) {
+		return eTrxBerhentiRepository.search(searchParameter);
+	}
+	
+	@Transactional
+	public ETrxBerhenti add(TrxBerhenti pojo, String jenisTransaksi) {
+		
+		EJenisTransaksi eJenisTransaksi = jenisTransaksiService.findByBk(jenisTransaksi);
+
+		ETrxBerhenti entityHeader = pojo.toEntity();
+		entityHeader.setJenisTransaksi(eJenisTransaksi);
+		
+		if (StringUtil.isBlank(entityHeader.getNomor())) {
+			List<EAutomaticNumberingComponent> autoNumbList = automaticNumberingService.getNumberComponentsByTransactionId(eJenisTransaksi.getId());
+			if (autoNumbList == null || autoNumbList.isEmpty()) {
+				// bila tidak ada definisi nomor otomatis di setting nomor otomatis (AM59), maka generate nomor otomatis dari
+				// default (AM59.id_am90 = 10000)
+				entityHeader.setNomor(automaticNumberingService.manageDocumentNumber(jenisTransaksi, 
+						TimeUtil.getDate(entityHeader.getTgtrn()), true));
+			} else {
+				// generate nomor otomatis berdasarkan jenis transaksi ini
+				entityHeader.setNomor(automaticNumberingService.manageDocumentNumber(jenisTransaksi,
+						TimeUtil.getDate(entityHeader.getTgtrn()), false));
+			}
+		}
+		
+		valAdaData(entityHeader);
+		throwBatchError();
+		
+		valSudahLive(entityHeader);
+		valBelumBerhenti(entityHeader);
+		throwBatchError();
+		
+		// ambil tanggal live
+		SaldoLive saldoLive = saldoLiveService.findLiveCustomerProduk(entityHeader.getCustomer().getId(), entityHeader.getProduk().getId());
+		entityHeader.setTglive(TimeUtil.convertDateToYyyyMmDd(saldoLive.tglive));
+		
+		ETrxBerhenti entityAdded = trxBerhentiService.add(entityHeader);
+		throwBatchError();
+		
+		saldoLiveCompleteService.updateStop(entityAdded);
+		throwBatchError();
+		
+		// generate tgl start-stop di master tarif (diletakkan di pertama, agar edit tidak terkena
+		// error data integrity (FK) dengan admin upload (AI001)
+		customerProdukTarifCompleteService.updateStop(entityAdded);
+		
+		// ciptakan admin renewal terakhir (tahun bulan stop + 1)
+		adminRenewalService.createLastAdmin(entityAdded);
+		
+		return entityAdded;
+
+	}
+	
+	private void valAdaData(ETrxBerhenti entity) {
+		if (entity == null) {
+			batchError("trx.berhenti.no.data");
+		}
+	}
+	
+	private void valSudahLive(ETrxBerhenti eTrxBerhenti) {
+		
+		//SaldoLive saldoLive = saldoLiveCompleteService.findByBk(eTrxBerhenti.getCustomer().getId(), eTrxBerhenti.getProduk().getId());
+		SaldoLive saldoLive = saldoLiveService.findLiveCustomerProduk(eTrxBerhenti.getCustomer().getId(), eTrxBerhenti.getProduk().getId());
+		
+		if (saldoLive == null) {
+			batchError("trx.berhenti.belum.live", eTrxBerhenti.getCustomer().getNama(), eTrxBerhenti.getProduk().getNama());
+		}
+	}
+	
+	private void valBelumBerhenti(ETrxBerhenti eTrxBerhenti) {
+		
+		//SaldoLive saldoLive = saldoLiveCompleteService.findByBk(eTrxBerhenti.getCustomer().getId(), eTrxBerhenti.getProduk().getId());
+		SaldoLive saldoLive = saldoLiveService.findLiveCustomerProduk(eTrxBerhenti.getCustomer().getId(), eTrxBerhenti.getProduk().getId());
+		
+		if (saldoLive != null) {
+			if (saldoLive.tgstop != null) {
+				batchError("trx.berhenti.sudah.dihentikan", eTrxBerhenti.getCustomer().getNama(), eTrxBerhenti.getProduk().getNama());				
+			}
+		}
+	}
+	
+	@Transactional
+	public ETrxBerhenti edit(TrxBerhenti pojo) {
+		
+		ETrxBerhenti entityHeader = pojo.toEntity();
+		
+		valAdaData(entityHeader);
+		throwBatchError();
+		
+		ETrxBerhenti newHeader = trxBerhentiService.get(entityHeader.getId());
+		
+		saldoLiveCompleteService.cancelStop(newHeader);
+		throwBatchError();
+		
+		// hapus tgl start-stop di master tarif
+		customerProdukTarifCompleteService.cancelStop(newHeader);
+		
+		// hapus admin renewal terakhir (tahun bulan berhenti + 1)
+		adminRenewalService.deleteLastAdmin(newHeader);
+
+		newHeader = trxBerhentiService.edit(entityHeader);
+		throwBatchError();
+		
+		saldoLiveCompleteService.updateStop(newHeader);
+		throwBatchError();
+		
+		customerProdukTarifCompleteService.updateStop(newHeader);
+		throwBatchError();
+		
+		// ciptakan admin renewal terakhir (tahun bulan stop + 1)
+		adminRenewalService.createLastAdmin(newHeader);
+		
+		return newHeader;
+	}
+	
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valRootVersion(id, version);
+		throwBatchError();
+		
+		ETrxBerhenti newHeader = trxBerhentiService.get(id);
+
+		valTidakAdaYgLive(newHeader);
+		throwBatchError();
+
+		saldoLiveCompleteService.cancelStop(newHeader);
+		throwBatchError();
+
+		// hapus tgl start-stop di master tarif
+		customerProdukTarifCompleteService.cancelStop(newHeader);
+
+		// hapus admin renewal terakhir (tahun bulan berhenti + 1)
+		adminRenewalService.deleteLastAdmin(newHeader);
+
+		// delete trx header
+		trxBerhentiService.delete(id, version);
+	}
+	
+	private void valTidakAdaYgLive(ETrxBerhenti newHeader) {
+		
+		SaldoLive saldoLive = saldoLiveCompleteService.findLiveCustomerProduk(newHeader.getCustomer().getId(), newHeader.getProduk().getId());
+		
+		if (saldoLive != null) {
+			batchError("trx.berhenti.ada.yg.live", newHeader.getCustomer().getNama(), newHeader.getProduk().getNama());
+		}
+	}
+		
+	protected void valRootVersion(String id, Long version) {
+		valEntityExists(id);
+		ETrxBerhenti dbEntity = trxBerhentiService.get(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id) {
+		if (trxBerhentiService.get(id) == null) {
+			throw new BusinessException("data.not.found", id);
+		}
+	}
+	
+}

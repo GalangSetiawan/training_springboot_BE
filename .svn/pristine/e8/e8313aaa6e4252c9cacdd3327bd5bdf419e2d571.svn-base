@@ -1,0 +1,178 @@
+package co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.entities.EMappingCustomerProduk;
+
+@JsonInclude(Include.ALWAYS)
+public class MappingCustomerProduk {
+	
+	public String id;
+	public String account;
+	public String npwp;
+	public Long version;  
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+	
+	// untuk keperluan matching error message di front end (bila input di grid)
+	public String keyIn;
+
+	// untuk penanda apakah detail ini tertandai delete (dari front end)
+	public boolean isSelect;
+	
+	public CustomerProdukTarifHeader header;
+
+	// Untuk menampung message error di grid
+	public ArrayList<Message> errorMsg;
+	
+	public EMappingCustomerProduk toEntity() {
+		
+		EMappingCustomerProduk entity = new EMappingCustomerProduk();
+		
+		entity.setId(id);
+		entity.setAccount(account);
+		entity.setNpwp(npwp);
+		entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+		
+		if (header != null && !StringUtils.isEmpty(header.id)) {
+			ECustomerProdukTarifHeader entityRef = new ECustomerProdukTarifHeader();
+		
+			entityRef.setId(header.id);
+			entityRef.setVersion(header.version);
+		
+			entity.setHeader(entityRef);
+		
+		} else {
+			entity.setHeader(null);
+		}
+
+		return entity;
+	}
+		
+	public static List<EMappingCustomerProduk> toEntities(final List<MappingCustomerProduk> pojos) {
+		List<EMappingCustomerProduk> entities = new ArrayList<EMappingCustomerProduk>();
+		for (MappingCustomerProduk pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static MappingCustomerProduk fromEntity(EMappingCustomerProduk entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static MappingCustomerProduk fromEntity(EMappingCustomerProduk entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static MappingCustomerProduk fromEntity(EMappingCustomerProduk entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		MappingCustomerProduk pojo = new MappingCustomerProduk();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.account = entity.getAccount();
+			pojo.npwp = entity.getNpwp();
+			pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+			
+			pojo.header = CustomerProdukTarifHeader.fromEntity(entity.getHeader(), depthLevel);
+	        
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+			}
+			
+			pojo.isSelect = false;
+		}
+				
+		return pojo;
+	}
+	
+	public static List<MappingCustomerProduk> fromEntities(List<EMappingCustomerProduk> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<MappingCustomerProduk> fromEntities(final List<EMappingCustomerProduk> entities, int depthLevel) {
+		return fromEntities(entities, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<MappingCustomerProduk> fromEntities(List<EMappingCustomerProduk> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<MappingCustomerProduk> pojos = new ArrayList<>();
+		
+		for (EMappingCustomerProduk entity : entities) {
+			pojos.add(MappingCustomerProduk.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}

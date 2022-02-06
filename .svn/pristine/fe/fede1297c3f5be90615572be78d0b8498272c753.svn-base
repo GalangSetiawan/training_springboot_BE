@@ -1,0 +1,78 @@
+package co.id.sofcograha.domain.invoicing.saldo.deposit.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.entities.ESaldoDepositDetailTambah;
+
+@Repository
+public class ESaldoDepositDetailTambahRepository extends SimpleJpaRepository<ESaldoDepositDetailTambah, String> {
+
+	protected final EntityManager em;
+
+	public ESaldoDepositDetailTambahRepository(EntityManager em) {
+		super(ESaldoDepositDetailTambah.class, em);
+		this.em = em;
+	}
+	
+	public ESaldoDepositDetailTambah findByInvoice(String idSi001, String idTi001) {
+		
+		String query = "SELECT e FROM ESaldoDepositDetailTambah e " + 
+                       "WHERE e.header.id = :idSi001 And " +
+  	                         "e.invoice.id = :idTi001";
+		
+		try {
+			return em.createQuery(query, ESaldoDepositDetailTambah.class)
+					 .setParameter("idSi001", idSi001)
+					 .setParameter("idTi001", idTi001)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ESaldoDepositDetailTambah findByAlokasi(String idSi001, String idTi611) {
+		
+		String query = "SELECT e FROM ESaldoDepositDetailTambah e " + 
+                       "WHERE e.header.id = :idSi001 And " +
+  	                         "e.alokasiBayar.id = :idTi611";
+		
+		try {
+			return em.createQuery(query, ESaldoDepositDetailTambah.class)
+					 .setParameter("idSi001", idSi001)
+					 .setParameter("idTi611", idTi611)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ESaldoDepositDetailTambah getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<ESaldoDepositDetailTambah> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ESaldoDepositDetailTambah> search = new HqlSimpleSearchBuilder<>(ESaldoDepositDetailTambah.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ESaldoDepositDetailTambah add(ESaldoDepositDetailTambah entity) {
+		return save(entity);
+	}
+
+	public ESaldoDepositDetailTambah edit(ESaldoDepositDetailTambah entity) {
+		return save(entity);
+	}
+}

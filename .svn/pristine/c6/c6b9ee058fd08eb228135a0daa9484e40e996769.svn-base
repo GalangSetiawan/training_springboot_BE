@@ -1,0 +1,138 @@
+package co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.Query;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.entities.EPenerimaanBayarHeader;
+
+@Repository
+public class EPenerimaanBayarHeaderRepository extends SimpleJpaRepository<EPenerimaanBayarHeader, String> {
+
+	protected final EntityManager em;
+
+	public EPenerimaanBayarHeaderRepository(EntityManager em) {
+		super(EPenerimaanBayarHeader.class, em);
+		this.em = em;
+	}
+	
+	public EPenerimaanBayarHeader findByBK(String nomor) {
+		
+		String query = "SELECT e FROM EPenerimaanBayarHeader e " + 
+                       "WHERE e.nomor = :nomor";
+		
+		try {
+			return em.createQuery(query, EPenerimaanBayarHeader.class)
+					 .setParameter("nomor", nomor)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EPenerimaanBayarHeader getOne(String id) {
+
+		String query = "SELECT e FROM EPenerimaanBayarHeader e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, EPenerimaanBayarHeader.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+    @SuppressWarnings("unchecked")
+	public EPenerimaanBayarHeader getPenerimaanBayarByNoInvoice(String nomorInvoice) {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select r.* from ti611 p\n"); 
+        queryStringBuilder.append("left join ti610 q on q.id_ti610 = p.id_ti610 \n"); 
+        queryStringBuilder.append("left join ti600 r on r.id_ti600 = q.id_ti600\n"); 
+        queryStringBuilder.append("left join ti001 s on s.id_ti001 = p.id_ti001 \n"); 
+        queryStringBuilder.append("where s.nomor = :nomorInvoice and\n"); 
+        queryStringBuilder.append("      s.tgtrn = (select max(d.tgtrn) from ti611 a\n"); 
+        queryStringBuilder.append("                 left join ti610 b on b.id_ti610 = a.id_ti610 \n"); 
+        queryStringBuilder.append("                 left join ti600 c on c.id_ti600 = b.id_ti600\n");
+        queryStringBuilder.append("                 left join ti001 d on d.id_ti001 = a.id_ti001 \n"); 
+        queryStringBuilder.append("                 where d.nomor = :nomorInvoice)"); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), EPenerimaanBayarHeader.class);
+        
+        query.setParameter("nomorInvoice", nomorInvoice);
+        
+        List<Object> list = query.getResultList();
+
+        if (!list.isEmpty()) {
+        	return (EPenerimaanBayarHeader) list.get(0);
+        } else {
+        	return null;
+        }
+    }
+	
+	public SearchResult<EPenerimaanBayarHeader> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EPenerimaanBayarHeader> search = new HqlSimpleSearchBuilder<>(EPenerimaanBayarHeader.class, em);
+		
+		String nomor = (String) searchParameter.getValueFromMappedParam("nomor");
+		String tipe = (String) searchParameter.getValueFromMappedParam("tipe");
+		String bank = (String) searchParameter.getValueFromMappedParam("bank");
+		String tahun = (String) searchParameter.getValueFromMappedParam("tahun");
+		String bulan = (String) searchParameter.getValueFromMappedParam("bulan");
+
+		if (!QueryUtil.isAll(nomor)) {
+            search.addWhere("AND LOWER(nomor) LIKE LOWER(:nomor) ");
+            search.addParameter("nomor", QueryUtil.formatStringForLikeFilter(nomor));
+        }
+
+		if (!QueryUtil.isAll(tipe)) {
+            search.addWhere("AND LOWER(tipe) LIKE LOWER(:tipe) ");
+            search.addParameter("tipe", QueryUtil.formatStringForLikeFilter(tipe));
+        }
+
+		if (!QueryUtil.isAll(bank)) {
+            search.addWhere("AND LOWER(bank) LIKE LOWER(:bank) ");
+            search.addParameter("bank", QueryUtil.formatStringForLikeFilter(bank));
+        }
+
+	    if (tahun != null) {
+	    	String strTahunBulan = tahun;
+	    	
+	    	if (bulan != null) {
+	    		strTahunBulan = strTahunBulan + bulan;
+	    		
+	            search.addWhere("AND substring(tgtrn, 1, 6) = :tahunBulan ");
+	            search.addParameter("tahunBulan", strTahunBulan);
+	    	}
+	    }
+	    
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EPenerimaanBayarHeader add(EPenerimaanBayarHeader entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+
+	public EPenerimaanBayarHeader edit(EPenerimaanBayarHeader entity) {
+		return save(entity);
+	}
+}

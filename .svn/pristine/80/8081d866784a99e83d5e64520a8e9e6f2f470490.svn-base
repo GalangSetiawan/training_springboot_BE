@@ -1,0 +1,91 @@
+package co.id.sofcograha.base.authorization.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.menu.entities.EMenu;
+import co.id.sofcograha.base.master.menu.services.MenuService;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.entities.EUserHakAksesMenu;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.services.UserHakAksesMenuService;
+
+
+@Service
+public class ActionAuthorizationService extends BaseService{
+
+  @Autowired UserHakAksesMenuService userHakAksesMenuService;
+  @Autowired UserService userService;
+  @Autowired MenuService menuService;
+  
+  private String menuCode;
+  private EUserHakAksesMenu eUserHakAksesMenu;
+  
+  public boolean valHakView() {
+    if (!menuCode.isEmpty()) {
+      setDataUserMenu();
+      return eUserHakAksesMenu.getFlview().trim().equals("Y") ? true : false;
+    } else {
+      return true;
+    }
+  }
+
+  public boolean valHakAdd() {
+    if (!menuCode.isEmpty()) {
+      setDataUserMenu();
+      return eUserHakAksesMenu.getFladd().trim().equals("Y") ? true : false;
+    } else {
+      return true;
+    }
+  }
+  
+  public boolean valHakEdit() {
+    if (!menuCode.isEmpty()) {
+      setDataUserMenu();
+      return eUserHakAksesMenu.getFledit().trim().equals("Y") ? true : false;
+    } else {
+      return true;
+    }
+  }
+  
+  public boolean valHakDelete() {
+    if (!menuCode.isEmpty()) {
+      setDataUserMenu();
+      return eUserHakAksesMenu.getFldel().trim().equals("Y") ? true : false;
+    } else {
+      return true;
+    }
+  }
+  
+  private void setDataUserMenu() {
+    EMenu eMenu = menuService.findByBK(this.menuCode);
+    
+    if (eMenu != null) {
+      EUserHakAksesMenu userAccessModule = userHakAksesMenuService.findByBk(CurrentUser.getUserId(), eMenu.getId());
+
+      if(userAccessModule != null) {
+        eUserHakAksesMenu = new EUserHakAksesMenu();
+        eUserHakAksesMenu.setId(userAccessModule.getId());
+        eUserHakAksesMenu.setFladd(userAccessModule.getFladd());
+        eUserHakAksesMenu.setFledit(userAccessModule.getFledit());
+        eUserHakAksesMenu.setFldel(userAccessModule.getFldel());
+        eUserHakAksesMenu.setFlview(userAccessModule.getFlview());
+      } else {
+        error("AccessRightsNotFound");
+      }
+    } else {
+      error("MenuNotFound");
+    }
+      
+  }
+
+  public String getMenuCode() {
+    return menuCode;
+  }
+
+  public void setMenuCode(String pMenuCode) {
+    menuCode = pMenuCode;
+  }
+  
+}

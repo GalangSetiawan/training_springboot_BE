@@ -1,0 +1,45 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingCounter;
+
+@Repository
+public class EAutomaticNumberingCounterRepository extends SimpleJpaRepository<EAutomaticNumberingCounter, String> {
+	
+	protected final EntityManager em;
+
+	public EAutomaticNumberingCounterRepository(EntityManager em) {
+		super(EAutomaticNumberingCounter.class, em);
+		this.em = em;
+	}
+	
+	public EAutomaticNumberingCounter findByBk(String key) {
+
+		String query = "SELECT a " +
+			           "FROM EAutomaticNumberingCounter a " +
+			           "WHERE a.key = :key";
+
+		try {
+			return em.createQuery(query, EAutomaticNumberingCounter.class)
+					.setParameter("key", key)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+    public EAutomaticNumberingCounter edit(EAutomaticNumberingCounter entity) {
+    	return saveAndFlush(entity);
+    };
+    
+    public EAutomaticNumberingCounter add(EAutomaticNumberingCounter entity) {
+    	return saveAndFlush(entity);
+    };
+    
+}

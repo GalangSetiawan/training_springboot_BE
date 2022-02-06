@@ -1,0 +1,138 @@
+package co.id.sofcograha.domain.invoicing.proses.invoiceOtomatis.entities;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+@Entity
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class EProsesInvoiceDataRpt {
+
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@Column(name = "id_ai003")
+	private String idAi003;
+
+	@Column(name = "id_mi001")
+    private String idMi001;
+	
+	@Column(name = "namaproduk")
+	private String namaproduk;
+	
+	@Column(name = "id_mi010")
+    private String idMi010;
+	
+	@Column(name = "namacust")
+	private String namacust;
+	
+	@Column(name = "flproi")
+    private String flproi;
+	
+	@Column(name = "nomor")
+    private String nomor;
+	
+	@Column(name = "tahunorg")
+    private String tahunorg;
+	
+	@Column(name = "bulanorg")
+    private String bulanorg;
+	
+	@Column(name = "flagAdj")
+    private String flagAdj;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getIdAi003() {
+		return idAi003;
+	}
+
+	public void setIdAi003(String idAi003) {
+		this.idAi003 = idAi003;
+	}
+
+	public String getIdMi001() {
+		return idMi001;
+	}
+
+	public void setIdMi001(String idMi001) {
+		this.idMi001 = idMi001;
+	}
+
+	public String getNamaproduk() {
+		return namaproduk;
+	}
+
+	public void setNamaproduk(String namaproduk) {
+		this.namaproduk = namaproduk;
+	}
+
+	public String getIdMi010() {
+		return idMi010;
+	}
+
+	public void setIdMi010(String idMi010) {
+		this.idMi010 = idMi010;
+	}
+
+	public String getNamacust() {
+		return namacust;
+	}
+
+	public void setNamacust(String namacust) {
+		this.namacust = namacust;
+	}
+
+	public String getFlproi() {
+		return flproi;
+	}
+
+	public void setFlproi(String flproi) {
+		this.flproi = flproi;
+	}
+
+	public String getNomor() {
+		return nomor;
+	}
+
+	public void setNomor(String nomor) {
+		this.nomor = nomor;
+	}
+
+	public String getTahunorg() {
+		return tahunorg;
+	}
+
+	public void setTahunorg(String tahunorg) {
+		this.tahunorg = tahunorg;
+	}
+
+	public String getBulanorg() {
+		return bulanorg;
+	}
+
+	public void setBulanorg(String bulanorg) {
+		this.bulanorg = bulanorg;
+	}
+
+	public String getFlagAdj() {
+		return flagAdj;
+	}
+
+	public void setFlagAdj(String flagAdj) {
+		this.flagAdj = flagAdj;
+	}
+
+}

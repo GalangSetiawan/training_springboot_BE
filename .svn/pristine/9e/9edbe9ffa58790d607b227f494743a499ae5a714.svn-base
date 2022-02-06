@@ -1,0 +1,174 @@
+package co.id.sofcograha.base.queue.processparam.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.queue.common.QueueConstants;
+import co.id.sofcograha.base.queue.processparam.entities.EProcessParam;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Repository
+public class ProcessParamRepository extends SimpleJpaRepository<EProcessParam, String> {
+
+	protected final EntityManager em;
+	
+	public ProcessParamRepository(EntityManager em) {
+		super(EProcessParam.class, em);
+		this.em = em;
+	}
+	
+	public EProcessParam findByBK(EProcessStatus processStatus, String paramKey) {
+		
+		String query = "SELECT e FROM EProcessParam e " + 
+                       "WHERE e.processStatus = :processStatus And " +
+			                 "e.paramKey = :paramKey";
+
+		try {
+			return em.createQuery(query, EProcessParam.class)
+					 .setParameter("processStatus", processStatus)
+					 .setParameter("paramKey", paramKey)
+					 .getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}		
+	}
+
+	public SearchResult<EProcessParam> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EProcessParam> search = new HqlSimpleSearchBuilder<>(EProcessParam.class, em);
+
+		String processStatusId = (String) searchParameter.getValueFromMappedParam("processStatus.id");
+		String paramKey = (String) searchParameter.getValueFromMappedParam("paramKey");
+		QueueConstants.ProcessParamType paramType = (QueueConstants.ProcessParamType) searchParameter.getValueFromMappedParam("paramType");
+		String paramValue = (String) searchParameter.getValueFromMappedParam("paramValue");
+		String paramValue1 = (String) searchParameter.getValueFromMappedParam("paramValue1");
+		String paramValue2 = (String) searchParameter.getValueFromMappedParam("paramValue2");
+		String paramValue3 = (String) searchParameter.getValueFromMappedParam("paramValue3");
+		String paramValue4 = (String) searchParameter.getValueFromMappedParam("paramValue4");
+		String paramValue5 = (String) searchParameter.getValueFromMappedParam("paramValue5");
+		String paramValue6 = (String) searchParameter.getValueFromMappedParam("paramValue6");
+		String paramValue7 = (String) searchParameter.getValueFromMappedParam("paramValue7");
+		String paramValue8 = (String) searchParameter.getValueFromMappedParam("paramValue8");
+		String paramValue9 = (String) searchParameter.getValueFromMappedParam("paramValue9");
+		String paramValue10 = (String) searchParameter.getValueFromMappedParam("paramValue10");
+		String paramValue11 = (String) searchParameter.getValueFromMappedParam("paramValue11");
+		String paramValue12 = (String) searchParameter.getValueFromMappedParam("paramValue12");
+		String paramValue13 = (String) searchParameter.getValueFromMappedParam("paramValue13");
+		String paramValue14 = (String) searchParameter.getValueFromMappedParam("paramValue14");
+		String paramValue15 = (String) searchParameter.getValueFromMappedParam("paramValue15");
+
+		if (processStatusId != null) {
+			search.addWhere("AND processStatus.id = :processStatusId ");
+			search.addParameter("processStatusId", processStatusId);
+		}
+		
+		if (!QueryUtil.isAll(paramKey)) {
+			search.addWhere("AND LOWER(paramKey) LIKE LOWER(:paramKey) ");
+			search.addParameter("paramKey", QueryUtil.formatStringForLikeFilter(paramKey));
+		}
+		
+		if (paramType != null) {
+			search.addWhere("AND paramType = :paramType ");
+			search.addParameter("paramType", paramType);
+		}
+		
+		if (!QueryUtil.isAll(paramValue)) {
+			search.addWhere("AND LOWER(paramValue) LIKE LOWER(:paramValue) ");
+			search.addParameter("paramValue", QueryUtil.formatStringForLikeFilter(paramValue));
+		}
+		
+		if (!QueryUtil.isAll(paramValue1)) {
+			search.addWhere("AND LOWER(paramValue1) LIKE LOWER(:paramValue1) ");
+			search.addParameter("paramValue1", QueryUtil.formatStringForLikeFilter(paramValue1));
+		}
+		
+		if (!QueryUtil.isAll(paramValue2)) {
+			search.addWhere("AND LOWER(paramValue2) LIKE LOWER(:paramValue2) ");
+			search.addParameter("paramValue2", QueryUtil.formatStringForLikeFilter(paramValue2));
+		}
+		
+		if (!QueryUtil.isAll(paramValue3)) {
+			search.addWhere("AND LOWER(paramValue3) LIKE LOWER(:paramValue3) ");
+			search.addParameter("paramValue3", QueryUtil.formatStringForLikeFilter(paramValue3));
+		}
+		
+		if (!QueryUtil.isAll(paramValue4)) {
+			search.addWhere("AND LOWER(paramValue4) LIKE LOWER(:paramValue4) ");
+			search.addParameter("paramValue4", QueryUtil.formatStringForLikeFilter(paramValue4));
+		}
+		
+		if (!QueryUtil.isAll(paramValue5)) {
+			search.addWhere("AND LOWER(paramValue5) LIKE LOWER(:paramValue5) ");
+			search.addParameter("paramValue5", QueryUtil.formatStringForLikeFilter(paramValue5));
+		}
+		
+		if (!QueryUtil.isAll(paramValue6)) {
+			search.addWhere("AND LOWER(paramValue6) LIKE LOWER(:paramValue6) ");
+			search.addParameter("paramValue6", QueryUtil.formatStringForLikeFilter(paramValue6));
+		}
+		
+		if (!QueryUtil.isAll(paramValue7)) {
+			search.addWhere("AND LOWER(paramValue7) LIKE LOWER(:paramValue7) ");
+			search.addParameter("paramValue7", QueryUtil.formatStringForLikeFilter(paramValue7));
+		}
+		
+		if (!QueryUtil.isAll(paramValue8)) {
+			search.addWhere("AND LOWER(paramValue8) LIKE LOWER(:paramValue8) ");
+			search.addParameter("paramValue8", QueryUtil.formatStringForLikeFilter(paramValue8));
+		}
+		
+		if (!QueryUtil.isAll(paramValue9)) {
+			search.addWhere("AND LOWER(paramValue9) LIKE LOWER(:paramValue9) ");
+			search.addParameter("paramValue9", QueryUtil.formatStringForLikeFilter(paramValue9));
+		}
+		
+		if (!QueryUtil.isAll(paramValue10)) {
+			search.addWhere("AND LOWER(paramValue10) LIKE LOWER(:paramValue10) ");
+			search.addParameter("paramValue10", QueryUtil.formatStringForLikeFilter(paramValue10));
+		}
+		
+		if (!QueryUtil.isAll(paramValue11)) {
+			search.addWhere("AND LOWER(paramValue11) LIKE LOWER(:paramValue11) ");
+			search.addParameter("paramValue11", QueryUtil.formatStringForLikeFilter(paramValue11));
+		}
+		
+		if (!QueryUtil.isAll(paramValue12)) {
+			search.addWhere("AND LOWER(paramValue12) LIKE LOWER(:paramValue12) ");
+			search.addParameter("paramValue12", QueryUtil.formatStringForLikeFilter(paramValue12));
+		}
+		
+		if (!QueryUtil.isAll(paramValue13)) {
+			search.addWhere("AND LOWER(paramValue13) LIKE LOWER(:paramValue13) ");
+			search.addParameter("paramValue13", QueryUtil.formatStringForLikeFilter(paramValue13));
+		}
+		
+		if (!QueryUtil.isAll(paramValue14)) {
+			search.addWhere("AND LOWER(paramValue14) LIKE LOWER(:paramValue14) ");
+			search.addParameter("paramValue14", QueryUtil.formatStringForLikeFilter(paramValue14));
+		}
+		
+		if (!QueryUtil.isAll(paramValue15)) {
+			search.addWhere("AND LOWER(paramValue15) LIKE LOWER(:paramValue15) ");
+			search.addParameter("paramValue15", QueryUtil.formatStringForLikeFilter(paramValue15));
+		}
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EProcessParam add(EProcessParam entity) {
+		return save(entity);
+	}
+
+	public EProcessParam edit(EProcessParam entity) {
+		return save(entity);
+	}
+}

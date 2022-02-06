@@ -1,0 +1,35 @@
+package co.id.sofcograha.base.screencontrol.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class ScreenControlPojo {
+	
+	public static final String MULTI = "items";
+	
+	public String componentId;
+	public String componentState;
+	
+	public ScreenControlPojo(String componentId, String componentState) {
+		this.componentId = componentId;
+		this.componentState = componentState;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		mappings.add(new SearchFieldMapping("screenId", "screenId").searchOnly());
+		mappings.add(new SearchFieldMapping("transactionId", "transaction.id").searchOnly());
+		mappings.add(new SearchFieldMapping("number", "number").searchOnly());
+		mappings.add(new SearchFieldMapping("date", "date", Date.class).searchOnly());
+		return mappings;
+	}
+}

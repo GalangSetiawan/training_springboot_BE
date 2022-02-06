@@ -1,0 +1,64 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingLog;
+
+@Repository
+public class EAutomaticNumberingLogRepository extends SimpleJpaRepository<EAutomaticNumberingLog, String> {
+	
+	protected final EntityManager em;
+
+	public EAutomaticNumberingLogRepository(EntityManager em) {
+		super(EAutomaticNumberingLog.class, em);
+		this.em = em;
+	}
+	
+	public EAutomaticNumberingLog findByDocumentId(String documentId, String usedFlag) {
+		
+		String query = "SELECT a " +
+				       "FROM EAutomaticNumberingLog a " +
+				       "WHERE a.jenisTransaksi.id = :documentId And " +
+				             "a.usedFlag = :usedFlag ";
+	
+		try {
+			return em.createQuery(query, EAutomaticNumberingLog.class)
+					.setParameter("documentId", documentId)
+					.setParameter("usedFlag", usedFlag)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public EAutomaticNumberingLog findByDocumentBk(String transactionId, String trxNumber) {
+
+		String query = "SELECT a " +
+			           "FROM EAutomaticNumberingLog a " +
+			           "WHERE a.jenisTransaksi.id = :transactionId And " +
+			                 "a.trxNumber = :trxNumber ";
+
+		try {
+			return em.createQuery(query, EAutomaticNumberingLog.class)
+					.setParameter("transactionId", transactionId)
+					.setParameter("trxNumber", trxNumber)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+
+    public EAutomaticNumberingLog edit(EAutomaticNumberingLog entity) {
+    	return saveAndFlush(entity);
+    };
+    
+    public EAutomaticNumberingLog add(EAutomaticNumberingLog entity) {
+    	return saveAndFlush(entity);
+    };
+}

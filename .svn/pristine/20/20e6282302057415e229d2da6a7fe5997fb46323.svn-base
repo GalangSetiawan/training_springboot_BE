@@ -1,0 +1,29 @@
+package co.id.sofcograha.base.webmvcconfiguration;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+
+import co.id.sofcograha.base.authorization.AuthorizationInterceptor;
+
+//import id.co.sofcograha.gajiidapi.ExcludeFromTests;
+//import id.co.sofcograha.gajiidapi.base.activitylog.ActivityLogInterceptor;
+//import id.co.sofcograha.gajiidapi.base.authorization.AuthorizationInterceptor;
+
+@Configuration
+public class WebMvcConfig extends WebMvcConfigurerAdapter {
+
+	@Autowired
+	private AuthorizationInterceptor authorizationInterceptor;
+
+//	@Autowired
+//	private ActivityLogInterceptor activityLogInterceptor;
+	
+	@Override
+	public void addInterceptors(InterceptorRegistry registry) {
+//		registry.addInterceptor(activityLogInterceptor);
+		registry.addInterceptor(authorizationInterceptor);
+		super.addInterceptors(registry);
+	}
+}

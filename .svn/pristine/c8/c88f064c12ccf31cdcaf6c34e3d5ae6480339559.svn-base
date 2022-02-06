@@ -1,0 +1,87 @@
+package co.id.sofcograha.domain.invoicing.masters.produk.controllers;
+
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.pojos.Produk;
+import co.id.sofcograha.domain.invoicing.masters.produk.services.ProdukService;
+
+@RestController
+@RequestMapping("/api/produk")
+public class ProdukController {
+
+	public static final Logger logger = LoggerFactory.getLogger(ProdukController.class);
+
+	@Autowired
+	UserService userService; //Service which will do all data retrieval/manipulation work
+	
+	@Autowired
+	private ProdukService produkService;
+	
+
+	// -------------------Retrieve Some ---------------------------------------------
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<EProduk> searchResult = produkService.search(SearchParameter.generate(searchParameter, Produk.getFieldMappings()));
+	    
+		return ApiResponse.dataWithPaging("items", Produk.fromEntities(searchResult.getResult()),
+				searchResult.getPaging());
+	}
+
+	// -------------------Retrieve Single Data ------------------------------------------
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String nama) throws JsonProcessingException {
+
+		EProduk entity = produkService.findByBk(nama);
+		
+		return ApiResponse.data("item", Produk.fromEntity(entity));
+		
+	}
+
+	@NoAuth
+    @PostMapping
+    public ApiResponse add(@RequestBody Produk pojo) {
+		
+		EProduk result = produkService.add(pojo.toEntity());
+		return ApiResponse.data("item", Produk.fromEntity(result));
+    }
+    
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody Produk pojo) {
+		
+		EProduk result = produkService.edit(pojo.toEntity());
+		return ApiResponse.data("item", Produk.fromEntity(result));
+		
+	}
+
+	@NoAuth
+	@DeleteMapping
+	public ApiResponse delete(@RequestParam String id, @RequestParam(required = false) Long version) {
+		produkService.delete(id, version);
+		return ApiResponse.ok();
+	}
+
+}

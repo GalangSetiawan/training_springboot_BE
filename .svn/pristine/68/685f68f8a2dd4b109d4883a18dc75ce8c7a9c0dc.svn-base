@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.masters.grupdiskon.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.entities.EGrupDiskonDetail;
+
+@Repository
+public class EGrupDiskonDetailRepository extends SimpleJpaRepository<EGrupDiskonDetail, String> {
+
+	protected final EntityManager em;
+
+	public EGrupDiskonDetailRepository(EntityManager em) {
+		super(EGrupDiskonDetail.class, em);
+		this.em = em;
+	}
+	
+	public EGrupDiskonDetail findByBK(String idMi004, Integer nourut) {
+		
+		String query = "SELECT e FROM EGrupDiskonDetail e " + 
+                       "WHERE e.header.id = :idMi004 And " +
+		                     "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EGrupDiskonDetail.class)
+					 .setParameter("idMi004", idMi004)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EGrupDiskonDetail getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EGrupDiskonDetail> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EGrupDiskonDetail> search = new HqlSimpleSearchBuilder<>(EGrupDiskonDetail.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EGrupDiskonDetail add(EGrupDiskonDetail entity) {
+		return save(entity);
+	}
+
+	public EGrupDiskonDetail edit(EGrupDiskonDetail entity) {
+		return save(entity);
+	}
+}

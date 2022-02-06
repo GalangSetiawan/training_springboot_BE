@@ -1,0 +1,522 @@
+package co.id.sofcograha.base.excel;
+
+import java.util.Date;
+
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.ss.util.RegionUtil;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFDataFormat;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+import co.id.sofcograha.base.utils.TimeUtil;
+
+public class TemplateExcelUtil extends ExcelUtil {
+  private XSSFWorkbook workbook;
+  private Font headerFont;
+  private Font commonFont;
+  private Font customFont;
+  private XSSFCellStyle cellStyleAlignCenter;
+  private XSSFCellStyle cellStyleAlignLeft;
+  private XSSFCellStyle cellStyleAlignRight;
+  private XSSFCellStyle cellStyleNumberDouble;
+  private XSSFCellStyle cellStyleNumberInteger;
+  private XSSFCellStyle tableHeaderStyle;
+  
+  private Row currentRow;
+  private Cell currentCell;
+
+  private Integer numberOfColumns;
+  private String companyName = "PT. SURYA MULTI INDOPACK";
+  private String serviceId;
+  private String reportTitle;
+  private String defaultSheetName = "Sheet1";
+  private String defaultFontName = "Monospaced";
+
+  public TemplateExcelUtil(String pReportTitle, String pServiceId, Integer pNumberOfColumns) {
+    workbook = ExcelUtil.init(defaultSheetName);
+    currentRow = null;
+    currentCell = null;
+    
+    setFontHeader();
+    setFontCommon();
+    setStyleAlignLeft();
+    setStyleAlignCenter();
+    setStyleAlignright();
+    setStyleNumberInteger();
+    setStyleNumberDouble();
+    setHeaderStyle();
+
+    numberOfColumns = pNumberOfColumns;
+    reportTitle = pReportTitle;
+    serviceId = pServiceId;
+  }
+  
+  public XSSFCellStyle getCellBorderStyle(boolean top, boolean right, boolean bottom, boolean left) {
+    XSSFCellStyle style = workbook.createCellStyle();
+    if(top) style.setBorderTop(BorderStyle.THIN);
+    if(right) style.setBorderRight(BorderStyle.THIN);
+    if(bottom) style.setBorderBottom(BorderStyle.THIN);
+    if(left) style.setBorderLeft(BorderStyle.THIN);
+    style.setFont(commonFont);
+    return style;
+  }
+
+  private void setFontHeader() {
+    headerFont = workbook.createFont();
+    headerFont.setFontHeightInPoints((short) 10);
+    headerFont.setFontName(defaultFontName);
+    headerFont.setBold(true);
+  }
+  
+  private void setFontCommon() {
+    commonFont = workbook.createFont();
+    commonFont.setFontHeightInPoints((short) 10);
+    commonFont.setFontName(defaultFontName);
+  }
+  
+  private void setFontCustom(Boolean bold, Boolean italic, Boolean underline) {
+    customFont = workbook.createFont();
+    customFont.setFontHeightInPoints((short) 10);
+    customFont.setFontName(defaultFontName);
+    customFont.setBold(bold);
+    customFont.setItalic(italic);
+    if(underline) {
+    	 customFont.setUnderline(Font.U_SINGLE);
+    }
+   
+  }
+  
+  private void setStyleAlignLeft() {
+    cellStyleAlignLeft = workbook.createCellStyle();
+    cellStyleAlignLeft.setFont(commonFont);
+    cellStyleAlignLeft.setWrapText(true);
+  }
+  
+  public XSSFCellStyle getStyleAlignLeft() {
+	  return cellStyleAlignLeft;
+  }
+  
+  public XSSFCellStyle getStyleAlignRight() {
+	  return cellStyleAlignRight;
+  }
+  
+  public XSSFCellStyle getStyleAlignCenter() {
+	  return cellStyleAlignCenter;
+  }
+  
+  private void setStyleAlignCenter() {
+    cellStyleAlignCenter = workbook.createCellStyle();
+    cellStyleAlignCenter.setFont(commonFont);
+    cellStyleAlignCenter.setAlignment(HorizontalAlignment.CENTER);
+    cellStyleAlignCenter.setWrapText(true);
+  }
+  
+  private void setStyleAlignright() {
+    cellStyleAlignRight = workbook.createCellStyle();
+    cellStyleAlignRight.setFont(commonFont);
+    cellStyleAlignRight.setAlignment(HorizontalAlignment.RIGHT);
+    cellStyleAlignRight.setWrapText(true);
+  }
+  
+  private void setStyleNumberDouble() {
+    XSSFDataFormat format = workbook.createDataFormat();
+    cellStyleNumberDouble = workbook.createCellStyle();
+    cellStyleNumberDouble.setFont(commonFont);
+    cellStyleNumberDouble.setAlignment(HorizontalAlignment.RIGHT);
+    cellStyleNumberDouble.setDataFormat(format.getFormat("#,##0.00"));
+  }
+  
+  private void setStyleNumberInteger() {
+	XSSFDataFormat format = workbook.createDataFormat();
+    cellStyleNumberInteger = workbook.createCellStyle();
+    cellStyleNumberInteger.setFont(commonFont);
+    cellStyleNumberInteger.setAlignment(HorizontalAlignment.RIGHT);
+    cellStyleNumberInteger.setDataFormat(format.getFormat("#,##0"));
+  }
+  
+  private void setHeaderStyle() {
+    tableHeaderStyle = workbook.createCellStyle();
+    tableHeaderStyle.setFont(headerFont);
+    tableHeaderStyle.setAlignment(HorizontalAlignment.CENTER);
+    tableHeaderStyle.setBorderTop(BorderStyle.THIN);
+    tableHeaderStyle.setBorderBottom(BorderStyle.THIN);
+    tableHeaderStyle.setBorderLeft(BorderStyle.THIN);
+    tableHeaderStyle.setBorderRight(BorderStyle.THIN);
+  }
+  
+  public void addCell(final Integer indexRow, final Integer indexColumn, final Object cellValue) {
+	  addCell(indexRow, indexColumn, cellValue, false, false, false, false, false, "", "");
+  }
+  
+  public void addCell(final Integer indexRow, final Integer indexColumn, final Object cellValue, final Boolean bold, final Boolean italic, final Boolean underline, final Boolean border, final Boolean custom, final String hAlign, final String vAlign) {
+	addCustomCellWithRow(indexRow, indexColumn, cellValue, bold, italic, underline, border, "", false, false, false, false, custom, hAlign, vAlign);
+  }
+  
+  public void addCustomCellWithRow(final Integer indexRow, final Integer indexColumn, final Object cellValue, final Boolean bold, final Boolean italic, final Boolean underline, final Boolean border, final String borderType, final Boolean borderTop, final Boolean borderBottom, final Boolean borderLeft, final Boolean borderRight, final Boolean custom, final String hAlign, final String vAlign) {
+	setRow(indexRow);
+	addCustomCell(indexColumn, cellValue, bold, italic, underline, border, borderType, borderTop, borderBottom, borderLeft, borderRight, custom, hAlign, vAlign);
+  }
+  
+  public void addCell(final Integer indexColumn, final Object cellValue, final Boolean bold, final Boolean italic, final Boolean underline, final Boolean border, final Boolean custom, final String hAlign, final String vAlign) {
+	addCustomCell(indexColumn, cellValue, bold, italic, underline, border, "", false, false, false, false, custom, hAlign, vAlign);
+  }
+  
+  public void addCustomCell(final Integer indexColumn, final Object cellValue, final Boolean bold, final Boolean italic, final Boolean underline, final Boolean border, final String borderType, final Boolean borderTop, final Boolean borderBottom, final Boolean borderLeft, final Boolean borderRight, final Boolean custom, final String hAlign, final String vAlign) {
+	currentCell = currentRow.createCell(indexColumn);
+    setCellValue(currentCell, cellValue);
+    setCustomCellStyle(currentCell, cellValue, bold, italic, underline, border, borderType, borderTop, borderBottom, borderLeft, borderRight,  custom, hAlign, vAlign);
+  }
+
+  public void addCell(final Integer index, final Object cellValue) {
+    addCell(index, cellValue, false, false, false);
+  }
+  
+  public void addCell(final Integer index, final Object cellValue, final Boolean bold) {
+    addCell(index, cellValue, bold, false, false);
+  }
+  
+  public void addCell(final Integer index, final Object cellValue, final Boolean bold, final Boolean center) {
+    addCell(index, cellValue, bold, center, false);
+  }
+  
+  public void addCell(final Integer index, final Object cellValue, final Boolean bold, final Boolean center, final Boolean border) {
+    currentCell = currentRow.createCell(index);
+    setCellValue(currentCell, cellValue);
+    setStandardCellStyle(currentCell, cellValue, bold, center, border);
+  }
+  
+  /**
+   * Zero based index 
+   */
+  public void setMerge(int numRow, int untilRow, int numCol, int untilCol, boolean border) {
+    CellRangeAddress cellMerge = new CellRangeAddress(numRow, untilRow, numCol, untilCol);
+    getActiveSheet().addMergedRegion(cellMerge);
+    if (border) {
+        setBordersToMergedCells(cellMerge);
+    }
+  }
+  
+  public void setLineBorder(int numRow, int untilRow, int numCol, int untilCol, String borderType, boolean borderTop, boolean borderBottom) {
+	  CellRangeAddress cellRange = new CellRangeAddress(numRow, untilRow, numCol, untilCol);  
+      
+	  BorderStyle borderStyle = getBorderStyle(borderType);
+      if(borderTop) {
+    	  RegionUtil.setBorderTop(borderStyle, cellRange, getActiveSheet());
+      }
+      
+      if(borderBottom) {
+    	  RegionUtil.setBorderBottom(borderStyle, cellRange, getActiveSheet());
+      }
+  }
+  
+  
+
+  public void setBordersToMergedCells(CellRangeAddress rangeAddress) {
+      RegionUtil.setBorderTop(BorderStyle.MEDIUM, rangeAddress, getActiveSheet());
+      RegionUtil.setBorderLeft(BorderStyle.MEDIUM, rangeAddress, getActiveSheet());
+      RegionUtil.setBorderRight(BorderStyle.MEDIUM, rangeAddress, getActiveSheet());
+      RegionUtil.setBorderBottom(BorderStyle.MEDIUM, rangeAddress, getActiveSheet());
+  }
+  
+  public void addCell(final Integer index, final Object cellValue, final Boolean bold, boolean borderTop, boolean borderRight, boolean borderBottom, boolean borderLeft) {
+    addCell(index, cellValue);
+    XSSFCellStyle style = setStandarCellStyle(cellValue, getCellBorderStyle(borderTop, borderRight, borderBottom, borderLeft));
+    if (bold) style.setFont(headerFont);
+    currentCell.setCellStyle(style);
+  }
+  
+  public Row createRow() {
+    currentRow = ExcelUtil.createNewRow(workbook);
+    return currentRow;
+  }
+  
+  /**
+   * Zero based index 
+   */
+  public Row setRow(Integer indexRow) {
+    currentRow = getActiveSheet().getRow(indexRow);
+    return currentRow;
+  }
+  
+  public Integer getCurrentRowIndex() {
+    return currentRow.getRowNum();
+  }
+  
+  public void addEmptyRow() {
+    ExcelUtil.createNewRow(workbook);
+  }
+
+  public void addStandardColumnHeaders(final String... headerTitles) {
+	Row row = createRow();
+    for (int i = 0; i < headerTitles.length; i++) {
+      Cell cell = row.createCell(i);
+      cell.setCellStyle(tableHeaderStyle);
+      cell.setCellValue(headerTitles[i]);
+    }
+  }
+
+  public void addStandardReportFooter() {
+
+    addEmptyRow();
+    
+    Row row = createRow();
+    Cell cell = row.createCell(0);
+    cell.setCellStyle(cellStyleAlignLeft);
+    cell.setCellValue("Dicetak oleh : " + CurrentUser.getUsername());
+  }
+
+  public void addStandardReportHeader() {
+    Row row = createRow();
+    Cell cell = row.createCell(0);
+    cell.setCellStyle(cellStyleAlignLeft);
+    cell.setCellValue(companyName);
+
+    cell = row.createCell(numberOfColumns - 1);
+    cell.setCellStyle(cellStyleAlignRight);
+    cell.setCellValue(serviceId);
+
+    row = ExcelUtil.createNewRow(workbook);
+    cell = row.createCell(0);
+    cell.setCellStyle(cellStyleAlignLeft);
+    cell.setCellValue(reportTitle);
+
+    cell = row.createCell(numberOfColumns - 1);
+    cell.setCellStyle(cellStyleAlignRight);
+    cell.setCellValue(TimeUtil.convertDateToString(TimeUtil.getSystemDateTime(), "dd-MM-yyyy / HH:mm:ss"));
+
+    addEmptyRow();
+  }
+
+  public Base64StringEncodedPojo generateAsBase64() {
+	// mengapa di autoSizeColumn ??  
+    //ExcelUtil.autoSizeColumn(workbook, 0, numberOfColumns);
+    return ExcelUtil.generateXlsxFileAsBase64String(workbook);
+  }
+  
+  public XSSFSheet getDefaultSheetByName() {
+	  return workbook.getSheet(defaultSheetName);
+  }
+
+  private Sheet getActiveSheet() {
+    return workbook.getSheetAt(workbook.getActiveSheetIndex());
+  }
+
+  private void setCellValue(Cell cell, final Object cellValue) {
+    if (cellValue instanceof Integer) {
+      cell.setCellValue((Integer) cellValue);
+    }
+    else if (cellValue instanceof Double) {
+      cell.setCellValue((Double) cellValue);
+    }
+    else if (cellValue instanceof Date) {
+      cell.setCellValue((Date) cellValue);
+    }
+    else {
+      cell.setCellValue((String) cellValue);
+    }
+  }
+  
+  private XSSFCellStyle setStandarCellStyle(final Object cellValue, XSSFCellStyle style) {
+    if (cellValue instanceof Integer) {
+      XSSFDataFormat format = workbook.createDataFormat();
+      style.setAlignment(HorizontalAlignment.RIGHT);
+      style.setDataFormat(format.getFormat("#,##0"));
+    }
+    else if (cellValue instanceof Double) {
+      XSSFDataFormat format = workbook.createDataFormat();
+      style.setAlignment(HorizontalAlignment.RIGHT);
+      style.setDataFormat(format.getFormat("#,##0.00"));
+    }
+    else if (cellValue instanceof Date) {
+      style.setAlignment(HorizontalAlignment.LEFT);
+    }
+    else {
+      style.setAlignment(HorizontalAlignment.LEFT);
+    }
+    style.setWrapText(true);
+    
+    return style;
+  }
+
+  private void setStandardCellStyle(Cell cell, final Object cellValue, final Boolean bold, final Boolean center, final Boolean border) {
+
+      if (cellValue instanceof Integer) {
+        cell.setCellStyle(cellStyleNumberInteger);
+      }
+      else if (cellValue instanceof Double) {
+        cell.setCellStyle(cellStyleNumberDouble);
+      }
+      else if (cellValue instanceof Date) {
+        cell.setCellStyle(cellStyleAlignCenter);
+      }
+      else {
+        cell.setCellStyle(cellStyleAlignLeft);
+      }
+      
+      CellStyle style = workbook.createCellStyle();
+      style.cloneStyleFrom(cell.getCellStyle());
+      if(bold) {
+        style.setFont(headerFont);
+      }
+      
+      if(center) {
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+      }
+      
+      if(border) {
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+      }
+      cell.setCellStyle(style);
+  }
+  
+  /**
+   * Custom cell
+   * @param cell
+   * @param cellValue
+   * @param bold 
+   * @param italic
+   * @param underline
+   * @param border -> jika true maka semua sisi di border, jika false sesuai parameter sisi border
+   * @param borderType -> THIN, THICK, DOUBLE, DASHED, DOTTED (jika tidak diisi default THIN)
+   * @param borderTop
+   * @param borderBottom
+   * @param borderLeft
+   * @param borderRight
+   * @param custom - jika bernilai true maka akan menjalankan horizontal dan vertical aligment
+   * @param horizontalAlignment -> CENTER, LEFT, RIGHT
+   * @param verticalAligment -> CENTER, TOP, BOTTOM
+   */
+  private void setCustomCellStyle(Cell cell, 
+		  						  final Object cellValue, 
+		  						  final Boolean bold, 
+		  						  final Boolean italic, 
+		  						  final Boolean underline,
+		  						  final Boolean border, 
+		  						  final String borderType,
+		  						  final Boolean borderTop,
+		  						  final Boolean borderBottom,
+		  						  final Boolean borderLeft,
+		  						  final Boolean borderRight,
+		  						  final Boolean custom, 
+		  						  final String horizontalAligment, 
+		  						  final String verticalAligment) {
+
+      if (cellValue instanceof Integer) {
+        cell.setCellStyle(cellStyleNumberInteger);
+      }
+      else if (cellValue instanceof Double) {
+        cell.setCellStyle(cellStyleNumberDouble);
+      }
+      else if (cellValue instanceof Date) {
+        cell.setCellStyle(cellStyleAlignCenter);
+      }
+      else {
+        cell.setCellStyle(cellStyleAlignLeft);
+      }
+      
+      CellStyle style = workbook.createCellStyle();
+      style.cloneStyleFrom(cell.getCellStyle());
+      
+      setFontCustom(bold, italic, underline);
+      style.setFont(customFont);
+      
+      if(custom) {
+    	  if(horizontalAligment.trim().equals(BaseConstants.HORIZONTAL_ALIGN_CENTER)) {
+    		  style.setAlignment(HorizontalAlignment.CENTER);
+    	  }
+    	  else if(horizontalAligment.trim().equals(BaseConstants.HORIZONTAL_ALIGN_LEFT)) {
+    		  style.setAlignment(HorizontalAlignment.LEFT);
+    	  }
+    	  else if(horizontalAligment.trim().equals(BaseConstants.HORIZONTAL_ALIGN_RIGHT)) {
+    		  style.setAlignment(HorizontalAlignment.RIGHT);
+    	  }
+        
+    	  if(verticalAligment.trim().equals(BaseConstants.VERTICAL_ALIGN_CENTER)) {
+    		  style.setVerticalAlignment(VerticalAlignment.CENTER);
+    	  }
+    	  else if(verticalAligment.trim().equals(BaseConstants.VERTICAL_ALIGN_TOP)) {
+    		  style.setVerticalAlignment(VerticalAlignment.TOP);
+    	  }
+    	  else if(verticalAligment.trim().equals(BaseConstants.VERTICAL_ALIGN_BOTTOM)) {
+    		  style.setVerticalAlignment(VerticalAlignment.BOTTOM);
+    	  }
+      
+      }
+      
+
+      BorderStyle borderStyle = getBorderStyle(borderType);
+      
+      if(border) {
+  
+        style.setBorderTop(borderStyle);
+        style.setBorderRight(borderStyle);
+        style.setBorderBottom(borderStyle);
+        style.setBorderLeft(borderStyle);
+      }
+      else {
+    	  if(borderTop) {
+    		  style.setBorderTop(borderStyle);
+    	  }
+    	  if(borderBottom) {
+    		  style.setBorderBottom(borderStyle);
+    	  }
+    	  if(borderLeft) {
+    		  style.setBorderLeft(borderStyle);
+    	  }
+    	  if(borderRight) {
+    		  style.setBorderRight(borderStyle);
+    	  }
+      }
+      cell.setCellStyle(style);
+  }
+  
+  
+  private BorderStyle getBorderStyle(String borderType) {
+	  BorderStyle borderStyle = BorderStyle.THIN;
+      
+      if(borderType.trim().equals(BaseConstants.BORDER_STYLE_THIN)) {
+    	  borderStyle = BorderStyle.THIN;
+      }
+      else if(borderType.trim().equals(BaseConstants.BORDER_STYLE_THICK)) {
+    	  borderStyle = BorderStyle.THICK;
+      }
+      else if(borderType.trim().equals(BaseConstants.BORDER_STYLE_DOUBLE)) {
+    	  borderStyle = BorderStyle.DOUBLE;
+      }
+      else if(borderType.trim().equals(BaseConstants.BORDER_STYLE_DASHED)) {
+    	  borderStyle = BorderStyle.DASHED;
+      }
+      else if(borderType.trim().equals(BaseConstants.BORDER_STYLE_DOTTED)) {
+    	  borderStyle = BorderStyle.DOTTED; 
+      }
+      else if(borderType.trim().equals(BaseConstants.BORDER_STYLE_MEDIUM)) {
+    	  borderStyle = BorderStyle.MEDIUM; 
+      }
+      
+      return borderStyle;
+  }
+  
+  public XSSFWorkbook getWorkbook() {
+	  return workbook;
+  }
+  
+  public Font getColumnHeaderFont() {
+	  return headerFont;
+  }
+}

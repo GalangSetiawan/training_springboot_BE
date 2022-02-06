@@ -1,0 +1,185 @@
+package co.id.sofcograha.domain.invoicing.masters.skemaharga.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.entities.ESkemaHargaDetail;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.entities.ESkemaHargaHeader;
+
+@JsonInclude(Include.ALWAYS)
+public class SkemaHargaDetail {
+	
+	public String id;
+	public Integer nourut;
+    public String kltrf;
+	public Integer min;
+	public Integer max;
+	public Double harga;
+	public Long version;  
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+	
+	// untuk keperluan matching error message di front end (bila input di grid)
+	public String keyIn;
+
+	// untuk penanda apakah detail ini tertandai delete (dari front end)
+	public boolean isSelect;
+	
+	public SkemaHargaHeader header;
+
+	// Untuk menampung message error di grid
+	public ArrayList<Message> errorMsg;
+	
+	public ESkemaHargaDetail toEntity() {
+		
+		ESkemaHargaDetail entity = new ESkemaHargaDetail();
+		
+		entity.setId(id);
+		entity.setNourut(nourut);
+		entity.setKltrf(kltrf);
+		entity.setMin(min);
+		entity.setMax(max);
+		entity.setHarga(harga);
+		entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+		
+		if (header != null && !StringUtils.isEmpty(header.id)) {
+			ESkemaHargaHeader entityRef = new ESkemaHargaHeader();
+		
+			entityRef.setId(header.id);
+			entityRef.setVersion(header.version);
+		
+			entity.setHeader(entityRef);
+		
+		} else {
+			entity.setHeader(null);
+		}
+	  
+		return entity;
+	}
+		
+	public static List<ESkemaHargaDetail> toEntities(final List<SkemaHargaDetail> pojos) {
+		List<ESkemaHargaDetail> entities = new ArrayList<ESkemaHargaDetail>();
+		for (SkemaHargaDetail pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static SkemaHargaDetail fromEntity(ESkemaHargaDetail entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static SkemaHargaDetail fromEntity(ESkemaHargaDetail entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static SkemaHargaDetail fromEntity(ESkemaHargaDetail entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		SkemaHargaDetail pojo = new SkemaHargaDetail();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.nourut = entity.getNourut();
+			pojo.kltrf = entity.getKltrf();
+			pojo.min = entity.getMin();
+			pojo.max = entity.getMax();
+			pojo.harga = entity.getHarga();
+			
+			pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+			
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+			}
+			
+			pojo.isSelect = false;
+		}
+				
+		return pojo;
+	}
+	
+	public static List<SkemaHargaDetail> fromEntities(List<ESkemaHargaDetail> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<SkemaHargaDetail> fromEntities(final List<ESkemaHargaDetail> entities, int depthLevel) {
+		return fromEntities(entities, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<SkemaHargaDetail> fromEntities(List<ESkemaHargaDetail> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<SkemaHargaDetail> pojos = new ArrayList<>();
+		
+		for (ESkemaHargaDetail entity : entities) {
+			pojos.add(SkemaHargaDetail.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}

@@ -1,0 +1,127 @@
+package co.id.sofcograha.base.master.helpInfo.entities;
+
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import co.id.sofcograha.base.exceptions.DevException;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(schema="public", name="std_scr_info_detail", uniqueConstraints = @UniqueConstraint(columnNames = { "id_scr_info_header", "nourut" }))
+@JsonIgnoreProperties(ignoreUnknown=true)
+public class EStdInfoDetail implements Cloneable {
+	
+	@Id
+	@Column(name = "id_scr_info_detail")
+	private String id;
+	
+	@Column(name = "nourut")
+	private Integer nourut;
+  
+	@Column(name = "keterangan")
+	private String keterangan;
+  
+	@Column(name = "atribut")
+	private String atribut;
+  
+	@Column(name = "filename")
+	private String filename;
+  
+	@Version
+	@Column(name = "version")
+	private Long version;
+  
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "id_scr_info_header")
+	private EStdInfoHeader header;  
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Integer getNourut() {
+		return nourut;
+	}
+
+	public void setNourut(Integer nourut) {
+		this.nourut = nourut;
+	}
+
+	public String getKeterangan() {
+		return keterangan;
+	}
+
+	public void setKeterangan(String keterangan) {
+		this.keterangan = keterangan;
+	}
+
+	public String getAtribut() {
+		return atribut;
+	}
+
+	public void setAtribut(String atribut) {
+		this.atribut = atribut;
+	}
+
+	public String getFilename() {
+		return filename;
+	}
+
+	public void setFilename(String filename) {
+		this.filename = filename;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public EStdInfoHeader getHeader() {
+		return header;
+	}
+
+	public void setHeader(EStdInfoHeader header) {
+		this.header = header;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+
+	@PrePersist
+	private void prePersist() {
+
+		this.id = UUID.randomUUID().toString();
+    
+	}
+
+	@PreUpdate
+	private void preUpdate() {
+	}
+}

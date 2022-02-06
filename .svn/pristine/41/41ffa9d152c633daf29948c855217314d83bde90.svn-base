@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.saldo.deposit.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.entities.ESaldoDepositDetailKurang;
+
+@Repository
+public class ESaldoDepositDetailKurangRepository extends SimpleJpaRepository<ESaldoDepositDetailKurang, String> {
+
+	protected final EntityManager em;
+
+	public ESaldoDepositDetailKurangRepository(EntityManager em) {
+		super(ESaldoDepositDetailKurang.class, em);
+		this.em = em;
+	}
+	
+	public ESaldoDepositDetailKurang findByBK(String idSi001, String idTi001) {
+		
+		String query = "SELECT e FROM ESaldoDepositDetailKurang e " + 
+                       "WHERE e.header.id = :idSi001 And " +
+  	                         "e.invoice.id = :idTi001";
+		
+		try {
+			return em.createQuery(query, ESaldoDepositDetailKurang.class)
+					 .setParameter("idSi001", idSi001)
+					 .setParameter("idTi001", idTi001)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ESaldoDepositDetailKurang getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<ESaldoDepositDetailKurang> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ESaldoDepositDetailKurang> search = new HqlSimpleSearchBuilder<>(ESaldoDepositDetailKurang.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ESaldoDepositDetailKurang add(ESaldoDepositDetailKurang entity) {
+		return save(entity);
+	}
+
+	public ESaldoDepositDetailKurang edit(ESaldoDepositDetailKurang entity) {
+		return save(entity);
+	}
+}

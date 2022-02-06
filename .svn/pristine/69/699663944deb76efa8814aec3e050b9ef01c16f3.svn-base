@@ -1,0 +1,162 @@
+package co.id.sofcograha.base.queue.processstatus.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.pojos.UserInfo;
+import co.id.sofcograha.base.queue.common.QueueConstants;
+import co.id.sofcograha.base.queue.process.entities.EProcess;
+import co.id.sofcograha.base.queue.process.pojos.ProcessPojo;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.utils.pojos.PojoUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class ProcessStatusPojo {
+	
+	private static final long serialVersionUID = -4590620968147623489L;
+	
+	public String id;
+	public Long version;
+	public String processNumber;
+	public ProcessPojo process;
+	public Date startDate;
+	public Date processDate;
+	public Date endDate;
+	public UserInfo user;
+	public String status;
+	public String description;
+	
+	public List<ProcessStatusDetailPojo> detailProcessStatus;
+	
+	public EProcessStatus toEntity() {
+		EProcessStatus entity = new EProcessStatus();
+		
+		entity.setId(id);
+		entity.setVersion(version);		
+		entity.setProcessNumber(processNumber);
+		entity.setStartDate(startDate);
+		entity.setProcessDate(processDate);
+		entity.setEndDate(endDate);
+		entity.setStatus(PojoUtil.string2Enum(status, QueueConstants.Status.class));
+		entity.setDescription(description);
+		
+		if (process != null && !StringUtils.isEmpty(process.id)) {
+			EProcess eProcess = new EProcess();
+			
+			eProcess.setId(process.id);
+			eProcess.setVersion(process.version);
+			
+			entity.setProcess(eProcess);
+			
+		} else {
+			entity.setProcess(null);
+		}
+		
+		if (user != null && !StringUtils.isEmpty(user.id)) {
+			EUser eUser = new EUser();
+			
+			eUser.setId(user.id);
+			//eUser.setVersion(user.version);
+			
+			entity.setUser(eUser);
+			
+		} else {
+			entity.setUser(null);
+		}
+
+		return entity;
+	}
+	
+	public static List<EProcessStatus> toEntities(List<ProcessStatusPojo> pojos) {
+	    if (pojos == null) return null;
+
+	    List<EProcessStatus> entities = new ArrayList<EProcessStatus>();
+	    for (ProcessStatusPojo pojo : pojos) {
+	      entities.add(pojo.toEntity());
+	    }
+
+	    return entities;
+	  }
+	
+	public static ProcessStatusPojo fromEntity(EProcessStatus entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, 1);
+	}
+
+	public static ProcessStatusPojo fromEntity (EProcessStatus entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, 1);
+	}
+	
+	public static ProcessStatusPojo fromEntity(EProcessStatus entity, int depthLevel, int detailDepthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		ProcessStatusPojo pojo = new ProcessStatusPojo();
+
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.version = entity.getVersion();
+			pojo.processNumber = entity.getProcessNumber();
+			pojo.process = ProcessPojo.fromEntity(entity.getProcess(), depthLevel);
+			pojo.startDate = entity.getStartDate();
+			pojo.processDate = entity.getProcessDate();
+			pojo.endDate = entity.getEndDate();
+			pojo.user = UserInfo.fromEntity(entity.getUser(), depthLevel);
+			pojo.status = entity.getStatus().name();
+			pojo.description = entity.getDescription();
+			
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+				pojo.detailProcessStatus = ProcessStatusDetailPojo.fromEntities(entity.getDetailProcessStatus(), depthLevel + 1, detailDepthLevel);
+			}
+		}
+		return pojo;
+	}
+	
+	public static List<ProcessStatusPojo> fromEntities(List<EProcessStatus> entities) {
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<ProcessStatusPojo> fromEntities(List<EProcessStatus> entities, int depthLevel, int detailDepthLevel) {
+		if (entities == null) return new ArrayList<ProcessStatusPojo>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<ProcessStatusPojo> pojos = new ArrayList<ProcessStatusPojo>();
+		for(EProcessStatus entity: entities) {
+			pojos.add(ProcessStatusPojo.fromEntity(entity));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("processNumber", "processNumber"));
+		//mappings.add(new SearchFieldMapping("processId", "process.id").searchOnly());
+		mappings.add(new SearchFieldMapping("processId", "processId").searchOnly());
+		mappings.add(new SearchFieldMapping("processCode", "process.processCode").searchOnly());
+		mappings.add(new SearchFieldMapping("startDate", "startDate", Date.class));
+		mappings.add(new SearchFieldMapping("processDate", "processDate", Date.class));
+		mappings.add(new SearchFieldMapping("endDate", "endDate", Date.class));
+		mappings.add(new SearchFieldMapping("userId", "user.id").searchOnly());
+		mappings.add(new SearchFieldMapping("status", "status", QueueConstants.Status.class));
+		mappings.add(new SearchFieldMapping("description", "description"));
+		
+		return mappings;
+	}
+}

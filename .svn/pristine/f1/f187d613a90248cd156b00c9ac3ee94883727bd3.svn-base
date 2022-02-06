@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.transaksi.implementasiTraining.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.implementasiTraining.entities.EImplementasiTrainingDetailImplementasi;
+
+@Repository
+public class EImplementasiTrainingDetailImplementasiRepository extends SimpleJpaRepository<EImplementasiTrainingDetailImplementasi, String> {
+
+	protected final EntityManager em;
+
+	public EImplementasiTrainingDetailImplementasiRepository(EntityManager em) {
+		super(EImplementasiTrainingDetailImplementasi.class, em);
+		this.em = em;
+	}
+	
+	public EImplementasiTrainingDetailImplementasi findByBK(String idTi050, Integer nourut) {
+		
+		String query = "SELECT e FROM EImplementasiTrainingDetailImplementasi e " + 
+                       "WHERE e.header.id = :idTi050 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EImplementasiTrainingDetailImplementasi.class)
+					 .setParameter("idTi050", idTi050)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EImplementasiTrainingDetailImplementasi getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EImplementasiTrainingDetailImplementasi> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EImplementasiTrainingDetailImplementasi> search = new HqlSimpleSearchBuilder<>(EImplementasiTrainingDetailImplementasi.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EImplementasiTrainingDetailImplementasi add(EImplementasiTrainingDetailImplementasi entity) {
+		return save(entity);
+	}
+
+	public EImplementasiTrainingDetailImplementasi edit(EImplementasiTrainingDetailImplementasi entity) {
+		return save(entity);
+	}
+}

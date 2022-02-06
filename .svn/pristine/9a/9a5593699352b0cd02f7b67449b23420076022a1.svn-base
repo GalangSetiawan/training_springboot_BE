@@ -1,0 +1,143 @@
+package co.id.sofcograha.domain.invoicing.admin.freemonth.repositories;
+
+import java.math.BigInteger;
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.Query;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.diskon.entities.EAdminDiskon;
+import co.id.sofcograha.domain.invoicing.admin.freemonth.entities.EAdminFreemonth;
+
+@Repository
+public class EAdminFreemonthRepository extends SimpleJpaRepository<EAdminFreemonth, String> {
+
+	protected final EntityManager em;
+
+	public EAdminFreemonthRepository(EntityManager em) {
+		super(EAdminFreemonth.class, em);
+		this.em = em;
+	}
+	
+	public EAdminFreemonth findByBK(String tahun, String bulan, String idMi010, String idMi001) {
+		
+		String query = "SELECT e FROM EAdminFreemonth e " + 
+					   "WHERE e.tahun = :tahun And " +
+				             "e.bulan = :bulan And " +
+				             "e.customer.id = :idMi010 And " +
+      			             "e.produk.id = :idMi001";
+
+		try {
+			return em.createQuery(query, EAdminFreemonth.class)
+					.setParameter("tahun", tahun)
+					.setParameter("bulan", bulan)
+					.setParameter("idMi010", idMi010)
+					.setParameter("idMi001", idMi001)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+
+	}
+
+	public List<EAdminFreemonth> findPenggunaanFreemonth(String idMi010, String idMi001, Integer nomst) {
+		
+		String query = "SELECT e FROM EAdminFreemonth e " + 
+					   "WHERE e.customer.id = :idMi010 And " +
+				             "e.produk.id = :idMi001 And " +
+				             "e.nomst = :nomst";
+
+		try {
+			return em.createQuery(query, EAdminFreemonth.class)
+					.setParameter("idMi010", idMi010)
+					.setParameter("idMi001", idMi001)
+					.setParameter("nomst", nomst)
+					.getResultList();
+		} catch (NoResultException e) {
+			return null;
+		}
+
+	}
+
+    @SuppressWarnings("unchecked")
+	public Integer getJumFreemonthBdskNourutMaster(String idMi010, String idMi001, Integer nomst) {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select count(*) as jumlah " + 
+        		                  "from ai006 a " + 
+        		                  "where a.id_mi010 = :idMi010 and " + 
+        		                  "      a.id_mi001 = :idMi001 and " + 
+        		                  "      a.nomst = :nomst"); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString());
+        
+        query.setParameter("idMi010", idMi010);
+        query.setParameter("idMi001", idMi001);
+        query.setParameter("nomst", nomst);
+        
+        List<BigInteger> list = query.getResultList();
+
+        if (!list.isEmpty()) {
+        	return ((BigInteger) list.get(0)).intValue();
+        } else {
+        	return null;
+        }
+    }
+	
+	public EAdminFreemonth getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EAdminFreemonth> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EAdminFreemonth> search = new HqlSimpleSearchBuilder<>(EAdminFreemonth.class, em);
+
+		String tahun = (String) searchParameter.getValueFromMappedParam("tahun");
+		String bulan = (String) searchParameter.getValueFromMappedParam("bulan");
+		String customer = (String) searchParameter.getValueFromMappedParam("customer");
+		String produk = (String) searchParameter.getValueFromMappedParam("produk");
+
+		if (!QueryUtil.isAll(tahun)) {
+            search.addWhere("AND LOWER(tahun) LIKE LOWER(:tahun) ");
+            search.addParameter("tahun", QueryUtil.formatStringForLikeFilter(tahun));
+        }
+
+	    if (!QueryUtil.isAll(bulan)) {
+	      search.addWhere("AND LOWER(bulan) LIKE LOWER(:bulan) ");
+	      search.addParameter("bulan", QueryUtil.formatStringForLikeFilter(bulan));
+	    }
+
+		if (!QueryUtil.isAll(customer)) {
+            search.addWhere("AND LOWER(customer.nama) LIKE LOWER(:customer) ");
+            search.addParameter("customer", QueryUtil.formatStringForLikeFilter(customer));
+        }
+
+		if (!QueryUtil.isAll(produk)) {
+            search.addWhere("AND LOWER(produk.nama) LIKE LOWER(:produk) ");
+            search.addParameter("produk", QueryUtil.formatStringForLikeFilter(produk));
+        }
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EAdminFreemonth add(EAdminFreemonth entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+
+	public EAdminFreemonth edit(EAdminFreemonth entity) {
+		return save(entity);
+	}
+}

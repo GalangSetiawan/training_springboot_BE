@@ -1,0 +1,146 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.services;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+
+import org.apache.poi.ss.usermodel.Row;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import co.id.sofcograha.base.exceptions.CustomMultiUpdateException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.ExcelTemplateUtil;
+import co.id.sofcograha.domain.invoicing.proses.upload.pojos.UploadModel;
+
+@Service
+public class CompositeUploadService extends BaseService {
+  
+  @Autowired
+  private ExcelTemplateUtil excel;  
+
+  private static String JenisPerkiraanCell = "B1";
+
+  // download template xlsx
+//  public UploadTemplate download(HttpServletResponse response) {
+//    String fileName = "mst_jenis_perkiraan.xlsx";
+//    FileInputStream templateFile = FileGenerator.getFileInputStream(fileName);
+//    excel.init(fileName, templateFile, getTemplateHeaders());
+//
+//    byte[] byteFiles = FileGenerator.generateExcelFile(response, fileName, excel.getWorkbook());
+//    
+//    UploadTemplate entity = new UploadTemplate();
+//    entity.fileExtension = FileGenerator.CONTENT_TYPE_EXCEL_XLSX;
+//    entity.fileName = fileName;
+//    entity.file = Base64.getEncoder().encodeToString(byteFiles);
+//
+//    return entity;
+//  }
+  
+  // prinsipnya ini hanya untuk memvalidasi bahwa header di file excel yang digunakan valid (sama dengan daftar di bawah ini)
+  private ArrayList<String> getTemplateHeaders() {
+	  ArrayList<String> headerList = new ArrayList<>();
+	  headerList.add("Akun *");
+	  headerList.add("NPWP *");
+	  headerList.add("Jumlah Karyawan *");
+	  headerList.add("Jumlah Non Karyawan *");
+	  return headerList;
+  }
+  
+  /*
+  @Transactional
+  public int uploadExcel(MultipartFile file) {
+    excel.init(file, getTemplateHeaders());
+
+    CustomMultiUpdateException cmue = new CustomMultiUpdateException();
+    boolean hasErrors = false;
+    int rowNum = 0;
+    int uploadedData = 0;
+
+    Iterator<Row> dataRowIterator = excel.getDataIterator();
+    String prevKetjenac = "";
+    //EJenisSubPerkiraanHeader entityHeader = null;
+    
+    while (dataRowIterator.hasNext()) {
+      Row dataRow = dataRowIterator.next();
+      uploadedData++;
+      rowNum = dataRow.getRowNum() + 1;
+      try {
+        String akun = excel.getCellStringValue(dataRow, "Akun *");
+        String npwp = excel.getCellStringValue(dataRow, "NPWP *");
+        Integer jumkar = Integer.valueOf(excel.getCellStringValueFromNumberCell(dataRow, "Jumlah Karyawan *"));
+        Integer jumnkar = Integer.valueOf(excel.getCellStringValueFromNumberCell(dataRow, "Jumlah Non Karyawan *"));
+        throwBatchError();  // untuk men-throw error terkait pemeriksaan ada tidaknya nilai dari masing-masing cell yg diambil 
+
+        System.out.println(akun + " " + npwp + " " + jumkar + " " + jumnkar);
+        
+      } catch (Exception e) {
+        hasErrors = true;
+        multiUpdateErrorHandling(cmue, rowNum, e);
+      }
+    }
+    if (hasErrors)
+      throw cmue;
+    return uploadedData;
+  }
+  */
+  
+  @Transactional
+  public List<UploadModel> uploadExcel(MultipartFile file) {
+    excel.init(file, getTemplateHeaders());
+
+    CustomMultiUpdateException cmue = new CustomMultiUpdateException();
+    boolean hasErrors = false;
+    int rowNum = 0;
+    int uploadedData = 0;
+
+    Iterator<Row> dataRowIterator = excel.getDataIterator();
+    String prevKetjenac = "";
+    //EJenisSubPerkiraanHeader entityHeader = null;
+    
+    List<UploadModel> result = new ArrayList<>();
+    
+    while (dataRowIterator.hasNext()) {
+      Row dataRow = dataRowIterator.next();
+      uploadedData++;
+      rowNum = dataRow.getRowNum() + 1;
+      try {
+        String akun = excel.getCellStringValue(dataRow, "Akun *");
+        String npwp = excel.getCellStringValue(dataRow, "NPWP *");
+        Integer jumkar = Integer.valueOf(excel.getCellStringValueFromNumberCell(dataRow, "Jumlah Karyawan *"));
+        Integer jumnkar = Integer.valueOf(excel.getCellStringValueFromNumberCell(dataRow, "Jumlah Non Karyawan *"));
+        throwBatchError();  // untuk men-throw error terkait pemeriksaan ada tidaknya nilai dari masing-masing cell yg diambil 
+
+        /* pemeriksaaan ada isinya atau tidak sudah ada di method excel.getCellStringValue
+           bila mau ada error tambahan, letakkan di sini dengan cara :
+		batchError("upload.jenis.subperkiraan.be.error.03", rowNum);
+        throwBatchError();
+        */
+
+        System.out.println(akun + " " + npwp + " " + jumkar + " " + jumnkar);
+        
+        UploadModel uploadModel = new UploadModel();
+        uploadModel.namaCustomer = "";
+        uploadModel.akun = akun;
+        uploadModel.NPWP = npwp;
+        uploadModel.jumkar = jumkar;
+        uploadModel.jumnkar = jumnkar;
+        uploadModel.tgbill = new Date();
+        
+        result.add(uploadModel);
+
+      } catch (Exception e) {
+        hasErrors = true;
+        multiUpdateErrorHandling(cmue, rowNum, e);
+      }
+    }
+    if (hasErrors)
+      throw cmue;
+    
+//    return uploadedData;
+    return result;
+  }
+}

@@ -1,0 +1,182 @@
+package co.id.sofcograha.base.master.company.entities;
+
+import java.util.Date;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.exceptions.DevException;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(name="std_company_logo", uniqueConstraints = @UniqueConstraint(columnNames = { "std_company_id", "order_number" }))
+@JsonIgnoreProperties(ignoreUnknown=true)
+public class ECompanyLogo {
+	
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@Version
+	@Column(name = "version")
+	private Long version;
+
+	@OneToOne
+	@JoinColumn(name = "std_company_id")
+	private ECompany company;
+
+	@Column(name = "order_number")
+	private Integer orderNumber;
+
+	@Column(name = "file_extension")
+	private String fileExtension;
+
+	@Column(name = "file_name")
+	private String fileName;
+
+	@Column(name = "file_size")
+	private Integer fileSize;
+
+	@Column(name = "file", columnDefinition="BYTEA")
+	private Byte[] file;
+
+	@Column(name = "user_create")
+	private String userCreate;
+
+	@Column(name = "creation_time")
+	private Date creationTime;
+
+	@Column(name = "user_modify")
+	private String userModify;
+
+	@Column(name = "modification_time")
+	private Date modificationTime;
+
+	public ECompany getCompany() {
+		return company;
+	}
+
+	public void setCompany(ECompany company) {
+		this.company = company;
+	}
+
+	public Integer getOrderNumber() {
+		return orderNumber;
+	}
+
+	public void setOrderNumber(Integer orderNumber) {
+		this.orderNumber = orderNumber;
+	}
+
+	public String getFileExtension() {
+		return fileExtension;
+	}
+
+	public void setFileExtension(String fileExtension) {
+		this.fileExtension = fileExtension;
+	}
+
+	public String getFileName() {
+		return fileName;
+	}
+
+	public void setFileName(String fileName) {
+		this.fileName = fileName;
+	}
+
+	public Integer getFileSize() {
+		return fileSize;
+	}
+
+	public void setFileSize(Integer fileSize) {
+		this.fileSize = fileSize;
+	}
+
+	public Byte[] getFile() {
+		return file;
+	}
+
+	public void setFile(Byte[] file) {
+		this.file = file;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public String getUserCreate() {
+		return userCreate;
+	}
+
+	public void setUserCreate(String userCreate) {
+		this.userCreate = userCreate;
+	}
+
+	public Date getCreationTime() {
+		return creationTime;
+	}
+
+	public void setCreationTime(Date creationTime) {
+		this.creationTime = creationTime;
+	}
+
+	public String getUserModify() {
+		return userModify;
+	}
+
+	public void setUserModify(String userModify) {
+		this.userModify = userModify;
+	}
+
+	public Date getModificationTime() {
+		return modificationTime;
+	}
+
+	public void setModificationTime(Date modificationTime) {
+		this.modificationTime = modificationTime;
+	}
+	
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+	
+	@PrePersist
+	private void prePersist() {
+		Date currentDateTime = new Date();
+		
+		this.id = UUID.randomUUID().toString();
+		this.userCreate = CurrentUser.getUsername();
+		this.creationTime = currentDateTime;
+		this.userModify = CurrentUser.getUsername();
+		this.modificationTime = currentDateTime;
+	}
+}

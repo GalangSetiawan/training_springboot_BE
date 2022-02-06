@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.transaksi.tagihanTerjadwal.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.tagihanTerjadwal.entities.ETagihanTerjadwalDetailImplementasi;
+
+@Repository
+public class ETagihanTerjadwalDetailImplementasiRepository extends SimpleJpaRepository<ETagihanTerjadwalDetailImplementasi, String> {
+
+	protected final EntityManager em;
+
+	public ETagihanTerjadwalDetailImplementasiRepository(EntityManager em) {
+		super(ETagihanTerjadwalDetailImplementasi.class, em);
+		this.em = em;
+	}
+	
+	public ETagihanTerjadwalDetailImplementasi findByBK(String idTi050, Integer nourut) {
+		
+		String query = "SELECT e FROM ETagihanTerjadwalDetailImplementasi e " + 
+                       "WHERE e.header.id = :idTi050 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, ETagihanTerjadwalDetailImplementasi.class)
+					 .setParameter("idTi050", idTi050)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ETagihanTerjadwalDetailImplementasi getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<ETagihanTerjadwalDetailImplementasi> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ETagihanTerjadwalDetailImplementasi> search = new HqlSimpleSearchBuilder<>(ETagihanTerjadwalDetailImplementasi.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ETagihanTerjadwalDetailImplementasi add(ETagihanTerjadwalDetailImplementasi entity) {
+		return save(entity);
+	}
+
+	public ETagihanTerjadwalDetailImplementasi edit(ETagihanTerjadwalDetailImplementasi entity) {
+		return save(entity);
+	}
+}

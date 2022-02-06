@@ -1,0 +1,50 @@
+package co.id.sofcograha.base.master.menu.pojos;
+
+import java.util.ArrayList;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.master.menu.entities.EMenu;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class Menu {
+
+	public String id;
+	public String menuCode;
+	public String label;
+	public String icon;
+	public String path;
+	public String component;
+	public String breadcrumb;
+	
+	public ArrayList<Menu> subMenus;
+
+//	public static Menu fromEntity(EMenu entity, int depthLevel) {
+	public static Menu fromEntity(EMenu entity) {
+		if (entity == null)
+			return null;
+		
+//		if (depthLevel < 0)
+//			depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+
+		Menu pojo = new Menu();
+
+//		if (depthLevel > 0) {
+//			depthLevel--;
+			
+		pojo.id = entity.getId();
+		pojo.menuCode = entity.getMenuCode();
+		pojo.label = entity.getLabel();
+		pojo.icon = entity.getIcon();
+		pojo.path = entity.getPath();
+		pojo.component = entity.getComponent();
+		pojo.breadcrumb = entity.getBreadcrumb();
+		
+		pojo.subMenus = new ArrayList<Menu>();
+//		}
+		return pojo;
+	}
+}

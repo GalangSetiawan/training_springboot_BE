@@ -1,0 +1,812 @@
+package co.id.sofcograha.domain.invoicing.report.invoice.service;
+
+import java.awt.Color;
+import java.text.ParseException;
+import java.util.Date;
+import java.util.List;
+
+import org.apache.poi.hssf.usermodel.HSSFDataFormat;
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.excel.BaseExcelService;
+import co.id.sofcograha.base.excel.TemplateExcelUtil;
+import co.id.sofcograha.base.master.company.pojos.CompanyPojo;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.services.ProdukService;
+import co.id.sofcograha.domain.invoicing.report.invoice.pojos.RptRekapCustomerPerTahun;
+
+@Service
+public class RekapPerTahunExportXlsService extends BaseExcelService {
+	
+	@Autowired private RekapInvoiceService rekapInvoiceService;
+	
+	@Autowired private ProdukService produkService;
+	
+	@Autowired private CompanyService companyService;
+  
+	public String judul = "REKAP PER TAHUN";
+	public String subJudul1 = "";
+	public String subJudul2 = "";
+	private int lastCellNumber = 24;
+  
+	private TemplateExcelUtil excel;
+
+	List<RptRekapCustomerPerTahun> data;
+
+	@Transactional
+	public Base64StringEncodedPojo exportExcel(String tahun, String idMi001) throws ParseException {
+	  
+		data = RptRekapCustomerPerTahun.fromEntities(rekapInvoiceService.prosesRekapCustomerPerTahun(tahun, idMi001));
+		
+		EProduk eProduk = produkService.get(idMi001);
+		
+		subJudul1 = "Tahun : " + tahun;
+
+		subJudul1 = "Produk : " + eProduk.getNama();
+		
+		excel = new TemplateExcelUtil(judul, "", 5);
+	      
+		header();
+		body();
+		footer();
+    
+		return excel.generateAsBase64();
+	}
+
+	@Override
+	protected void header() {
+	  
+		CompanyPojo company = CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId()));
+
+		XSSFSheet currSheet = excel.getDefaultSheetByName();
+		
+		currSheet.setColumnWidth(0, 1000); 
+		currSheet.setColumnWidth(1, 1400); 
+		currSheet.setColumnWidth(2, 10000);   // nama
+		currSheet.setColumnWidth(3, 5000);   // tahun bulan live
+		currSheet.setColumnWidth(4, 5000);   // tahun bulan stop
+		currSheet.setColumnWidth(5, 2500);   // status
+		currSheet.setColumnWidth(6, 4000);   // siklus
+		currSheet.setColumnWidth(7, 4200);   // tipe
+		currSheet.setColumnWidth(8, 4500);   // jenis tagih
+		currSheet.setColumnWidth(9, 4900);   // diskon
+		currSheet.setColumnWidth(10, 5000);   // tahun bulan next tagih
+		currSheet.setColumnWidth(11, 4500);  // jumlah karyawan terakhir
+		currSheet.setColumnWidth(12, 6000);  // nilai default bdsk jumlah kary terakhir
+		currSheet.setColumnWidth(13, 6000);  // januari
+		currSheet.setColumnWidth(14, 6000);  // pebruari
+		currSheet.setColumnWidth(15, 6000);  // maret
+		currSheet.setColumnWidth(16, 6000);  // april
+		currSheet.setColumnWidth(17, 6000);  // mei
+		currSheet.setColumnWidth(18, 6000);  // juni
+		currSheet.setColumnWidth(19, 6000);  // juli
+		currSheet.setColumnWidth(20, 6000);  // agustus
+		currSheet.setColumnWidth(21, 6000);  // september
+		currSheet.setColumnWidth(22, 6000);  // oktober
+		currSheet.setColumnWidth(23, 6000);  // november
+		currSheet.setColumnWidth(24, 6000);  // desember
+		
+		Row row = excel.createRow();
+		
+		// baris 1
+		XSSFCellStyle cellStyle = excel.getWorkbook().createCellStyle();        
+		cellStyle.setAlignment(HorizontalAlignment.LEFT);
+		cellStyle.setWrapText(false);
+		cellStyle.setShrinkToFit(false);
+
+		Cell cell1 = row.createCell(1);
+		cell1.setCellStyle(cellStyle);
+		cell1.setCellValue(company.name);
+		
+		XSSFCellStyle cellStyle2 = excel.getWorkbook().createCellStyle();        
+		cellStyle2.setAlignment(HorizontalAlignment.RIGHT);
+		cellStyle2.setWrapText(false);
+		cellStyle2.setShrinkToFit(false);
+        
+		Cell cell2 = row.createCell(lastCellNumber);
+		cell2.setCellStyle(cellStyle2);
+		cell2.setCellValue("Tanggal" + " : " + TimeUtil.convertDateToString(new Date(), "dd-MM-yyyy HH:mm:ss"));
+
+		// baris kosong
+		//excel.addEmptyRow();
+		row = excel.createRow();
+		Cell cell3 = row.createCell(1);
+		cell3.setCellStyle(excel.getStyleAlignCenter());
+		cell3.setCellValue(" ");
+		
+		excel.setMerge(2, 2, 1, lastCellNumber, false);
+
+		// baris judul
+		row = excel.createRow();
+		cell3 = row.createCell(1);
+		cell3.setCellStyle(excel.getStyleAlignCenter());
+		cell3.setCellValue(judul);
+		
+		excel.setMerge(3, 3, 1, lastCellNumber, false);
+
+		// baris sub judul 1
+		row = excel.createRow();
+		cell3 = row.createCell(1);
+		cell3.setCellStyle(excel.getStyleAlignCenter());
+		cell3.setCellValue(subJudul1);
+		
+		excel.setMerge(4, 4, 1, lastCellNumber, false);
+
+		// baris sub judul 2
+		row = excel.createRow();
+		cell3 = row.createCell(1);
+		cell3.setCellStyle(excel.getStyleAlignCenter());
+		cell3.setCellValue(subJudul2);
+		
+		excel.setMerge(5, 5, 1, lastCellNumber, false);
+
+		// baris kosong
+		excel.addEmptyRow();
+		
+	}
+  
+	@Override
+	protected void body() {
+
+		setHeaderTabel();
+        
+		int counter = 1;
+		double totalNilaiDefault = 0.0;
+		double totalJanuari = 0.0;
+		double totalPebruari = 0.0;
+		double totalMaret = 0.0;
+		double totalApril = 0.0;
+		double totalMei = 0.0;
+		double totalJuni = 0.0;
+		double totalJuli = 0.0;
+		double totalAgustus = 0.0;
+		double totalSeptember = 0.0;
+		double totalOktober = 0.0;
+		double totalNovember = 0.0;
+		double totalDesember = 0.0;
+		if (data.size() > 0) {
+			for (RptRekapCustomerPerTahun pojo : data) {
+
+				Font font = excel.getWorkbook().createFont();
+			    font.setFontHeightInPoints((short) 10);
+			    font.setFontName("Monospaced");
+				
+				XSSFCellStyle styleAlignRightInt = excel.getWorkbook().createCellStyle();
+				styleAlignRightInt.setFont(font);
+				styleAlignRightInt.setAlignment(HorizontalAlignment.RIGHT);
+				styleAlignRightInt.setWrapText(true);
+				
+				XSSFCellStyle styleAlignRight = excel.getWorkbook().createCellStyle();
+				styleAlignRight.setFont(font);
+				styleAlignRight.setAlignment(HorizontalAlignment.RIGHT);
+				styleAlignRight.setWrapText(true);
+				
+				XSSFCellStyle styleAlignLeft = excel.getWorkbook().createCellStyle();
+				styleAlignLeft.setFont(font);
+				styleAlignLeft.setAlignment(HorizontalAlignment.LEFT);
+				styleAlignLeft.setWrapText(true);
+						        
+		        if (pojo.status.trim().equals("END")) {
+		        	//styleAlignRight.setFillForegroundColor(IndexedColors.RED.getIndex());
+		        	styleAlignRight.setFillForegroundColor(new XSSFColor(Color.getHSBColor(360, 53, 53)));
+		        	styleAlignRight.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+		        	
+		        	styleAlignRight.setDataFormat(HSSFDataFormat.getBuiltinFormat("#,##0.00")); // english
+		        	//styleAlignRight.setDataFormat(HSSFDataFormat.getBuiltinFormat("#.##0,00")); // indonesian -> ngga bisa
+
+		        	styleAlignRightInt.setFillForegroundColor(new XSSFColor(Color.getHSBColor(360, 53, 53)));
+		        	styleAlignRightInt.setFillPattern(FillPatternType.SOLID_FOREGROUND);		        	
+
+		        	//styleAlignLeft.setFillForegroundColor(IndexedColors.RED.getIndex());
+		        	styleAlignLeft.setFillForegroundColor(new XSSFColor(Color.getHSBColor(360, 53, 53)));
+		        	styleAlignLeft.setFillPattern(FillPatternType.SOLID_FOREGROUND);		        	
+		        } else {
+		        	styleAlignRight.setFillForegroundColor(IndexedColors.WHITE.getIndex());
+		        	styleAlignLeft.setFillForegroundColor(IndexedColors.WHITE.getIndex());
+		        	//styleAlignRight.setFillForegroundColor(new XSSFColor(Color.getHSBColor(0, 0, 100)));
+		        	
+		        	//styleAlignRight.setFillPattern(FillPatternType.SOLID_FOREGROUND);		        	
+		        	styleAlignRight.setFillPattern(FillPatternType.NO_FILL);		        	
+		        	styleAlignRight.setDataFormat(HSSFDataFormat.getBuiltinFormat("#,##0.00")); // english
+		        	//styleAlignRight.setDataFormat(HSSFDataFormat.getBuiltinFormat("#.##0,00")); // indonesian -> ngga bisa		        	
+
+		        	//styleAlignLeft.setFillForegroundColor(new XSSFColor(Color.getHSBColor(0, 0, 100)));
+		        	styleAlignLeft.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+		        	styleAlignLeft.setFillPattern(FillPatternType.NO_FILL);
+		        }
+		        
+		        Row row = excel.createRow();
+				
+				//excel.addCell(1, counter);
+				Cell cell = row.createCell(1);
+				//cell.setCellStyle(excel.getStyleAlignLeft());
+				cell.setCellValue(counter);
+				cell.setCellStyle(styleAlignRightInt);
+				
+				cell = row.createCell(2);
+				//cell.setCellStyle(excel.getStyleAlignLeft());
+				cell.setCellValue(pojo.nama.toString());
+				cell.setCellStyle(styleAlignLeft);
+				
+				String bulanLive = "";
+				if (pojo.tglive != null) {
+					bulanLive = TimeUtil.getMonthToIndonesian(pojo.tglive) + " " + TimeUtil.getFourDigitYear(pojo.tglive);					
+				}
+				cell = row.createCell(3);
+				//cell.setCellStyle(excel.getStyleAlignLeft());
+				cell.setCellValue(bulanLive);
+				cell.setCellStyle(styleAlignLeft);
+
+				String bulanStop = "";
+				if (pojo.tgstop != null) {
+					bulanStop = TimeUtil.getMonthToIndonesian(pojo.tgstop) + " " + TimeUtil.getFourDigitYear(pojo.tgstop);					
+				}
+				cell = row.createCell(4);
+				//cell.setCellStyle(excel.getStyleAlignLeft());
+				cell.setCellValue(bulanStop);
+				cell.setCellStyle(styleAlignLeft);
+
+				cell = row.createCell(5);
+				//cell.setCellStyle(excel.getStyleAlignLeft());
+				cell.setCellValue(pojo.status);
+				cell.setCellStyle(styleAlignLeft);
+
+				cell = row.createCell(6);
+				cell.setCellStyle(excel.getStyleAlignLeft());
+				cell.setCellValue(pojo.siklus);
+				cell.setCellStyle(styleAlignLeft);
+
+				cell = row.createCell(7);
+				//cell.setCellStyle(excel.getStyleAlignLeft());
+				cell.setCellValue(pojo.tipe);
+				cell.setCellStyle(styleAlignLeft);
+
+				cell = row.createCell(8);
+				//cell.setCellStyle(excel.getStyleAlignLeft());
+				cell.setCellValue(pojo.jnstgh);
+				cell.setCellStyle(styleAlignLeft);
+
+				cell = row.createCell(9);
+				//cell.setCellStyle(excel.getStyleAlignLeft());
+				cell.setCellValue(pojo.diskon);
+				cell.setCellStyle(styleAlignLeft);
+
+				String bulanNextTagih = "";
+				if (pojo.bulanRenewal != null) {
+					bulanNextTagih = TimeUtil.getMonthToIndonesian(pojo.bulanRenewal) + " " + TimeUtil.getFourDigitYear(pojo.bulanRenewal);					
+				}
+				cell = row.createCell(10);
+				//cell.setCellStyle(excel.getStyleAlignLeft());
+				cell.setCellValue(bulanNextTagih);
+				cell.setCellStyle(styleAlignLeft);
+
+				if (pojo.lastJumkar > 0) {
+					//excel.addCell(11, pojo.lastJumkar);					
+					cell = row.createCell(11);
+					cell.setCellValue(pojo.lastJumkar);
+					cell.setCellStyle(styleAlignRightInt);
+				} else {
+					cell = row.createCell(11);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRightInt);					
+				}
+				
+				if (pojo.defaultNilai > 0) {
+					//excel.addCell(12, pojo.defaultNilai);
+					cell = row.createCell(12);
+					cell.setCellValue(pojo.defaultNilai);
+					cell.setCellStyle(styleAlignRight);
+					totalNilaiDefault = totalNilaiDefault + pojo.defaultNilai;					
+				} else {
+					cell = row.createCell(12);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				if (pojo.januari > 0) {
+					//excel.addCell(13, pojo.januari);
+					cell = row.createCell(13);
+					cell.setCellValue(pojo.januari);
+					cell.setCellStyle(styleAlignRight);					
+					totalJanuari = totalJanuari + pojo.januari;					
+				} else {
+					cell = row.createCell(13);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);					
+				}
+				
+				if (pojo.pebruari > 0) {
+					//excel.addCell(14, pojo.pebruari);
+					cell = row.createCell(14);
+					cell.setCellValue(pojo.pebruari);
+					cell.setCellStyle(styleAlignRight);					
+					totalPebruari = totalPebruari + pojo.pebruari;					
+				} else {
+					cell = row.createCell(14);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				if (pojo.maret > 0) {
+					//excel.addCell(15, pojo.maret);
+					cell = row.createCell(15);
+					cell.setCellValue(pojo.maret);
+					cell.setCellStyle(styleAlignRight);					
+					totalMaret = totalMaret + pojo.maret;					
+				} else {
+					cell = row.createCell(15);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				if (pojo.april > 0) {
+					//excel.addCell(16, pojo.april);
+					cell = row.createCell(16);
+					cell.setCellValue(pojo.april);
+					cell.setCellStyle(styleAlignRight);					
+					totalApril = totalApril + pojo.april;					
+				} else {
+					cell = row.createCell(16);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				if (pojo.mei > 0) {
+					//excel.addCell(17, pojo.mei);
+					cell = row.createCell(17);
+					cell.setCellValue(pojo.mei);
+					cell.setCellStyle(styleAlignRight);					
+					totalMei = totalMei + pojo.mei;					
+				} else {
+					cell = row.createCell(17);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				if (pojo.juni > 0) {
+					//excel.addCell(18, pojo.juni);
+					cell = row.createCell(18);
+					cell.setCellValue(pojo.juni);
+					cell.setCellStyle(styleAlignRight);					
+					totalJuni = totalJuni + pojo.juni;					
+				} else {
+					cell = row.createCell(18);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				if (pojo.juli > 0) {
+					//excel.addCell(19, pojo.juli);
+					cell = row.createCell(19);
+					cell.setCellValue(pojo.juli);
+					cell.setCellStyle(styleAlignRight);					
+					totalJuli = totalJuli + pojo.juli;					
+				} else {
+					cell = row.createCell(19);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				if (pojo.agustus > 0) {
+					//excel.addCell(20, pojo.agustus);
+					cell = row.createCell(20);
+					cell.setCellValue(pojo.agustus);
+					cell.setCellStyle(styleAlignRight);					
+					totalAgustus = totalAgustus + pojo.agustus;					
+				} else {
+					cell = row.createCell(20);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				if (pojo.september > 0) {
+					//excel.addCell(21, pojo.september);
+					cell = row.createCell(21);
+					cell.setCellValue(pojo.september);
+					cell.setCellStyle(styleAlignRight);					
+					totalSeptember = totalSeptember + pojo.september;					
+				} else {
+					cell = row.createCell(21);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				if (pojo.oktober > 0) {
+					//excel.addCell(22, pojo.oktober);
+					cell = row.createCell(22);
+					cell.setCellValue(pojo.oktober);
+					cell.setCellStyle(styleAlignRight);					
+					totalOktober = totalOktober + pojo.oktober;
+				} else {
+					cell = row.createCell(22);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				if (pojo.november > 0) {
+					//excel.addCell(23, pojo.november);
+					cell = row.createCell(23);
+					cell.setCellValue(pojo.november);
+					cell.setCellStyle(styleAlignRight);					
+					totalNovember = totalNovember + pojo.november;					
+				} else {
+					cell = row.createCell(23);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);
+				}
+				
+				if (pojo.desember > 0) {
+					//excel.addCell(24, pojo.desember);
+					cell = row.createCell(24);
+					cell.setCellValue(pojo.desember);
+					cell.setCellStyle(styleAlignRight);					
+					totalDesember = totalDesember + pojo.desember;
+				} else {
+					cell = row.createCell(24);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				counter = counter + 1;
+			}			
+		}
+		
+	    excel.addEmptyRow();
+	    
+		//excel.createRow();
+		Row row = excel.createRow();
+		
+		Font font = excel.getWorkbook().createFont();
+	    font.setFontHeightInPoints((short) 10);
+	    font.setFontName("Monospaced");
+		
+		XSSFCellStyle styleAlignRight = excel.getWorkbook().createCellStyle();
+		styleAlignRight.setFont(font);
+		styleAlignRight.setAlignment(HorizontalAlignment.RIGHT);
+		styleAlignRight.setWrapText(true);
+    	//styleAlignRight.setDataFormat(HSSFDataFormat.getBuiltinFormat("#.##0,00")); // indonesian		        	
+		styleAlignRight.setDataFormat(HSSFDataFormat.getBuiltinFormat("#,##0.00")); // english
+		
+		XSSFCellStyle styleAlignLeft = excel.getWorkbook().createCellStyle();
+		styleAlignLeft.setFont(font);
+		styleAlignLeft.setAlignment(HorizontalAlignment.LEFT);
+		styleAlignLeft.setWrapText(true);
+		
+		excel.addCell(11, "TOTAL : ");
+		if (totalNilaiDefault > 0) {
+			//excel.addCell(12, totalNilaiDefault);
+			Cell cell = row.createCell(12);
+			cell.setCellValue(totalNilaiDefault);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(12);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+				
+		if (totalJanuari > 0) {
+			//excel.addCell(13, totalJanuari);
+			Cell cell = row.createCell(13);
+			cell.setCellValue(totalJanuari);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(13);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+				
+		if (totalPebruari > 0) {
+			//excel.addCell(14, totalPebruari);
+			Cell cell = row.createCell(14);
+			cell.setCellValue(totalPebruari);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(14);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+				
+		if (totalMaret > 0) {
+			//excel.addCell(15, totalMaret);
+			Cell cell = row.createCell(15);
+			cell.setCellValue(totalMaret);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(15);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+				
+		if (totalApril > 0) {
+			//excel.addCell(16, totalApril);
+			Cell cell = row.createCell(16);
+			cell.setCellValue(totalApril);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(16);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+				
+		if (totalMei > 0) {
+			//excel.addCell(17, totalMei);
+			Cell cell = row.createCell(17);
+			cell.setCellValue(totalMei);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(17);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+				
+		if (totalJuni > 0) {
+			//excel.addCell(18, totalJuni);
+			Cell cell = row.createCell(18);
+			cell.setCellValue(totalJuni);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(18);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+				
+		if (totalJuli > 0) {
+			//excel.addCell(19, totalJuli);
+			Cell cell = row.createCell(19);
+			cell.setCellValue(totalJuli);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(19);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+				
+		if (totalAgustus > 0) {
+			//excel.addCell(20, totalAgustus);
+			Cell cell = row.createCell(20);
+			cell.setCellValue(totalAgustus);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(20);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+				
+		if (totalSeptember > 0) {
+			//excel.addCell(21, totalSeptember);
+			Cell cell = row.createCell(21);
+			cell.setCellValue(totalSeptember);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(21);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+				
+		if (totalOktober > 0) {
+			//excel.addCell(22, totalOktober);
+			Cell cell = row.createCell(22);
+			cell.setCellValue(totalOktober);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(22);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+				
+		if (totalNovember > 0) {
+			//excel.addCell(23, totalNovember);
+			Cell cell = row.createCell(23);
+			cell.setCellValue(totalNovember);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(23);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+		
+		if (totalDesember > 0) {
+			//excel.addCell(24, totalDesember);
+			Cell cell = row.createCell(24);
+			cell.setCellValue(totalDesember);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(24);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+	}
+	
+  
+	private void setHeaderTabel() {
+
+		XSSFCellStyle styleKeterangan = excel.getWorkbook().createCellStyle();
+		XSSFCellStyle styleNilai = excel.getWorkbook().createCellStyle();
+
+		styleKeterangan.setAlignment(HorizontalAlignment.LEFT);
+		styleKeterangan.setFont(excel.getColumnHeaderFont());
+		styleKeterangan.setVerticalAlignment(VerticalAlignment.CENTER);
+		styleKeterangan.setBorderTop(BorderStyle.THIN);
+		styleKeterangan.setBorderRight(BorderStyle.THIN);
+		styleKeterangan.setBorderBottom(BorderStyle.THIN);
+		styleKeterangan.setBorderLeft(BorderStyle.THIN);
+		
+		//styleNilai = (XSSFCellStyle) styleKeterangan.clone();
+		styleNilai = (XSSFCellStyle) styleKeterangan.copy();
+		styleNilai.setAlignment(HorizontalAlignment.RIGHT);
+		
+		excel.createRow();
+		
+		excel.addCell(1, "No.", true, true, true);
+		excel.addCell(2, "Nama Customer", true, true, true);
+		excel.addCell(3, "Live", true, true, true);
+		excel.addCell(4, "Berhenti", true, true, true);
+		excel.addCell(5, "Status", true, true, true);
+		excel.addCell(6, "Siklus", true, true, true);
+		excel.addCell(7, "Produk", true, true, true);
+		excel.addCell(8, "Jenis Tagihan", true, true, true);
+		excel.addCell(9, "Diskon", true, true, true);
+		excel.addCell(10, "Renewal Berikutnya", true, true, true);
+		excel.addCell(11, "Jml Kary Terakhir", true, true, true);
+		excel.addCell(12, "Nilai", true, true, true);
+		excel.addCell(13, "Januari", true, true, true);
+		excel.addCell(14, "Pebruari", true, true, true);
+		excel.addCell(15, "Maret", true, true, true);
+		excel.addCell(16, "April", true, true, true);
+		excel.addCell(17, "Mei", true, true, true);
+		excel.addCell(18, "Juni", true, true, true);
+		excel.addCell(19, "Juli", true, true, true);
+		excel.addCell(20, "Agustus", true, true, true);
+		excel.addCell(21, "September", true, true, true);
+		excel.addCell(22, "Oktober", true, true, true);
+		excel.addCell(23, "November", true, true, true);
+		excel.addCell(24, "Desember", true, true, true);
+    
+		// ini untuk melakukan merge
+		Integer currentRowIndex = excel.getCurrentRowIndex();
+		
+		Row row = excel.setRow(currentRowIndex);
+		Cell cell = row.getCell(1);
+		//cell.setCellStyle(styleKeterangan);
+
+		cell = row.getCell(2);
+		cell.setCellStyle(styleKeterangan);
+		
+		cell = row.getCell(3);
+		cell.setCellStyle(styleKeterangan);
+		
+		cell = row.getCell(4);
+		cell.setCellStyle(styleKeterangan);
+		
+		cell = row.getCell(5);
+		cell.setCellStyle(styleKeterangan);
+		
+		cell = row.getCell(6);
+		cell.setCellStyle(styleKeterangan);
+		
+		cell = row.getCell(7);
+		cell.setCellStyle(styleKeterangan);
+		
+		cell = row.getCell(8);
+		cell.setCellStyle(styleKeterangan);
+		
+		cell = row.getCell(9);
+		cell.setCellStyle(styleKeterangan);
+		
+		cell = row.getCell(10);
+		cell.setCellStyle(styleKeterangan);
+		
+		cell = row.getCell(11);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(12);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(13);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(14);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(15);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(16);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(17);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(18);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(19);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(20);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(21);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(22);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(23);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(24);
+		cell.setCellStyle(styleNilai);
+		
+		excel.createRow();
+		
+		// ini untuk melakukan merge
+		//Integer currentRowIndex = excel.getCurrentRowIndex();
+		//excel.setMerge(currentRowIndex, currentRowIndex, 0, 1, false);
+		
+	}
+	
+	@Override
+	protected void footer() {
+		
+	    excel.addEmptyRow();
+	    
+	    Row row = excel.createRow();
+		//excel.addCell(1, "Dicetak oleh : " + CurrentUser.getUsername());
+		Cell cell = row.createCell(1);
+		cell.setCellStyle(excel.getStyleAlignLeft());
+		cell.setCellValue("Dicetak oleh : " + CurrentUser.getUsername());
+		excel.setMerge(excel.getCurrentRowIndex(), excel.getCurrentRowIndex(), 1, lastCellNumber, false);
+	    
+	    row = excel.createRow();
+		//excel.addCell(1, TimeUtil.convertDateToString(TimeUtil.getSystemDateTime(), BaseConstants.DATE_FORMAT_DISPLAY_LONG));
+		cell = row.createCell(1);
+		cell.setCellStyle(excel.getStyleAlignLeft());
+		cell.setCellValue(TimeUtil.convertDateToString(TimeUtil.getSystemDateTime(), BaseConstants.DATE_FORMAT_DISPLAY_LONG));	    
+		excel.setMerge(excel.getCurrentRowIndex(), excel.getCurrentRowIndex(), 1, lastCellNumber, false);
+	    
+//		Integer currentRowIndex = excel.getCurrentRowIndex();
+//		excel.setMerge(currentRowIndex, currentRowIndex, 1, lastCellNumber, false);
+//		
+//		XSSFCellStyle style = excel.getWorkbook().createCellStyle();        
+//		style.setAlignment(HorizontalAlignment.LEFT);
+//		style.setWrapText(false);
+//		style.setShrinkToFit(false);
+//        style.setBorderTop(BorderStyle.HAIR);
+//	    
+//		Row row = excel.setRow(excel.getCurrentRowIndex());
+//		Cell cell = row.getCell(1);
+//		cell.setCellStyle(style);
+	    
+	}
+
+	@Override
+	protected void validasi() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void filter() {
+		// TODO Auto-generated method stub
+		
+	}
+}

@@ -1,0 +1,86 @@
+package co.id.sofcograha.domain.invoicing.masters.training.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.training.entities.ETraining;
+
+@Repository
+public class ETrainingRepository extends SimpleJpaRepository<ETraining, String> {
+
+	protected final EntityManager em;
+
+	public ETrainingRepository(EntityManager em) {
+		super(ETraining.class, em);
+		this.em = em;
+	}
+	
+	public ETraining findByBK(String nama) {
+		
+		String query = "SELECT e FROM ETraining e " + 
+					   "WHERE e.nama = :nama";
+
+		try {
+			return em.createQuery(query, ETraining.class)
+					.setParameter("nama", nama)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+
+	}
+	
+	public ETraining getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<ETraining> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ETraining> search = new HqlSimpleSearchBuilder<>(ETraining.class, em);
+
+		String nama = (String) searchParameter.getValueFromMappedParam("nama");
+		String keterangan = (String) searchParameter.getValueFromMappedParam("keterangan");
+		String tipe = (String) searchParameter.getValueFromMappedParam("tipe");
+		String flakt = (String) searchParameter.getValueFromMappedParam("flakt");
+
+		if (!QueryUtil.isAll(nama)) {
+            search.addWhere("AND LOWER(nama) LIKE LOWER(:nama) ");
+            search.addParameter("nama", QueryUtil.formatStringForLikeFilter(nama));
+        }
+
+		if (!QueryUtil.isAll(keterangan)) {
+            search.addWhere("AND LOWER(keterangan) LIKE LOWER(:keterangan) ");
+            search.addParameter("keterangan", QueryUtil.formatStringForLikeFilter(keterangan));
+        }
+
+		if (!QueryUtil.isAll(tipe)) {
+            search.addWhere("AND LOWER(tipe) LIKE LOWER(:tipe) ");
+            search.addParameter("tipe", QueryUtil.formatStringForLikeFilter(tipe));
+        }
+
+	    if (!QueryUtil.isAll(flakt)) {
+	      search.addWhere("AND LOWER(flakt) LIKE LOWER(:flakt) ");
+	      search.addParameter("flakt", QueryUtil.formatStringForLikeFilter(flakt));
+	    }
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ETraining add(ETraining entity) {
+		return save(entity);
+	}
+
+	public ETraining edit(ETraining entity) {
+		return save(entity);
+	}
+}

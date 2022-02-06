@@ -1,0 +1,998 @@
+package co.id.sofcograha.domain.invoicing.kelola.invoice.services;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeUtility;
+
+import org.apache.commons.compress.utils.IOUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.constants.enums.NotificationType;
+import co.id.sofcograha.base.exceptions.BatchBusinessException;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.pojos.CompanyPojo;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.pojos.UserInfo;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.multitenancy.MultitenancyExecutor;
+import co.id.sofcograha.base.multitenancy.MultitenancyService;
+import co.id.sofcograha.base.multitenancy.TenantContext;
+import co.id.sofcograha.base.queue.common.QueueConstants.ProcessStatusType;
+import co.id.sofcograha.base.queue.common.QueueConstants.Status;
+import co.id.sofcograha.base.queue.common.QueueUtilService;
+import co.id.sofcograha.base.queue.notification.NotificationMainService;
+import co.id.sofcograha.base.queue.process.entities.EProcess;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatusDetail;
+import co.id.sofcograha.base.queue.processstatus.services.ProcessStatusDetailService;
+import co.id.sofcograha.base.queue.processstatus.services.ProcessStatusService;
+import co.id.sofcograha.base.queue.queuenotification.entities.ESysNotification;
+import co.id.sofcograha.base.queue.queuenotification.pojos.SysNotificationPojo;
+import co.id.sofcograha.base.queue.queuenotification.services.SysNotificationService;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.PasswordUtil;
+import co.id.sofcograha.base.utils.StringUtil;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.download.FileGenerator;
+import co.id.sofcograha.base.utils.pojos.UploadDownloadTemplate;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+import co.id.sofcograha.domain.invoicing.constants.ProcessConstants;
+import co.id.sofcograha.domain.invoicing.kelola.invoice.pojos.InvoiceComplete;
+import co.id.sofcograha.domain.invoicing.kelola.invoice.sort.CustomerSorter;
+import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories.EInvoiceHeaderRepository;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+
+@Service("kelolaInvoiceCompleteService")
+public class KelolaInvoiceCompleteService extends BaseService {
+	
+	@Autowired PlatformTransactionManager platformTransactionManager;
+	@Autowired private MultitenancyService multitenancyService;
+	
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	@Autowired private EInvoiceHeaderRepository eInvoiceHeaderRepository;
+	@Autowired private KelolaInvoiceExportPdfService kelolaInvoiceExportPdfService;
+    @Autowired private Environment env;
+	
+    @Autowired private QueueUtilService queueUtilService;
+	@Autowired private CompanyService companyService;
+	@Autowired private UserService userService;
+	@Autowired private SysNotificationService sysNotificationService;
+	@Autowired private ProcessStatusService processStatusService;
+	@Autowired private ProcessStatusDetailService processStatusDetailService;
+	
+	@Autowired private NotificationMainService notificationMainService;
+    
+    // untuk notifikasi
+	// proses generate tiap invoice
+	private String processName = "Proses generate tiap invoice";
+	private String processNumber = "";
+	private EProcessStatus eProcessStatus;
+	private List<Map<String, String>> errorList = null;
+	private int lastErrorItem;
+	// proses pengiriman email
+	private String processName_email = "Kirim Email";
+	private String processNumber_email = "";
+	private EProcessStatus eProcessStatus_email;
+	private List<Map<String, String>> errorList_email = null;
+	private int lastErrorItem_email;
+    
+	public SearchResult<EInvoiceHeader> search(SearchParameter searchParameter) {
+		return eInvoiceHeaderRepository.search(searchParameter);
+	}
+	
+	public InvoiceComplete findByBk(String nomor) {
+		return InvoiceComplete.setFromEntity(eInvoiceHeaderRepository.findByBK(nomor));
+	}
+	
+	private String createEmailText(InvoiceHeader invoiceHeader, List<Map<String, String>> listNamaFilePdf) {
+		
+    	String alamat = invoiceHeader.alamat;
+
+		// replace karakter enter (char 10) dengan <br/>
+		alamat = alamat.replace("\n", "<br/>");
+		
+		String emailText = "Kepada Yth." + "<br/>" +
+                           "<br/>" +
+                           invoiceHeader.nama + "<br/>" +
+                           alamat + "<br/>" + 
+                           "<br/>" +
+                           "Bersama ini kami kirimkan file elektronik terkait tagihan atas pemakaian program Gaji.id."  + "<br/>" +
+                           "File yang kami kirimkan sejumlah " + listNamaFilePdf.size() + " file, dengan perincian :"  + "<br/>" +
+                           "<br/>";
+
+		int nourut = 1;
+		for (Map<String, String> namaFile : listNamaFilePdf) {
+			emailText = emailText + nourut + ". " + namaFile.get("file") + " untuk invoice nomor " + namaFile.get("nomor") + "<br/>"; 
+		}
+
+		emailText = emailText + "<br/>";
+		emailText = emailText + "Demikian informasi yang dapat kami sampaikan, untuk perhatiannya kami ucapkan terima kasih." + "<br/>";
+		emailText = emailText + "<br/><br/>";
+		emailText = emailText + "Hormat Kami<br/>";
+		emailText = emailText + "PT. Sofco Graha";
+
+		emailText = "<html><body>" + emailText + "</html></body>";
+		
+		return emailText;
+		
+	}
+	
+	private void sendSingleEmail(String emailAddress, String content, List<Map<String, String>> listNamaFilePdf) {
+		// bentuk dan kirim email
+		// kirim email berisi password ke alamat email user
+    	JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+      	 
+        mailSender.setHost(env.getProperty("spring.mail.host"));
+        mailSender.setPort(Integer.valueOf(env.getProperty("spring.mail.port")));
+        mailSender.setUsername(env.getProperty("spring.mail.username"));
+        mailSender.setPassword(env.getProperty("spring.mail.password"));
+ 
+        Properties javaMailProperties = new Properties();
+        javaMailProperties.put("mail.smtp.starttls.enable", "true");
+        javaMailProperties.put("mail.smtp.auth", "true");
+        javaMailProperties.put("mail.transport.protocol", "smtp");
+        javaMailProperties.put("mail.debug", "true");
+ 
+        mailSender.setJavaMailProperties(javaMailProperties);    	
+    	
+    	MimeMessage mimeMessage = mailSender.createMimeMessage();
+    	
+        MimeMessageHelper mimeMessageHelper;
+		try {
+			mimeMessageHelper = new MimeMessageHelper(mimeMessage, true);
+			
+	        mimeMessageHelper.setSubject("Invoice terkait pemakaian program Gaji.id");
+	        mimeMessageHelper.setFrom(new InternetAddress(env.getProperty("spring.mail.username")));
+	        mimeMessageHelper.setTo(emailAddress);
+	        mimeMessageHelper.setText(content, true);
+	        
+	        for (Map<String, String> namaFile : listNamaFilePdf) {
+	        	FileSystemResource file = new FileSystemResource(FileGenerator.openPdfTempFile(namaFile.get("file")));
+	        	
+	        	if (file != null) {
+			        mimeMessageHelper.addAttachment(file.getFilename(), file);				        					        		
+	        	}
+	        }
+	        
+	        for (Map<String, String> namaFile : listNamaFilePdf) {
+	        	setSent(namaFile.get("nomor"));	 
+
+	        }
+	        				    	
+	        mailSender.send(mimeMessageHelper.getMimeMessage());
+	        	        
+		} catch (Exception e) {
+			if (e instanceof BatchBusinessException) {
+				BatchBusinessException errorBBE = (BatchBusinessException) e;
+				throw errorBBE;
+			} else {
+				//error("error.could.not.send.email");
+				batchError("error.could.not.send.email", emailAddress);								
+				throwBatchError();
+			}				
+		}		
+	}
+	
+	private void sendEmailWithNotification(String namaCustomer, String companyCode, Authentication auth, String alamatEmail, String emailText, List<Map<String, String>> listFileToSend) {
+		
+		// terkait notifikasi pengiriman email
+		// bentuk status proses untuk customer pertama (ingat bahwa list telah diurutkan berdasar customer)
+		processNumber_email = ProcessConstants.SEND_INVOICE_EMAIL + System.currentTimeMillis();
+		
+		// bentuk header status proses (std_status_proses)
+		queueUtilService.setProsesStatus(ProcessConstants.SEND_INVOICE_EMAIL, processNumber_email, Status.OnQueue, processName_email + " " + namaCustomer);
+		
+		// ciptakan data notifikasi bahwa proses dimulai (std_notification)
+		sendPendingNotificationEmail(namaCustomer);
+		
+		// ambil entity header status proses (std_status_proses) yang sudah ditambahkan tadi
+		EProcess eProcess_email = queueUtilService.getProcess(ProcessConstants.SEND_INVOICE_EMAIL);
+		eProcessStatus_email = processStatusService.findByBk(processNumber_email, eProcess_email);
+		
+		// kosongkan isi daftar error
+		errorList_email = new ArrayList<Map<String, String>>();
+		lastErrorItem_email = 1;
+		
+//		ExecutorService emailExecutor = Executors.newFixedThreadPool(5);
+		ExecutorService emailExecutor = Executors.newSingleThreadExecutor();
+        emailExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+				TransactionTemplate transactionTemplate = new TransactionTemplate(platformTransactionManager);
+				try {
+					Boolean result = transactionTemplate.execute(new TransactionCallback<Boolean>() {
+						@Override
+						public Boolean doInTransaction(TransactionStatus status) {
+						    SecurityContextHolder.getContext().setAuthentication(auth);
+						    TenantContext.setCurrentTenant(companyCode);
+
+							multitenancyService.runServiceForTenantForProcess(companyCode, 
+								new MultitenancyExecutor() {
+									public void execute(ECompany company) {
+
+										sendSingleEmail(alamatEmail, emailText, listFileToSend);
+
+										// notifikasi bahwa email telah berhasil dikirim
+										sendDoneNotificationEmail(namaCustomer);
+										
+										queueUtilService.setProsesStatus(ProcessConstants.SEND_INVOICE_EMAIL, processNumber_email, Status.Done, processName_email + " "  + namaCustomer);
+										
+										for (Map<String, String> file : listFileToSend) {
+											FileGenerator.deletePdfTempFile(file.get("file"));										
+										}
+									}
+							});
+							
+							return true;
+						}
+					});
+//					sendSingleEmail(alamatEmail, emailText, listFileToSend);
+//
+//					// notifikasi bahwa email telah berhasil dikirim
+//					sendDoneNotificationEmail(namaCustomer);
+//					
+//					queueUtilService.setProsesStatus(ProcessConstants.SEND_INVOICE_EMAIL, processNumber_email, Status.Done, processName_email);
+					
+				} catch (BatchBusinessException e) {
+					
+					BatchBusinessException errorBBE = (BatchBusinessException) e;
+					System.out.println("GOT YOU ! " + errorBBE.getMessage());					
+
+					// harus ada ini karena di method sendSingleEmail di re-throw batch business exception 
+					// nya, jadi harus dibersihkan supaya batch business exception itu tidak terbawa ke 
+					// MultitenancyService.runServiceForTenantForProcess
+					removeBatchErrors();  
+
+					Boolean result = transactionTemplate.execute(new TransactionCallback<Boolean>() {
+						@Override
+						public Boolean doInTransaction(TransactionStatus status) {
+						    SecurityContextHolder.getContext().setAuthentication(auth);
+						    TenantContext.setCurrentTenant(companyCode);
+
+							multitenancyService.runServiceForTenantForProcess(companyCode, 
+								new MultitenancyExecutor() {
+									public void execute(ECompany company) {
+        		
+										queueUtilService.setProsesStatus(ProcessConstants.SEND_INVOICE_EMAIL, processNumber_email, Status.Error, processName_email + " "  + namaCustomer);
+        		
+									}
+							});
+							
+							return true;
+						}
+					});
+					
+					for (BusinessException be : errorBBE.getBusinessExceptions()) {
+						
+						// generate args
+						String params = "";
+						for (Object param : be.getMessageParameters()) {
+							String prm = (param != null) ? (String) param : "";
+							if (params.equals("")) {
+								params = prm + "|String";							
+							} else {
+								params = params + ";" + prm + "|String";							
+							}								
+						}
+
+						System.out.println("ERROR CODE " + be.getMessageCode());
+						System.out.println("ERROR PARAM " + params);
+						String msgParam = params.equals("") ? "-" : params;
+						//Map<String, String> errorItem = new HashMap<String, String>();
+						//errorItem.put("code", be.getMessageCode());
+						//errorItem.put("param", params.equals("") ? "-" : params);
+						
+						//errorList.add(errorItem);
+
+						result = transactionTemplate.execute(new TransactionCallback<Boolean>() {
+							@Override
+							public Boolean doInTransaction(TransactionStatus status) {
+							    SecurityContextHolder.getContext().setAuthentication(auth);
+							    TenantContext.setCurrentTenant(companyCode);
+
+								multitenancyService.runServiceForTenantForProcess(companyCode, 
+									new MultitenancyExecutor() {
+										public void execute(ECompany company) {
+            		
+											// tambahkan detil error status
+											EProcessStatusDetail eProcessStatusDetail = new EProcessStatusDetail();
+											eProcessStatusDetail.setProcessStatus(eProcessStatus_email);
+											eProcessStatusDetail.setNomorItem(lastErrorItem_email);
+											eProcessStatusDetail.setProcessStatusType(ProcessStatusType.Error);
+											eProcessStatusDetail.setMsgKey(be.getMessageCode());
+											eProcessStatusDetail.setMsgParam(msgParam);
+											processStatusDetailService.addFromProsesInvoice(eProcessStatusDetail);
+            		
+										}
+								});
+
+								return true;
+							}
+						});
+						
+						lastErrorItem_email = lastErrorItem_email + 1;
+						
+					}
+				}
+            }
+        });
+        emailExecutor.shutdown(); // it is very important to shutdown your non-singleton ExecutorService.
+
+        /*
+		try {
+			emailExecutor.awaitTermination(10, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			System.out.println("===");
+			e.printStackTrace();
+			System.out.println("===");
+		}
+		*/
+	}
+	
+	public void sendEmails(ArrayList<InvoiceHeader> listInvoice) {
+
+		ECompany company = companyService.get(CurrentUser.getCompanyId());
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+		
+		// urutkan parameter input supaya urut per customer
+		listInvoice.sort(new CustomerSorter());
+
+		if (!listInvoice.isEmpty()) {
+			// ada invoice yang hendak dikirim
+
+			EProcess process = null;
+			
+			// kosongkan isi daftar error
+			errorList = new ArrayList<Map<String, String>>();
+			lastErrorItem = 1;
+			
+			// mulai looping pembentukan dan pengiriman email
+			String idCustomer = "";
+			InvoiceHeader prevInvoiceHeader = null;
+			List<Map<String, String>> listNamaFilePdf = new ArrayList<Map<String, String>>();
+			int jumlahFile = 0;
+			boolean isErrorOccured = false;
+			for (InvoiceHeader invoiceHeader : listInvoice) {
+				
+				if (!idCustomer.equals(invoiceHeader.customer.id)) {
+
+					if (!idCustomer.equals("")) {
+						// id sebelumnya tidak kosong artinya ada perubahan customer, 
+						// jadi generate email untuk customer ini lalu kirim emailnya
+						String namaCustomer = prevInvoiceHeader.customer.nama; 
+						
+						// tutup notifikasi untuk loop utama
+						sendDoneNotification(namaCustomer);
+						if (isErrorOccured) {
+							queueUtilService.setProsesStatus(ProcessConstants.INVOICE_BULK_EMAIL_PROCESS, processNumber, Status.Error, processName + namaCustomer);																	
+						} else {
+							queueUtilService.setProsesStatus(ProcessConstants.INVOICE_BULK_EMAIL_PROCESS, processNumber, Status.Done, processName + namaCustomer);																	
+						}
+						
+						String emailText = createEmailText(prevInvoiceHeader, listNamaFilePdf);
+
+						// ambil alamat email dari customer ini
+						//String alamatEmail = prevInvoiceHeader.customer.billemail;
+						String alamatEmail = "";
+						System.out.println("CUSTOMER " + prevInvoiceHeader.nmcust);
+						System.out.println("   billnama2 " + prevInvoiceHeader.customer.billnama2);
+						System.out.println("   billemail2 " + prevInvoiceHeader.customer.billemail2);
+						System.out.println("   billemail " + prevInvoiceHeader.customer.billemail);
+						if (!prevInvoiceHeader.customer.billnama2.equals("")) {
+							alamatEmail = prevInvoiceHeader.customer.billemail2;
+						} else {
+							alamatEmail = prevInvoiceHeader.customer.billemail;							
+						}
+						
+						//sendSingleEmail(alamatEmail, emailText, listNamaFilePdf);
+			
+						List<Map<String, String>> listFileToSend = listNamaFilePdf;
+						
+						sendEmailWithNotification(namaCustomer, company.getCode(), auth, alamatEmail, emailText, listFileToSend);
+						
+						/*
+						// terkait notifikasi pengiriman email
+						// bentuk status proses untuk customer pertama (ingat bahwa list telah diurutkan berdasar customer)
+						processNumber_email = ProcessConstants.SEND_INVOICE_EMAIL + System.currentTimeMillis();
+						
+						// bentuk header status proses (std_status_proses)
+						queueUtilService.setProsesStatus(ProcessConstants.SEND_INVOICE_EMAIL, processNumber_email, Status.OnQueue, processName_email + namaCustomer);
+						
+						// ciptakan data notifikasi bahwa proses dimulai (std_notification)
+						sendPendingNotificationEmail(prevInvoiceHeader.customer.nama);
+						
+						// ambil entity header status proses (std_status_proses) yang sudah ditambahkan tadi
+						EProcess eProcess_email = queueUtilService.getProcess(ProcessConstants.SEND_INVOICE_EMAIL);
+						eProcessStatus_email = processStatusService.findByBk(processNumber_email, eProcess_email);
+						
+						// kosongkan isi daftar error
+						errorList_email = new ArrayList<Map<String, String>>();
+						lastErrorItem_email = 1;
+						
+						//ExecutorService emailExecutor = Executors.newSingleThreadExecutor();
+						ExecutorService emailExecutor = Executors.newFixedThreadPool(5);
+				        emailExecutor.execute(new Runnable() {
+				            @Override
+				            public void run() {
+								TransactionTemplate transactionTemplate = new TransactionTemplate(platformTransactionManager);
+								try {
+									Boolean result = transactionTemplate.execute(new TransactionCallback<Boolean>() {
+										@Override
+										public Boolean doInTransaction(TransactionStatus status) {
+										    SecurityContextHolder.getContext().setAuthentication(auth);
+										    TenantContext.setCurrentTenant(company.getCode());
+
+											multitenancyService.runServiceForTenantForProcess(company.getCode(), 
+												new MultitenancyExecutor() {
+													public void execute(ECompany company) {
+
+														sendSingleEmail(alamatEmail, emailText, listFileToSend);
+
+														// notifikasi bahwa email telah berhasil dikirim
+														sendDoneNotificationEmail(namaCustomer);
+														
+														queueUtilService.setProsesStatus(ProcessConstants.SEND_INVOICE_EMAIL, processNumber_email, Status.Done, processName_email + namaCustomer);
+														
+													}
+											});
+											
+											return true;
+										}
+									});
+//									sendSingleEmail(alamatEmail, emailText, listFileToSend);
+//
+//									// notifikasi bahwa email telah berhasil dikirim
+//									sendDoneNotificationEmail(namaCustomer);
+//									
+//									queueUtilService.setProsesStatus(ProcessConstants.SEND_INVOICE_EMAIL, processNumber_email, Status.Done, processName_email);
+									
+								} catch (BatchBusinessException e) {
+									
+									System.out.println("GOT YOU ! " + e.getMessage());					
+
+									// harus ada ini karena di method sendSingleEmail di re-throw batch business exception 
+									// nya, jadi harus dibersihkan supaya batch business exception itu tidak terbawa ke 
+									// MultitenancyService.runServiceForTenantForProcess
+									removeBatchErrors();  
+
+									Boolean result = transactionTemplate.execute(new TransactionCallback<Boolean>() {
+										@Override
+										public Boolean doInTransaction(TransactionStatus status) {
+										    SecurityContextHolder.getContext().setAuthentication(auth);
+										    TenantContext.setCurrentTenant(company.getCode());
+
+											multitenancyService.runServiceForTenantForProcess(company.getCode(), 
+												new MultitenancyExecutor() {
+													public void execute(ECompany company) {
+			            		
+														queueUtilService.setProsesStatus(ProcessConstants.SEND_INVOICE_EMAIL, processNumber_email, Status.Error, processName_email + namaCustomer);
+			            		
+													}
+											});
+											
+											return true;
+										}
+									});
+									
+									for (BusinessException be : e.getBusinessExceptions()) {
+										
+										// generate args
+										String params = "";
+										for (Object param : be.getMessageParameters()) {
+											//String prm = (param != null) ? (String) param : "";
+											if (param != null) {
+												if (params.equals("")) {
+													params = params + (String) param + "|String";							
+												} else {
+													params = params + ";" + (String) param + "|String";							
+												}								
+											}
+										}
+
+										System.out.println("ERROR CODE " + be.getMessageCode());
+										System.out.println("ERROR PARAM " + params);
+										String msgParam = params.equals("") ? "-" : params;
+										//Map<String, String> errorItem = new HashMap<String, String>();
+										//errorItem.put("code", be.getMessageCode());
+										//errorItem.put("param", params.equals("") ? "-" : params);
+										
+										//errorList.add(errorItem);
+
+										result = transactionTemplate.execute(new TransactionCallback<Boolean>() {
+											@Override
+											public Boolean doInTransaction(TransactionStatus status) {
+											    SecurityContextHolder.getContext().setAuthentication(auth);
+											    TenantContext.setCurrentTenant(company.getCode());
+
+												multitenancyService.runServiceForTenantForProcess(company.getCode(), 
+													new MultitenancyExecutor() {
+														public void execute(ECompany company) {
+				            		
+															// tambahkan detil error status
+															EProcessStatusDetail eProcessStatusDetail = new EProcessStatusDetail();
+															eProcessStatusDetail.setProcessStatus(eProcessStatus_email);
+															eProcessStatusDetail.setNomorItem(lastErrorItem_email);
+															eProcessStatusDetail.setProcessStatusType(ProcessStatusType.Error);
+															eProcessStatusDetail.setMsgKey(be.getMessageCode());
+															eProcessStatusDetail.setMsgParam(msgParam);
+															processStatusDetailService.addFromProsesInvoice(eProcessStatusDetail);
+				            		
+														}
+												});
+
+												return true;
+											}
+										});
+										
+										lastErrorItem_email = lastErrorItem_email + 1;
+										
+									}
+								}
+				            }
+				        });
+				        emailExecutor.shutdown(); // it is very important to shutdown your non-singleton ExecutorService.
+
+						try {
+							emailExecutor.awaitTermination(10, TimeUnit.SECONDS);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							System.out.println("===");
+							e.printStackTrace();
+							System.out.println("===");
+						}
+						*/
+				        
+					}
+					
+					// terkait notifikasi untuk looping utama
+					// bentuk status proses untuk customer pertama (ingat bahwa list telah diurutkan berdasar customer)
+					processNumber = ProcessConstants.INVOICE_BULK_EMAIL_PROCESS + System.currentTimeMillis();
+					
+					// bentuk header status proses (std_status_proses)
+					queueUtilService.setProsesStatus(ProcessConstants.INVOICE_BULK_EMAIL_PROCESS, processNumber, Status.OnQueue, processName + invoiceHeader.customer.nama);
+					
+					// ciptakan data notifikasi bahwa proses dimulai (std_notification)
+					sendPendingNotification(invoiceHeader.customer.nama);
+					
+					// ambil entity header status proses (std_status_proses) yang sudah ditambahkan tadi
+					process = queueUtilService.getProcess(ProcessConstants.INVOICE_BULK_EMAIL_PROCESS);
+					eProcessStatus = processStatusService.findByBk(processNumber, process);
+					
+					idCustomer = invoiceHeader.customer.id;
+					listNamaFilePdf = new ArrayList<Map<String, String>>();
+					jumlahFile = 0;
+					
+					// kosongkan isi daftar error
+					errorList = new ArrayList<Map<String, String>>();
+					lastErrorItem = 1;					
+					isErrorOccured = false;
+				}
+				
+				// generate pdf invoice
+				String nomor = invoiceHeader.nomor;
+				Base64StringEncodedPojo b64 = kelolaInvoiceExportPdfService.pdfReport(nomor);
+				
+				try {
+					String namaFile = nomor.replace("/", "");
+					File file = FileGenerator.createPdfTempFile(namaFile + ".pdf");
+					FileOutputStream fos = new FileOutputStream(file);
+
+					Map<String, String> map = new HashMap<String, String>();
+					map.put("file", namaFile + ".pdf");
+					map.put("nomor", nomor);
+					
+					listNamaFilePdf.add(map);
+					
+					byte[] decoder = Base64.getDecoder().decode(b64.base64String);
+
+					fos.write(decoder);
+					fos.close();
+				} catch (Exception e) {
+					e.printStackTrace();
+					
+					isErrorOccured = true;
+					
+					EProcessStatusDetail eProcessStatusDetail = new EProcessStatusDetail();
+					eProcessStatusDetail.setProcessStatus(eProcessStatus);
+					eProcessStatusDetail.setNomorItem(lastErrorItem);
+					eProcessStatusDetail.setProcessStatusType(ProcessStatusType.Error);
+					eProcessStatusDetail.setMsgKey("bulk.invoice.error.001");
+					eProcessStatusDetail.setMsgParam(nomor + "|String");
+					processStatusDetailService.addFromProsesInvoice(eProcessStatusDetail);
+					
+					lastErrorItem = lastErrorItem + 1;					
+				}
+				
+				prevInvoiceHeader = invoiceHeader;
+				jumlahFile = jumlahFile + 1;
+			}
+			
+			// kirim email untuk customer looping terakhir
+			if (!listInvoice.isEmpty()) {
+				String namaCustomer = prevInvoiceHeader.customer.nama; 
+				
+				// tutup notifikasi untuk loop utama
+				sendDoneNotification(namaCustomer);	
+				if (isErrorOccured) {
+					queueUtilService.setProsesStatus(ProcessConstants.INVOICE_BULK_EMAIL_PROCESS, processNumber, Status.Error, processName + namaCustomer);																	
+				} else {
+					queueUtilService.setProsesStatus(ProcessConstants.INVOICE_BULK_EMAIL_PROCESS, processNumber, Status.Done, processName + namaCustomer);																	
+				}
+				
+				String emailText = createEmailText(prevInvoiceHeader, listNamaFilePdf);
+								
+				//String alamatEmail = prevInvoiceHeader.customer.billemail;
+				String alamatEmail = "";
+				System.out.println("CUSTOMER " + prevInvoiceHeader.nmcust);
+				System.out.println("   billnama2 " + prevInvoiceHeader.customer.billnama2);
+				System.out.println("   billemail2 " + prevInvoiceHeader.customer.billemail2);
+				System.out.println("   billemail " + prevInvoiceHeader.customer.billemail);
+				if (!prevInvoiceHeader.customer.billnama2.equals("")) {
+					alamatEmail = prevInvoiceHeader.customer.billemail2;
+				} else {
+					alamatEmail = prevInvoiceHeader.customer.billemail;							
+				}
+				
+				List<Map<String, String>> listFileToSend = listNamaFilePdf;
+				
+				sendEmailWithNotification(namaCustomer, company.getCode(), auth, alamatEmail, emailText, listFileToSend);
+				
+				/*
+				// terkait notifikasi pengiriman email
+				// bentuk status proses untuk customer pertama (ingat bahwa list telah diurutkan berdasar customer)
+				processNumber_email = ProcessConstants.SEND_INVOICE_EMAIL + System.currentTimeMillis();
+				
+				// bentuk header status proses (std_status_proses)
+				queueUtilService.setProsesStatus(ProcessConstants.SEND_INVOICE_EMAIL, processNumber_email, Status.OnQueue, processName_email + namaCustomer);
+				
+				// ciptakan data notifikasi bahwa proses dimulai (std_notification)
+				sendPendingNotificationEmail(prevInvoiceHeader.customer.nama);
+				
+				// ambil entity header status proses (std_status_proses) yang sudah ditambahkan tadi
+				EProcess eProcess_email = queueUtilService.getProcess(ProcessConstants.SEND_INVOICE_EMAIL);
+				eProcessStatus_email = processStatusService.findByBk(processNumber_email, eProcess_email);
+				
+				// kosongkan isi daftar error
+				errorList_email = new ArrayList<Map<String, String>>();
+				lastErrorItem_email = 1;
+				
+				//ExecutorService emailExecutor = Executors.newSingleThreadExecutor();
+				ExecutorService emailExecutor = Executors.newFixedThreadPool(5);
+		        emailExecutor.execute(new Runnable() {
+		            @Override
+		            public void run() {
+						TransactionTemplate transactionTemplate = new TransactionTemplate(platformTransactionManager);
+		            	try {
+							Boolean result = transactionTemplate.execute(new TransactionCallback<Boolean>() {
+								@Override
+								public Boolean doInTransaction(TransactionStatus status) {
+								    SecurityContextHolder.getContext().setAuthentication(auth);
+								    TenantContext.setCurrentTenant(company.getCode());
+
+									multitenancyService.runServiceForTenantForProcess(company.getCode(), 
+										new MultitenancyExecutor() {
+											public void execute(ECompany company) {
+	            		
+												sendSingleEmail(alamatEmail, emailText, a);
+	            		
+												// notifikasi bahwa email telah berhasil dikirim
+												sendDoneNotificationEmail(namaCustomer);
+						
+												queueUtilService.setProsesStatus(ProcessConstants.SEND_INVOICE_EMAIL, processNumber_email, Status.Done, processName_email + namaCustomer);
+	            		
+											}
+									});
+									
+									return true;
+								}
+							});
+													
+						} catch (BatchBusinessException e) {
+							System.out.println("GOT YOU ! " + e.getMessage());
+							// harus ada ini karena di method sendSingleEmail di re-throw batch business exception 
+							// nya, jadi harus dibersihkan supaya batch business exception itu tidak terbawa ke 
+							// MultitenancyService.runServiceForTenantForProcess
+							removeBatchErrors();  
+
+							Boolean result = transactionTemplate.execute(new TransactionCallback<Boolean>() {
+								@Override
+								public Boolean doInTransaction(TransactionStatus status) {
+								    SecurityContextHolder.getContext().setAuthentication(auth);
+								    TenantContext.setCurrentTenant(company.getCode());
+
+									multitenancyService.runServiceForTenantForProcess(company.getCode(), 
+										new MultitenancyExecutor() {
+											public void execute(ECompany company) {
+	            		
+												queueUtilService.setProsesStatus(ProcessConstants.SEND_INVOICE_EMAIL, processNumber_email, Status.Error, processName_email + namaCustomer);
+	            		
+											}
+									});
+									
+									return true;
+								}
+							});
+							
+							for (BusinessException be : e.getBusinessExceptions()) {
+								
+								// generate args
+								String params = "";
+								for (Object param : be.getMessageParameters()) {
+									//String prm = (param != null) ? (String) param : "";
+									if (param != null) {
+										if (params.equals("")) {
+											params = params + (String) param + "|String";							
+										} else {
+											params = params + ";" + (String) param + "|String";							
+										}								
+									}
+								}
+
+								System.out.println("ERROR CODE " + be.getMessageCode());
+								System.out.println("ERROR PARAM " + params);
+								String msgParam = params.equals("") ? "-" : params;
+								//Map<String, String> errorItem = new HashMap<String, String>();
+								//errorItem.put("code", be.getMessageCode());
+								//errorItem.put("param", params.equals("") ? "-" : params);
+								
+								//errorList.add(errorItem);
+
+								result = transactionTemplate.execute(new TransactionCallback<Boolean>() {
+									@Override
+									public Boolean doInTransaction(TransactionStatus status) {
+									    SecurityContextHolder.getContext().setAuthentication(auth);
+									    TenantContext.setCurrentTenant(company.getCode());
+
+										multitenancyService.runServiceForTenantForProcess(company.getCode(), 
+											new MultitenancyExecutor() {
+												public void execute(ECompany company) {
+		            		
+													// tambahkan detil error status
+													EProcessStatusDetail eProcessStatusDetail = new EProcessStatusDetail();
+													eProcessStatusDetail.setProcessStatus(eProcessStatus_email);
+													eProcessStatusDetail.setNomorItem(lastErrorItem_email);
+													eProcessStatusDetail.setProcessStatusType(ProcessStatusType.Error);
+													eProcessStatusDetail.setMsgKey(be.getMessageCode());
+													eProcessStatusDetail.setMsgParam(msgParam);
+													processStatusDetailService.addFromProsesInvoice(eProcessStatusDetail);
+		            		
+												}
+										});
+
+										return true;
+									}
+								});
+								
+								lastErrorItem_email = lastErrorItem_email + 1;
+								
+							}
+						}
+		            		
+		            }
+		        });
+		        emailExecutor.shutdown(); // it is very important to shutdown your non-singleton ExecutorService.
+				
+				try {
+					emailExecutor.awaitTermination(10, TimeUnit.SECONDS);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					System.out.println("===");
+					e.printStackTrace();
+					System.out.println("===");
+				}
+				*/
+		        
+			}
+						
+		}		
+	}
+	
+	private void sendPendingNotification(String namaCustomer) {
+		SysNotificationPojo sysNotificationPojo = new SysNotificationPojo();
+		sysNotificationPojo.user = UserInfo.fromEntity(userService.get(CurrentUser.getUserId()));
+		sysNotificationPojo.company = CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId()));
+		sysNotificationPojo.issueDate = TimeUtil.getSystemDateTime();
+		sysNotificationPojo.endIssueDate = TimeUtil.getMaxDate();
+		sysNotificationPojo.readFlag = false;
+		sysNotificationPojo.pinFlag = false;
+		sysNotificationPojo.notificationType = NotificationType.msg_linkDialog.toString();
+		sysNotificationPojo.notificationMsg = "Proses " + processName + " untuk " + namaCustomer + " mulai dikerjakan.";
+		sysNotificationPojo.param1 = ProcessConstants.INVOICE_BULK_EMAIL_PROCESS;
+		sysNotificationPojo.param2 = processNumber;
+		sysNotificationPojo.active = true;
+		ESysNotification eSysNotification = sysNotificationService.add(sysNotificationPojo.toEntity());
+		notificationMainService.sendNotification(SysNotificationPojo.fromEntity(eSysNotification));
+	}
+	
+	private void sendDoneNotification(String namaCustomer) {
+		SysNotificationPojo sysNotificationPojo = new SysNotificationPojo();
+		sysNotificationPojo.user = UserInfo.fromEntity(userService.get(CurrentUser.getUserId()));
+		sysNotificationPojo.company = CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId()));
+		sysNotificationPojo.issueDate = TimeUtil.getSystemDateTime();
+		sysNotificationPojo.endIssueDate = TimeUtil.getMaxDate();
+		sysNotificationPojo.readFlag = false;
+		sysNotificationPojo.pinFlag = false;
+		sysNotificationPojo.notificationType = NotificationType.msg_linkDialog.toString();
+		sysNotificationPojo.notificationMsg = "Proses " + processName + " untuk " + namaCustomer + " telah selesai.";
+		sysNotificationPojo.param1 = ProcessConstants.INVOICE_BULK_EMAIL_PROCESS;
+		sysNotificationPojo.param2 = processNumber;
+		sysNotificationPojo.active = true;
+		ESysNotification eSysNotification = sysNotificationService.add(sysNotificationPojo.toEntity());
+		notificationMainService.sendNotification(SysNotificationPojo.fromEntity(eSysNotification));
+	}
+	
+	private void sendPendingNotificationEmail(String namaCustomer) {
+		SysNotificationPojo sysNotificationPojo = new SysNotificationPojo();
+		sysNotificationPojo.user = UserInfo.fromEntity(userService.get(CurrentUser.getUserId()));
+		sysNotificationPojo.company = CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId()));
+		sysNotificationPojo.issueDate = TimeUtil.getSystemDateTime();
+		sysNotificationPojo.endIssueDate = TimeUtil.getMaxDate();
+		sysNotificationPojo.readFlag = false;
+		sysNotificationPojo.pinFlag = false;
+		sysNotificationPojo.notificationType = NotificationType.msg_linkDialog.toString();
+		sysNotificationPojo.notificationMsg = "Pengiriman Email untuk " + namaCustomer + " masuk dalam antrian.";
+		sysNotificationPojo.param1 = ProcessConstants.SEND_INVOICE_EMAIL;
+		sysNotificationPojo.param2 = processNumber;
+		sysNotificationPojo.active = true;
+		ESysNotification eSysNotification = sysNotificationService.add(sysNotificationPojo.toEntity());
+		notificationMainService.sendNotification(SysNotificationPojo.fromEntity(eSysNotification));
+	}
+	
+	private void sendDoneNotificationEmail(String namaCustomer) {
+		SysNotificationPojo sysNotificationPojo = new SysNotificationPojo();
+		sysNotificationPojo.user = UserInfo.fromEntity(userService.get(CurrentUser.getUserId()));
+		sysNotificationPojo.company = CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId()));
+		sysNotificationPojo.issueDate = TimeUtil.getSystemDateTime();
+		sysNotificationPojo.endIssueDate = TimeUtil.getMaxDate();
+		sysNotificationPojo.readFlag = false;
+		sysNotificationPojo.pinFlag = false;
+		sysNotificationPojo.notificationType = NotificationType.msg_linkDialog.toString();
+		sysNotificationPojo.notificationMsg = "Pengiriman Email untuk " + namaCustomer + " telah selesai.";
+		sysNotificationPojo.param1 = ProcessConstants.SEND_INVOICE_EMAIL;
+		sysNotificationPojo.param2 = processNumber;
+		sysNotificationPojo.active = true;
+		ESysNotification eSysNotification = sysNotificationService.add(sysNotificationPojo.toEntity());
+		notificationMainService.sendNotification(SysNotificationPojo.fromEntity(eSysNotification));
+	}
+
+	@Transactional
+	public EInvoiceHeader setBayar(InvoiceHeader pojo) {
+		
+		EInvoiceHeader entityHeader = pojo.toEntity();
+		
+		valDataAda(entityHeader);
+		valInvoiceBelumKirim(entityHeader);
+		throwBatchError();
+		
+		EInvoiceHeader newEInvoiceHeader = invoiceHeaderService.get(entityHeader.getId());
+
+		if (entityHeader.getStatus().equals(BaseConstants.STATUS_INV_BAYAR)) {
+			entityHeader.setStatus(BaseConstants.STATUS_INV_KIRIM);			
+		} else {
+			entityHeader.setStatus(BaseConstants.STATUS_INV_BAYAR);			
+		}
+		
+		newEInvoiceHeader = invoiceHeaderService.edit(entityHeader);
+		throwBatchError();
+		
+		return newEInvoiceHeader;
+	}
+	
+	@Transactional
+	public EInvoiceHeader setSent(String nomor) {
+		
+		InvoiceHeader invoiceHeader = invoiceHeaderService.findByBk(nomor);
+		EInvoiceHeader entityHeader = invoiceHeader.toEntity();
+		
+		entityHeader.setStatus(BaseConstants.STATUS_INV_KIRIM);			
+		
+		entityHeader = invoiceHeaderService.edit(entityHeader);
+		throwBatchError();
+		
+		return entityHeader;
+	}
+	
+	@Transactional
+	public EInvoiceHeader setNotes(InvoiceHeader pojo) {
+		
+		EInvoiceHeader entityHeader = pojo.toEntity();
+		
+		valDataAda(entityHeader);
+		throwBatchError();
+		
+		EInvoiceHeader newEInvoiceHeader = invoiceHeaderService.edit(entityHeader);
+		throwBatchError();
+		
+		return newEInvoiceHeader;
+	}
+	
+	private void valDataAda(EInvoiceHeader entity) {
+		if (entity == null) {
+			batchError("invoice.general.no.data");
+		}
+	}
+	
+	private void valInvoiceBelumKirim(EInvoiceHeader entity) {
+		if (entity.getStatus().equals(BaseConstants.STATUS_INV_BELUM_KIRIM)) {
+			batchError("invoice.general.belum.kirim");
+		}
+	}
+	
+	public UploadDownloadTemplate downloaSeveralPdfs(String[] listNomorInvoice) {
+
+		//Base64StringEncodedPojo b64 = kelolaInvoiceExportPdfService.pdfReport("INV/GJ/00039/II/2021");
+		
+		List<String> listNamaFilePdf = new ArrayList<String>();
+		for(String nomor : listNomorInvoice) {
+			
+			Base64StringEncodedPojo b64 = kelolaInvoiceExportPdfService.pdfReport(nomor);
+			
+			try {
+				String namaFile = nomor.replace("/", "");
+				File file = FileGenerator.createPdfTempFile(namaFile + ".pdf");
+				FileOutputStream fos = new FileOutputStream(file);
+
+				listNamaFilePdf.add(namaFile + ".pdf");
+				byte[] decoder = Base64.getDecoder().decode(b64.base64String);
+
+				fos.write(decoder);
+				fos.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
+//		String[] files = {"pic1.png",
+//				  "pic2.png",
+//				  "pic3.png",
+//				  "pic4.png"};
+		
+	    String fileName = "InvoicePdfs" + Long.toString(System.currentTimeMillis());
+	    
+	    UploadDownloadTemplate entity = new UploadDownloadTemplate();
+	    entity.fileExtension = "application/zip";
+	    entity.fileName = fileName;
+	    entity.file = FileGenerator.zipSeveralPdfFiles(listNamaFilePdf);
+
+	    return entity;
+	}	
+}

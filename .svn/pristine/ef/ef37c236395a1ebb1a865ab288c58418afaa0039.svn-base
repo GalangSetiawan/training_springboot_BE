@@ -1,0 +1,334 @@
+package co.id.sofcograha.base.queue.processparam.entities;
+
+import java.util.Date;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.exceptions.DevException;
+import co.id.sofcograha.base.queue.common.QueueConstants;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(name="std_proses_param", uniqueConstraints = @UniqueConstraint(columnNames = { "std_status_proses_id", "param_key" }))
+@JsonIgnoreProperties(ignoreUnknown=true)
+public class EProcessParam implements Cloneable {
+
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@Version
+	@Column(name = "version")
+	private Long version;
+
+	@ManyToOne
+	@JoinColumn(name = "std_status_proses_id")
+	private EProcessStatus processStatus;
+
+	@Column(name = "param_key")
+	private String paramKey;
+
+	@Column(name = "param_type")
+	@Enumerated(EnumType.STRING)
+	private QueueConstants.ProcessParamType paramType;
+
+	@Column(name = "param_value")
+	private String paramValue;
+
+	@Column(name = "param_value1")
+	private String paramValue1;
+
+	@Column(name = "param_value2")
+	private String paramValue2;
+
+	@Column(name = "param_value3")
+	private String paramValue3;
+
+	@Column(name = "param_value4")
+	private String paramValue4;
+
+	@Column(name = "param_value5")
+	private String paramValue5;
+
+	@Column(name = "param_value6")
+	private String paramValue6;
+
+	@Column(name = "param_value7")
+	private String paramValue7;
+
+	@Column(name = "param_value8")
+	private String paramValue8;
+
+	@Column(name = "param_value9")
+	private String paramValue9;
+
+	@Column(name = "param_value10")
+	private String paramValue10;
+
+	@Column(name = "param_value11")
+	private String paramValue11;
+
+	@Column(name = "param_value12")
+	private String paramValue12;
+
+	@Column(name = "param_value13")
+	private String paramValue13;
+
+	@Column(name = "param_value14")
+	private String paramValue14;
+
+	@Column(name = "param_value15")
+	private String paramValue15;
+
+	@Column(name = "user_create")
+	private String userCreate;
+
+	@Column(name = "creation_time")
+	private Date creationTime;
+
+	@Column(name = "user_modify")
+	private String userModify;
+
+	@Column(name = "modification_time")
+	private Date modificationTime;
+
+	public EProcessStatus getProcessStatus() {
+		return processStatus;
+	}
+
+	public void setProcessStatus(EProcessStatus processStatus) {
+		this.processStatus = processStatus;
+	}
+
+	public String getParamKey() {
+		return paramKey;
+	}
+
+	public void setParamKey(String paramKey) {
+		this.paramKey = paramKey;
+	}
+
+	public QueueConstants.ProcessParamType getParamType() {
+		return paramType;
+	}
+
+	public void setParamType(QueueConstants.ProcessParamType paramType) {
+		this.paramType = paramType;
+	}
+
+	public String getParamValue() {
+		return paramValue;
+	}
+
+	public void setParamValue(String paramValue) {
+		this.paramValue = paramValue;
+	}
+
+	public String getParamValue1() {
+		return paramValue1;
+	}
+
+	public void setParamValue1(String paramValue1) {
+		this.paramValue1 = paramValue1;
+	}
+
+	public String getParamValue2() {
+		return paramValue2;
+	}
+
+	public void setParamValue2(String paramValue2) {
+		this.paramValue2 = paramValue2;
+	}
+
+	public String getParamValue3() {
+		return paramValue3;
+	}
+
+	public void setParamValue3(String paramValue3) {
+		this.paramValue3 = paramValue3;
+	}
+
+	public String getParamValue4() {
+		return paramValue4;
+	}
+
+	public void setParamValue4(String paramValue4) {
+		this.paramValue4 = paramValue4;
+	}
+
+	public String getParamValue5() {
+		return paramValue5;
+	}
+
+	public void setParamValue5(String paramValue5) {
+		this.paramValue5 = paramValue5;
+	}
+
+	public String getParamValue6() {
+		return paramValue6;
+	}
+
+	public void setParamValue6(String paramValue6) {
+		this.paramValue6 = paramValue6;
+	}
+
+	public String getParamValue7() {
+		return paramValue7;
+	}
+
+	public void setParamValue7(String paramValue7) {
+		this.paramValue7 = paramValue7;
+	}
+
+	public String getParamValue8() {
+		return paramValue8;
+	}
+
+	public void setParamValue8(String paramValue8) {
+		this.paramValue8 = paramValue8;
+	}
+
+	public String getParamValue9() {
+		return paramValue9;
+	}
+
+	public void setParamValue9(String paramValue9) {
+		this.paramValue9 = paramValue9;
+	}
+
+	public String getParamValue10() {
+		return paramValue10;
+	}
+
+	public void setParamValue10(String paramValue10) {
+		this.paramValue10 = paramValue10;
+	}
+
+	public String getParamValue11() {
+		return paramValue11;
+	}
+
+	public void setParamValue11(String paramValue11) {
+		this.paramValue11 = paramValue11;
+	}
+
+	public String getParamValue12() {
+		return paramValue12;
+	}
+
+	public void setParamValue12(String paramValue12) {
+		this.paramValue12 = paramValue12;
+	}
+
+	public String getParamValue13() {
+		return paramValue13;
+	}
+
+	public void setParamValue13(String paramValue13) {
+		this.paramValue13 = paramValue13;
+	}
+
+	public String getParamValue14() {
+		return paramValue14;
+	}
+
+	public void setParamValue14(String paramValue14) {
+		this.paramValue14 = paramValue14;
+	}
+
+	public String getParamValue15() {
+		return paramValue15;
+	}
+
+	public void setParamValue15(String paramValue15) {
+		this.paramValue15 = paramValue15;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public String getUserCreate() {
+		return userCreate;
+	}
+
+	public void setUserCreate(String userCreate) {
+		this.userCreate = userCreate;
+	}
+
+	public Date getCreationTime() {
+		return creationTime;
+	}
+
+	public void setCreationTime(Date creationTime) {
+		this.creationTime = creationTime;
+	}
+
+	public String getUserModify() {
+		return userModify;
+	}
+
+	public void setUserModify(String userModify) {
+		this.userModify = userModify;
+	}
+
+	public Date getModificationTime() {
+		return modificationTime;
+	}
+
+	public void setModificationTime(Date modificationTime) {
+		this.modificationTime = modificationTime;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+	
+	@PrePersist
+	private void prePersist() {
+		Date currentDateTime = new Date();
+		
+		this.id = UUID.randomUUID().toString();
+		this.userCreate = CurrentUser.getUsername();
+		this.creationTime = currentDateTime;
+		this.userModify = CurrentUser.getUsername();
+		this.modificationTime = currentDateTime;
+	}
+
+	public EProcessStatus root() {
+		return this.processStatus;
+	}
+}

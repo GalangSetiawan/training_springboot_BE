@@ -1,0 +1,197 @@
+package co.id.sofcograha.domain.invoicing.admin.upload.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.EAdminUploadDetail;
+import co.id.sofcograha.domain.invoicing.admin.upload.repositories.EAdminUploadDetailRepository;
+
+@Service("adminUploadDetailService")
+public class AdminUploadDetailService extends BaseService {
+	
+	@Autowired private EAdminUploadDetailRepository repo;
+	
+	//@Autowired private ActionAuthorizationService actionAuthorizationService;
+	
+	public EAdminUploadDetail findByBk(String idAi001, String fversi) {
+		return repo.findByBK(idAi001, fversi);
+	}
+	
+	public EAdminUploadDetail findById(final String id) {
+		return repo.getOne(id);
+	}
+
+	public SearchResult<EAdminUploadDetail> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+    
+	@Transactional
+    public EAdminUploadDetail add(EAdminUploadDetail entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EAdminUploadDetail addedEntity = repo.add(entity);
+		
+		throwBatchError();
+		return addedEntity;	
+		
+    }
+       
+    //private void valOnAdd(final EAdminUploadDetail valuta) {
+    //}
+
+	@Transactional
+	public EAdminUploadDetail edit(EAdminUploadDetail entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EAdminUploadDetail toBeSaved = repo.getOne(entity.getId());
+		//EAdminUploadDetail oldEntity = (EAdminUploadDetail) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+		
+		throwBatchError();
+		return toBeSaved;
+		
+	}
+
+	//private void valOnEdit(final EAdminUploadDetail valuta) {
+    //}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EAdminUploadDetail.class.getSimpleName());
+		throwBatchError();
+		
+		EAdminUploadDetail toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		repo.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	//private void valOnDelete(EAdminUploadDetail entity) {
+    //}
+	
+	//private void valAuthAdd() {
+	//  if(!actionAuthorizationService.valHakAdd()) {
+	//    error("NoRightToAdd");
+	//  }
+	//}
+	
+	//private void valAuthEdit() {
+    //  if(!actionAuthorizationService.valHakEdit()) {
+    //    error("NoRightToChange");
+    //  }
+    //}
+	
+    //private void valAuthDelete() {
+    //  if(!actionAuthorizationService.valHakDelete()) {
+    //    error("NoRightToDelete");
+    //  }
+    //}
+
+    protected void defineDefaultValuesOnAdd(EAdminUploadDetail entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+    
+    protected void valRequiredValues(EAdminUploadDetail entity) {
+	}
+    
+    protected void manageMinMaxValues(EAdminUploadDetail entity) {
+	}
+    
+    protected void manageReferences(EAdminUploadDetail entity) {
+    }
+
+    protected void valUniquenessOnAdd(EAdminUploadDetail addedEntity) {
+		EAdminUploadDetail entityFromDb = repo.findByBK(addedEntity.getHeader().getId(), addedEntity.getFversi());
+		if (entityFromDb != null) {
+			throw new BusinessException("admin.upload.detail.bk");
+		}
+	}
+    
+    private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EAdminUploadDetail dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+    
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void valUniquenessOnEdit(EAdminUploadDetail editedEntity) {
+		EAdminUploadDetail entityFromDb = repo.findByBK(editedEntity.getHeader().getId(), editedEntity.getFversi());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("admin.upload.detail.bk");
+			}
+		}
+	}
+	
+	protected void defineEditableValues(EAdminUploadDetail newValues, EAdminUploadDetail toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setFversi(newValues.getFversi());
+			toBeSaved.setJkbulini(newValues.getJkbulini());
+			toBeSaved.setRevjkbullalu(newValues.getRevjkbullalu());
+			toBeSaved.setSeljkbullalu(newValues.getSeljkbullalu());
+			toBeSaved.setJnkbulini(newValues.getJnkbulini());
+			toBeSaved.setRevjnkbullalu(newValues.getRevjnkbullalu());
+			toBeSaved.setSeljnkbullalu(newValues.getSeljnkbullalu());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valDelete(EAdminUploadDetail toBeDeleted) {	}
+    
+    
+	public EAdminUploadDetail get(String id) {
+		return repo.getOne(id);
+	}
+}

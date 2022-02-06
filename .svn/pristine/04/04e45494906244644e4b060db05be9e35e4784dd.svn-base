@@ -1,0 +1,100 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.controllers;
+
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.proses.invoiceOtomatis.services.InvoiceOtomatisService;
+import co.id.sofcograha.domain.invoicing.proses.upload.entities.EUploadDataRpt;
+import co.id.sofcograha.domain.invoicing.proses.upload.pojos.TahunBulanProses;
+import co.id.sofcograha.domain.invoicing.proses.upload.pojos.UploadDataRpt;
+import co.id.sofcograha.domain.invoicing.proses.upload.services.CompositeUploadService;
+
+@RestController
+@RequestMapping("/api/upload")
+public class UploadController {
+
+	public static final Logger logger = LoggerFactory.getLogger(UploadController.class);
+
+	@Autowired CompositeUploadService compositeUploadService;
+	
+	@Autowired InvoiceOtomatisService invoiceOtomatisService;
+	
+	//@AuthRead(DomainFunctionConstants.MST_NPWP)
+	//@NoAuth
+	//@GetMapping("/download-template")
+	//public ApiResponse downloadExcelTemplate(HttpServletResponse response) {
+	//	return ApiResponse.data("item", compositeService.download(response));
+	//}
+	
+	//@AuthAdd(DomainFunctionConstants.MST_NPWP)
+	/*
+	@NoAuth
+	@PostMapping("/upload-raw")
+	public ApiResponse uploadExcelTemplate(@RequestBody MultipartFile file) {
+		return ApiResponse.data("items", compositeService.uploadExcel(file));
+	}
+	*/
+
+	@NoAuth
+	@GetMapping(value = "/search-upload-data")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+//		compositeUploadService.searchUploadData(SearchParameter.generate(searchParameter, 
+//				UploadDataRpt.getFieldMappings()));
+		SearchResult<EUploadDataRpt> searchResult = compositeUploadService.searchUploadData(SearchParameter.generate(searchParameter, 
+				UploadDataRpt.getFieldMappings()));
+		
+		return ApiResponse.dataWithPaging("items", 
+				UploadDataRpt.fromEntities(searchResult.getResult()), 
+				searchResult.getPaging());
+//		return ApiResponse.ok();
+	}
+	
+	@NoAuth
+	@PostMapping("/proses")
+	public ApiResponse proses(@RequestBody TahunBulanProses tahunBulan) {
+		invoiceOtomatisService.prosesInvoiceOtomatis(tahunBulan.tahun, tahunBulan.bulan);
+		return ApiResponse.ok();
+	}
+
+	@NoAuth
+	@PostMapping("/batal-proses")
+	public ApiResponse batalProses(@RequestBody TahunBulanProses tahunBulan) {
+		invoiceOtomatisService.prosesBatalInvoiceOtomatis(tahunBulan.tahun, tahunBulan.bulan);
+		return ApiResponse.ok();
+	}
+
+	@NoAuth
+	@PostMapping("/proses-tunggal")
+	public ApiResponse prosesTunggal(@RequestBody TahunBulanProses tahunBulan) {
+		invoiceOtomatisService.prosesInvoiceOtomatisTunggal(tahunBulan.tahun, tahunBulan.bulan, tahunBulan.idMi010, tahunBulan.idMi001);
+		return ApiResponse.ok();
+	}
+
+	@NoAuth
+	@PostMapping("/batal-proses-tunggal")
+	public ApiResponse batalProsesTunggal(@RequestBody TahunBulanProses tahunBulan) {
+		invoiceOtomatisService.prosesBatalInvoiceOtomatisTunggal(tahunBulan.tahun, tahunBulan.bulan, tahunBulan.idMi010, tahunBulan.idMi001);
+		return ApiResponse.ok();
+	}
+
+	@NoAuth
+	@PostMapping("/upload")
+	public ApiResponse uploadData(@RequestBody TahunBulanProses tahunBulan) {
+		compositeUploadService.getDataFromGajiId(tahunBulan.tahun, tahunBulan.bulan);
+		return ApiResponse.ok();
+	}
+}

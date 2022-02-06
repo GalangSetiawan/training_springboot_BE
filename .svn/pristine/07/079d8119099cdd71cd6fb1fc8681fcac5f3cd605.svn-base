@@ -1,0 +1,692 @@
+package co.id.sofcograha.domain.invoicing.implementasi.programKecil.services;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BatchBusinessException;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.pojos.CompanyPojo;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+import co.id.sofcograha.base.master.jenisTransaksi.services.JenisTransaksiService;
+import co.id.sofcograha.base.master.user.pojos.UserInfo;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.multitenancy.MultitenancyExecutor;
+import co.id.sofcograha.base.multitenancy.MultitenancyService;
+import co.id.sofcograha.base.queue.common.QueueUtilService;
+import co.id.sofcograha.base.queue.common.QueueConstants.ProcessStatusType;
+import co.id.sofcograha.base.queue.common.QueueConstants.Status;
+import co.id.sofcograha.base.queue.notification.NotificationMainService;
+import co.id.sofcograha.base.queue.process.entities.EProcess;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatusDetail;
+import co.id.sofcograha.base.queue.processstatus.services.ProcessStatusDetailService;
+import co.id.sofcograha.base.queue.processstatus.services.ProcessStatusService;
+import co.id.sofcograha.base.queue.queuenotification.services.SysNotificationService;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.bulanan.entities.EAdminBulanan;
+import co.id.sofcograha.domain.invoicing.admin.bulanan.services.AdminBulananService;
+import co.id.sofcograha.domain.invoicing.admin.diskon.entities.EAdminDiskon;
+import co.id.sofcograha.domain.invoicing.admin.diskon.services.AdminDiskonService;
+import co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.entities.EPenggunaanMaster;
+import co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.services.PenggunaanMasterService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewal;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetAdj;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetAdjSubDetDiskon;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetAdjSubDetSkemaTarif;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTgh;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTghSubDetDiskon;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTghSubDetSkemaTarif;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.ESumNilai;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewal;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetAdj;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.SumNilai;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalCompleteService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetAdjService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetAdjSubDetDiskonService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetAdjSubDetSkemaTarifService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetTghService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetTghSubDetDiskonService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetTghSubDetSkemaTarifService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalService;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.EAdminUploadDetail;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.EAdminUploadHeader;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.ESumDetailUpload;
+import co.id.sofcograha.domain.invoicing.admin.upload.services.AdminUploadDetailService;
+import co.id.sofcograha.domain.invoicing.admin.upload.services.AdminUploadHeaderService;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingComponent;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.services.AutomaticNumberingService;
+import co.id.sofcograha.domain.invoicing.constants.ProcessConstants;
+import co.id.sofcograha.domain.invoicing.implementasi.programKecil.entities.ECustTanggalLive;
+import co.id.sofcograha.domain.invoicing.implementasi.programKecil.entities.EInisialisasiAdjusmentRpt;
+import co.id.sofcograha.domain.invoicing.implementasi.programKecil.repositories.InisialisasiAdjusmentRptRepository;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.services.CustomerGajiIdService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifDetailService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifHeaderService;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.pojos.Produk;
+import co.id.sofcograha.domain.invoicing.masters.produk.services.ProdukService;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.services.SkemaHargaDetailService;
+import co.id.sofcograha.domain.invoicing.proses.invoiceOtomatis.entities.EProsesInvoiceDataRpt;
+import co.id.sofcograha.domain.invoicing.proses.invoiceOtomatis.repositories.ProsesInvoiceDataRptRepository;
+import co.id.sofcograha.domain.invoicing.proses.invoiceOtomatis.services.InvoiceOtomatisService;
+import co.id.sofcograha.domain.invoicing.proses.upload.services.UploadDataService;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.pojos.SaldoDepositHeader;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.services.SaldoDepositCompleteService;
+import co.id.sofcograha.domain.invoicing.saldo.live.entities.ESaldoLive;
+import co.id.sofcograha.domain.invoicing.saldo.live.pojos.SaldoLive;
+import co.id.sofcograha.domain.invoicing.saldo.live.services.SaldoLiveCompleteService;
+import co.id.sofcograha.domain.invoicing.saldo.live.services.SaldoLiveService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailAdj;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailHslPro;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubDetailAdjPerincian;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubDetailHslProDiskon;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubDetailHslProSkemaTarif;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubSubDetailAdjDiskon;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubSubDetailAdjSkemaTarif;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceDetailAdjService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceDetailHslProService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceSubDetailAdjPerincianService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceSubDetailHslProDiskonService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceSubDetailHslProSkemaTarifService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceSubSubDetailAdjDiskonService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceSubSubDetailAdjSkemaTarifService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.invoiceManual.services.InvoiceManualCompleteService;
+import co.id.sofcograha.domain.invoicing.transaksi.live.pojos.TrxLive;
+import co.id.sofcograha.domain.invoicing.transaksi.live.services.TrxLiveCompleteService;
+
+@Service
+public class ProgramKecilService extends BaseService {
+  
+	@Autowired PlatformTransactionManager platformTransactionManager;
+	@Autowired private CompanyService companyService;
+	@Autowired private MultitenancyService multitenancyService;
+	
+	@Autowired private NotificationMainService notificationMainService;
+	
+	@Autowired private CustomerProdukTarifDetailService customerProdukTarifDetailService;
+	@Autowired private SkemaHargaDetailService skemaHargaDetailService;
+	
+	@Autowired private SaldoLiveCompleteService saldoLiveCompleteService;
+	@Autowired private AdminDiskonService adminDiskonService;
+	@Autowired private InvoiceManualCompleteService invoiceManualCompleteService;
+	
+	@Autowired private AdminRenewalService adminRenewalService;
+	@Autowired private AdminUploadDetailService adminUploadDetailService;
+	@Autowired private CustomerProdukTarifHeaderService customerProdukTarifHeaderService;
+	@Autowired private AdminRenewalCompleteService adminRenewalCompleteService;
+	
+	@Autowired private AdminRenewalDetAdjService adminRenewalDetAdjService;
+	@Autowired private AdminRenewalDetTghService adminRenewalDetTghService;
+		
+	@Autowired private JenisTransaksiService jenisTransaksiService;
+	@Autowired private AutomaticNumberingService automaticNumberingService;	
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	@Autowired private PenggunaanMasterService penggunaanMasterService;
+	@Autowired private InvoiceDetailHslProService invoiceDetailHslProService;
+	@Autowired private InvoiceSubDetailHslProSkemaTarifService invoiceSubDetailHslProSkemaTarifService;
+	@Autowired private InvoiceSubDetailHslProDiskonService invoiceSubDetailHslProDiskonService;
+	@Autowired private InvoiceDetailAdjService invoiceDetailAdjService;
+	@Autowired private InvoiceSubDetailAdjPerincianService invoiceSubDetailAdjPerincianService;
+	@Autowired private AdminRenewalDetTghSubDetSkemaTarifService adminRenewalDetTghSubDetSkemaTarifService;
+	@Autowired private AdminRenewalDetTghSubDetDiskonService adminRenewalDetTghSubDetDiskonService;
+	@Autowired private AdminRenewalDetAdjSubDetDiskonService adminRenewalDetAdjSubDetDiskonService;
+	@Autowired private AdminRenewalDetAdjSubDetSkemaTarifService adminRenewalDetAdjSubDetSkemaTarifService;
+	@Autowired private InvoiceSubSubDetailAdjSkemaTarifService invoiceSubSubDetailAdjSkemaTarifService;
+	@Autowired private InvoiceSubSubDetailAdjDiskonService invoiceSubSubDetailAdjDiskonService;
+	
+	@Autowired private SaldoDepositCompleteService saldoDepositCompleteService;
+	@Autowired private AdminUploadHeaderService adminUploadHeaderService;
+	@Autowired private SaldoLiveService saldoLiveService;
+	
+	@Autowired private QueueUtilService queueUtilService;
+	@Autowired private UserService userService;
+	@Autowired private SysNotificationService sysNotificationService;
+	@Autowired private ProcessStatusService processStatusService;
+	@Autowired private ProcessStatusDetailService processStatusDetailService;
+	
+	@Autowired private AdminBulananService adminBulananService;
+	
+	@Autowired private ProsesInvoiceDataRptRepository prosesInvoiceDataRptRepository;
+	
+	@Autowired private UploadDataService uploadDataService;
+	@Autowired private TrxLiveCompleteService trxLiveCompleteService;
+	
+	@Autowired private InisialisasiAdjusmentRptRepository inisialisasiAdjusmentRptRepository;
+	@Autowired private InvoiceOtomatisService invoiceOtomatisService;
+	
+	@Autowired private CustomerGajiIdService customerGajiIdService;
+	@Autowired private ProdukService produkService;
+	
+	private String processName = "Proses Invoice Otomatis";
+	private String processNumber = "";
+	private EProcessStatus processStatus;
+	private boolean isErrorFound = false;
+	private List<Map<String, String>> errorList = null;
+	private int lastErrorItem;
+	
+	public SearchResult<EProsesInvoiceDataRpt> search(SearchParameter searchParameter) {
+		return prosesInvoiceDataRptRepository.search(searchParameter);
+	}
+
+	/*
+	@Transactional
+	public void createSaldoLiveSiklusBulanan(String tahun, String bulan) {
+		List<EAdminUploadHeader> adminUploadHeaderList = adminUploadHeaderService.findByTahunBulan(tahun, bulan);
+
+		int count = 1;
+		for (EAdminUploadHeader eAdminUploadHeader : adminUploadHeaderList) {
+			ECustomerProdukTarifHeader eCustomerProdukTarifHeader = eAdminUploadHeader.getMappingCustomerProduk().getHeader();
+			
+			int jumsiklus = eCustomerProdukTarifHeader.getJumsiklus();
+			String satsiklus = eCustomerProdukTarifHeader.getSatsiklus();
+			
+			if (jumsiklus == 1 && satsiklus.equals("BULAN")) {
+				
+				// periksa apakah customer-produk ini sudah punya saldo live
+				// saldo live ditambahkan hanya bila belum pernah ada saldo llive
+				SaldoLive saldoLive = saldoLiveCompleteService.findLiveCustomerProduk(eCustomerProdukTarifHeader.getCustomer().getId(), eCustomerProdukTarifHeader.getProduk().getId());
+				
+				if (saldoLive == null) {
+					
+					if (eCustomerProdukTarifHeader.getJnstgh().equals("PRA")) {
+						// pra bayar = bayar dulu baru pakai, jadi kalau data pertama adalah data 2021-06, maka ini  
+						// bisa diartikan 2021-05 ia live, karena sudah bisa pakai sehingga nanti 2021-06 ia akan ditagih
+						// untuk pra bayar berikutnya.
+
+						// ciptakan transaksi live
+						// nb: tabel terkait : ti010, periode di mi011 dkk, ai003, ai004
+						TrxLive trxLive = new TrxLive();
+						trxLive.customer = CustomerGajiId.fromEntity(eCustomerProdukTarifHeader.getCustomer());
+						trxLive.produk = Produk.fromEntity(eCustomerProdukTarifHeader.getProduk());
+						trxLive.tgtrn = TimeUtil.getDate("20210701");
+						trxLive.tglive = TimeUtil.getDate("20210501");
+						
+						trxLiveCompleteService.add(trxLive, BaseConstants.JENIS_TRX_LIVE);											
+					}
+					
+					if (eCustomerProdukTarifHeader.getJnstgh().equals("PASCA")) {
+						// pasca bayar = pakai dulu baru bayar, jadi kalau data pertama adalah data 2021-06, maka ini  
+						// bisa diartikan 2021-06 ia live dan nanti 2021-07 ia akan ditagih
+						
+						// ciptakan transaksi live
+						// nb: tabel terkait : ti010, periode di mi011 dkk, ai003, ai004
+						TrxLive trxLive = new TrxLive();
+						trxLive.customer = CustomerGajiId.fromEntity(eCustomerProdukTarifHeader.getCustomer());
+						trxLive.produk = Produk.fromEntity(eCustomerProdukTarifHeader.getProduk());
+						trxLive.tgtrn = TimeUtil.getDate("20210701");
+						trxLive.tglive = TimeUtil.getDate("20210601");
+						
+						trxLiveCompleteService.add(trxLive, BaseConstants.JENIS_TRX_LIVE);
+					}
+				}				
+			}
+			
+			int prosen = (count * 100)/ adminUploadHeaderList.size();
+			
+			notificationMainService.sendCounterNotification(CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId())).code,
+					UserInfo.fromEntity(userService.get(CurrentUser.getUserId())).loginName, prosen);
+			
+			count = count + 1;
+			
+		}
+	}
+	*/
+	
+	@Transactional
+	public void createAdjustmentCustomerPeriodik() {
+		
+		// ambil data dari saldo live untuk customer periodik
+		// NB: jadi harus sudah input trx live dulu ya ini
+		//     ini artinya harusnya admin renewal sudah terbentuk
+		List<ESaldoLive> eSaldoLiveList = saldoLiveService.getCustomerLiveSiklusPeriodik();
+		
+		int count = 1;
+		for (ESaldoLive eSaldoLive : eSaldoLiveList) {
+			
+			boolean isAdaError = false;
+
+			String idMi010 = eSaldoLive.getCustomer().getId();
+			String idMi001 = eSaldoLive.getProduk().getId();
+			
+			if (idMi010.equals("a078039c-c485-4f72-9319-99c41dec9829")) {
+				String a = "0";
+			}
+			
+			List<String> tahunBulanList = inisialisasiAdjusmentRptRepository.getTahunBulanPerCustomer(idMi010, idMi001);
+			
+			if (tahunBulanList != null) {
+				
+				for (String tahunBulan : tahunBulanList) {
+
+					String tahun = tahunBulan.substring(0, 4);
+					String bulan = tahunBulan.substring(4, 6);
+					
+					// ambil jumlah adjustment dari ii001
+					EInisialisasiAdjusmentRpt eInisialisasiAdjustmentRpt = inisialisasiAdjusmentRptRepository.getAdjustmentPerBulanCustomer(tahun, bulan, idMi010, idMi001);
+					
+					ESumDetailUpload eSumDetailUpload = new ESumDetailUpload();
+					eSumDetailUpload.setJkbulini(eInisialisasiAdjustmentRpt.getJkbulini());
+					eSumDetailUpload.setRevjkbullalu(eInisialisasiAdjustmentRpt.getRevjkbullalu());
+					eSumDetailUpload.setSeljkbullalu(eInisialisasiAdjustmentRpt.getSeljkbullalu());
+					eSumDetailUpload.setJnkbulini(eInisialisasiAdjustmentRpt.getJnkbulini());
+					eSumDetailUpload.setRevjnkbullalu(eInisialisasiAdjustmentRpt.getRevjnkbullalu());
+					eSumDetailUpload.setSeljnkbullalu(eInisialisasiAdjustmentRpt.getSeljnkbullalu());
+					
+					// ambil admin renewal untuk customer + produk dan tahun bulan proses
+					// untuk tahun bulan proses ini catatan yang harus diingat !!
+					// belum tentu tahun bulan proses, kan renewal itu tahun bulan invoice,
+					// jadi kalau misal periodik 3 bulanan, ya ini baru ada isinya di 3 bulan ke depan kan
+					// jadi kalau dicari tahun bulan proses ya pasti ngga ketemu, pertanyaannya gimana caranya kita bisa cari dta 3 bulan ke depan itu
+					// dan gimana caranya kita bisa yakin bahwa yang diproses saat ini tu untuk data 3 bulan ke depan itu ?
+					//    JAWAB : cari ke AI003 nya jelas pakai customer + produk, kabar baiknya adalah customer + produk yang live ini pasti hanya
+					//            ada satu, artinya tinggal cari tahun bulan nya yang mana
+					//            bagaimana kalau cari tahun bulan yang >= dari tahun bulan proses tapi yg terdekat (pakai MIN)			
+
+					// untuk menampung adjustment di bulan ini
+					EAdminRenewal eNearestRenewal = adminRenewalService.getNearestRenewal(idMi010, idMi001, tahun + bulan);
+					
+					// ambil header master customer tarif produk
+					CustomerProdukTarifHeader customerProdukTarifHeader = customerProdukTarifHeaderService.findByBk(idMi010, idMi001);
+								
+					if (customerProdukTarifHeader.jnstgh.equals("PRA")) {
+
+						System.out.println("customer periodik, hitung adjustment bila ada");
+						
+						// periksa apakah data adjustment untuk bulan ini telah ada,
+						// bila telah ada, tidak dilakukan hitung adjustment (harus batal proses invoice dulu)
+						
+						boolean isBelumHitungAdj = isAdjustmentBulanIniBelumDilakukan(eNearestRenewal, tahun, bulan);
+						
+						if (isBelumHitungAdj) {
+							// bila siklus adalah periodik, hitung adjustment untuk tahun bulan ini
+							//    jadi misal siklus 6 bulanan, live bulan januari 2021 (tagihan berikutnya adalah juli 2021)
+							//       saat proses untuk bulan januari 2021  -> tidak ada yang dilakukan
+							//       saat proses untuk bulan pebruari 2021 -> lakukan adjustment untuk bulan januari 2021
+							//       ... dst ...
+							//       saat proses untuk bulan juli 2021 -> lakukan adjustment untuk bulan juni 2021
+							
+							// tahunya bahwa dia harus disimpan di "renewal yang itu" dari mana ?
+							//    semisal untuk contoh di atas, tahun bulan proses adalah : pebruari 2021, adjustment nya untuk januari 2021
+							//    jadi 'seek' nya di renewal bdsk : customer + produk untuk pebruari 2021
+							
+							AdminRenewalDetAdj adminRenewalDetAdj = invoiceOtomatisService.hitungAdjustment(idMi010, idMi001, tahun, bulan, eSumDetailUpload, eNearestRenewal);
+							
+							if (adminRenewalDetAdj != null) {
+								// bila ditemukan ada perhitungan renewal, sebab bisa saja terjadi di bulan ini tidak ada data revisi jumlah
+								
+								System.out.println("save adjustment " + adminRenewalDetAdj);
+								
+								invoiceOtomatisService.hitungDiskonAdjustment(idMi010, idMi001, tahun, bulan, adminRenewalDetAdj);
+								
+								adminRenewalDetAdj.header = AdminRenewal.fromEntity(eNearestRenewal);
+
+								// simpan hasil hitung ke AI310 dan AI311
+								// proses simpan ini termasuk memeriksa ke admin ada tidaknya freemonth (AI006), bila ada, maka flag tagih di detail 
+								// adjustment akan ditandai : T
+								adminRenewalCompleteService.addDetailAdjustment(adminRenewalDetAdj, eNearestRenewal);
+								
+							}				
+						}
+					}
+				}			
+			}
+			
+			int prosen = (count * 100)/ eSaldoLiveList.size();
+			
+			notificationMainService.sendCounterNotification(CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId())).code,
+					UserInfo.fromEntity(userService.get(CurrentUser.getUserId())).loginName, prosen);
+			
+			count = count + 1;
+			
+		}		
+	}
+	
+	private boolean isAdjustmentBulanIniBelumDilakukan(EAdminRenewal eAdminRenewal, String tahun, String bulan) {
+		AdminRenewalDetAdj adminRenewalDetAdj = adminRenewalDetAdjService.findByBk(eAdminRenewal.getId(), tahun, bulan);
+		if (adminRenewalDetAdj != null) {
+			return false;
+		} else {
+			return true;
+		}
+	}
+	
+	/*
+	@Transactional
+	public void createAdminSaldo() {
+		
+		// untuk tiap-tiap data saldo live
+		//    ambil tanggal live (admin saldo utk tahun bulan live pasti sudah tercipta dari mekanisme input data) 
+		//    bulan start = bulan live + 1
+		//    bulan end   = bulan juli 2021 (karena menyediakan admin utk hitung bulan juli)
+		//    brarti ini = proses invoice bulan start s/d bulan end - 1
+		
+		// ambil data customer yang masih live (belum dihentikan) dari SI004
+		List<SaldoLive> liveCustomers = SaldoLive.fromEntities(saldoLiveCompleteService.getLiveCustomer());
+		
+		int count = 1;
+		for (SaldoLive saldoLive : liveCustomers) {
+
+			String idMi010 = saldoLive.customer.id;
+			String idMi001 = saldoLive.produk.id;
+
+			String tahunBulanStart = TimeUtil.convertDateToYyyyMmDd(saldoLive.tglive).substring(0, 6);
+			int intStartYear = Integer.valueOf(tahunBulanStart.substring(0, 4));
+			int intStartMonth = Integer.valueOf(tahunBulanStart.substring(4, 6));
+			int intTahunBulanStart = Integer.valueOf(tahunBulanStart);
+			
+			String tahunBulanEnd = "202106";
+			int intTahunBulanEnd = Integer.valueOf(tahunBulanEnd);
+			
+			SaldoLive tmpSaldoLive = saldoLive;
+			while (intTahunBulanStart != intTahunBulanEnd) {
+				
+				String bln = "0" + String.valueOf(Integer.valueOf(intStartMonth));
+				bln = bln.substring(bln.length() - 2, bln.length());
+				String thn = String.valueOf(intStartYear);
+
+				// ai007 (asalnya kosong)
+				updateAdminBulanan(thn, bln);
+				
+				// ai004 (tidak dari kosong, ada satu record ex tahun bulan live)
+				// ai003 (tidak dari kosong, ada satu record ex generate dari tahun bulan live)
+				// ai006 (bisa jadi tidak dari kosong, ex generate dari tahun bulan live)
+				// kalau proses salah gimana cara balikinnya ? tidak bisa, database dibackup dulu !!
+				prosesHitungSemua(idMi010, idMi001, thn, bln, tmpSaldoLive);
+				
+				tmpSaldoLive = prosesUpdateFlag(idMi010, idMi001, thn, bln, tmpSaldoLive, null);
+		  	  
+				updateAdminBulanan2(idMi010, idMi001, thn, bln);
+				
+				if (intStartMonth == 12) {
+					intStartYear = intStartYear + 1;
+					intStartMonth = 1;
+				} else {
+					intStartMonth = intStartMonth + 1;
+				}
+				
+				bln = "0" + String.valueOf(Integer.valueOf(intStartMonth));
+				bln = bln.substring(bln.length() - 2, bln.length());
+				thn = String.valueOf(intStartYear);
+				
+				intTahunBulanStart = Integer.valueOf(thn + bln);
+			}
+			
+			int prosen = (count * 100)/ liveCustomers.size();
+			
+			notificationMainService.sendCounterNotification(CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId())).code,
+					UserInfo.fromEntity(userService.get(CurrentUser.getUserId())).loginName, prosen);
+			
+			count = count + 1;
+		}		
+	}
+	*/
+	
+	@Transactional
+	public void createAdminSaldo() {
+		
+		// untuk tiap-tiap data saldo live
+		//    ambil tanggal live (admin saldo utk tahun bulan live pasti sudah tercipta dari mekanisme input data) 
+		//    bulan start = bulan live + 1
+		//    bulan end   = bulan juli 2021 (karena menyediakan admin utk hitung bulan juli)
+		//    brarti ini = proses invoice bulan start s/d bulan end - 1
+		
+		// ambil data customer yang masih live (belum dihentikan) dari SI004
+		// waktu program kecil ini dijalankan tanggal stop di SI004 pasti belum terisi, jadi passing tahun bulan
+		// ke method getLiveCustomer boleh terserah
+		String thbl = TimeUtil.convertDateToYyyyMmDd(new Date());
+		List<SaldoLive> liveCustomers = SaldoLive.fromEntities(saldoLiveCompleteService.getLiveCustomer(thbl.substring(0, 4), thbl.substring(4,  6)));
+		
+		int count = 1;
+		for (SaldoLive saldoLive : liveCustomers) {
+
+			String idMi010 = saldoLive.customer.id;
+			String idMi001 = saldoLive.produk.id;
+
+			// tahun bulan tagihan
+			String tahunBulanStart = TimeUtil.convertDateToYyyyMmDd(saldoLive.tglive).substring(0, 6);
+			int intStartYear = Integer.valueOf(tahunBulanStart.substring(0, 4));
+			int intStartMonth = Integer.valueOf(tahunBulanStart.substring(4, 6));
+			int intTahunBulanStart = Integer.valueOf(tahunBulanStart);
+			
+			String tahunBulanEnd = "202107";
+			int intTahunBulanEnd = Integer.valueOf(tahunBulanEnd);
+			
+			System.out.println("== " + saldoLive.customer.nama + " ==");
+			SaldoLive tmpSaldoLive = saldoLive;
+			//while (intTahunBulanStart != intTahunBulanEnd) {
+			while (intTahunBulanStart <= intTahunBulanEnd) {
+				
+				String bln = "0" + String.valueOf(Integer.valueOf(intStartMonth));
+				bln = bln.substring(bln.length() - 2, bln.length());
+				String thn = String.valueOf(intStartYear);
+
+				// ai007 (asalnya kosong)
+				updateAdminBulanan(thn, bln);
+				
+				// ai004 (tidak dari kosong, ada satu record ex tahun bulan live)
+				// ai003 (tidak dari kosong, ada satu record ex generate dari tahun bulan live)
+				// ai006 (bisa jadi tidak dari kosong, ex generate dari tahun bulan live)
+				// kalau proses salah gimana cara balikinnya ? tidak bisa, database dibackup dulu !!
+				prosesHitungSemua(idMi010, idMi001, thn, bln, tmpSaldoLive);
+				
+				tmpSaldoLive = prosesUpdateFlag(idMi010, idMi001, thn, bln, tmpSaldoLive, null);
+		  	  
+				updateAdminBulanan2(idMi010, idMi001, thn, bln);
+				
+				if (intStartMonth == 12) {
+					intStartYear = intStartYear + 1;
+					intStartMonth = 1;
+				} else {
+					intStartMonth = intStartMonth + 1;
+				}
+				
+				bln = "0" + String.valueOf(Integer.valueOf(intStartMonth));
+				bln = bln.substring(bln.length() - 2, bln.length());
+				thn = String.valueOf(intStartYear);
+				
+				intTahunBulanStart = Integer.valueOf(thn + bln);
+			}
+			
+			int prosen = (count * 100)/ liveCustomers.size();
+			
+			notificationMainService.sendCounterNotification(CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId())).code,
+					UserInfo.fromEntity(userService.get(CurrentUser.getUserId())).loginName, prosen);
+			
+			count = count + 1;
+		}		
+	}
+	
+	@Transactional
+	public void prosesHitungSemua(String idMi010, String idMi001, String tahun, String bulan, SaldoLive saldoLive) {
+		
+		String tahunBulanPrev = TimeUtil.getPrevMonth(tahun + bulan);
+		String tahunPrev = tahunBulanPrev.substring(0, 4);
+		String bulanPrev = tahunBulanPrev.substring(4, 6);
+
+		EAdminRenewal eNearestRenewal = adminRenewalService.getNearestRenewal(idMi010, idMi001, tahun + bulan);
+		
+		// ambil header master customer tarif produk
+		CustomerProdukTarifHeader customerProdukTarifHeader = customerProdukTarifHeaderService.findByBk(idMi010, idMi001);
+					
+		if (customerProdukTarifHeader.jnstgh.equals("PRA")) {
+
+			// lakukan penyegaran untuk admin freemonth lebih dulu
+			eNearestRenewal = adminRenewalService.createNextFreemonth(eNearestRenewal, tahun, bulan);
+			
+		}
+		
+		// ada atau tidaknya tagihan di bulan ini 
+		EAdminRenewal eAdminRenewal = adminRenewalService.findByBk(tahun, bulan, idMi010, idMi001);
+		
+		if (eAdminRenewal != null) {
+			
+			adminRenewalService.createNextAdmin(eAdminRenewal.getCustomer(), eAdminRenewal.getProduk(), saldoLive.tglive, tahun, bulan, 0);
+					
+			adminDiskonService.createNextAdmin(tahunPrev, bulanPrev, eAdminRenewal.getCustomer(), eAdminRenewal.getProduk());							
+
+		} else {
+			// meski tidak ada tagihan yang diciptakan, tetapi admin diskon utk bulan selanjutnya tetap diciptakan
+			System.out.println("create admin saldo berikutnya");
+			adminDiskonService.createNextAdmin(tahunPrev, bulanPrev, saldoLive.customer.toEntity(), saldoLive.produk.toEntity());
+		}			
+		
+	}
+	
+	@Transactional
+	public SaldoLive prosesUpdateFlag(String idMi010, String idMi001, String tahun, String bulan, SaldoLive saldoLive, EInvoiceHeader eInvoiceHeader) {
+		
+		// update flag flproi (sudah proses invoice) dan nomor invoice di admin renewal
+		EAdminRenewal eAdminRenewal = adminRenewalService.findByBk(tahun, bulan, idMi010, idMi001); 
+				
+		if (eAdminRenewal != null) {
+			eAdminRenewal.setFlproi(BaseConstants.YA);
+			
+			// bila eInvoiceHeader = null, ini artinya adalah proses ulang, jadi invoice tidak perlu diedit
+			if (eInvoiceHeader != null) {
+				eAdminRenewal.setInvoice(eInvoiceHeader);				
+			}
+		}
+		
+		saldoLive.flproi = true;
+		saldoLive.thpro = tahun;
+		saldoLive.blpro = bulan;
+		ESaldoLive eSaldoLive = saldoLiveService.edit(saldoLive.toEntity());
+		
+		return SaldoLive.fromEntity(saldoLiveService.get(eSaldoLive.getId()));
+
+	}	
+	
+	@Transactional
+	private void updateAdminBulanan2(String idMi010, String idMi001, String tahun, String bulan) {
+		
+		boolean isProcess = false;
+		
+		// bila ada satu saja di admin renewal (ai003), tahun bulan ini yang flproi = Y, 
+		//    maka set flproi admin bulanan (ai007) menjadi Y
+		EAdminRenewal eAdminRenewal = adminRenewalService.findByBk(tahun, bulan, idMi010, idMi001);
+		
+		if (eAdminRenewal != null && eAdminRenewal.getFlproi().equals(BaseConstants.YA)) {
+			isProcess = true;
+		}
+		
+		// untuk adjustment, bisa jadi di admin renewal tidak ada tetapi dia kan diproses,
+		//    maka flproi di admin bulanan (ai007) juga harus di set menjadi Y
+		if (!isProcess) {
+			List<EAdminRenewalDetAdj> adjList = adminRenewalDetAdjService.findByCustomerProdukTahunBulan(idMi010, idMi001, tahun, bulan);
+			
+			if (adjList != null && !adjList.isEmpty()) {
+				isProcess = true;
+			}
+		}
+		
+		EAdminBulanan eAdminBulanan = adminBulananService.findByBk(tahun, bulan);
+		if (eAdminBulanan != null) {
+			if (isProcess) {
+				eAdminBulanan.setFlproi(BaseConstants.YA);				
+			} else {
+				eAdminBulanan.setFlproi(BaseConstants.TIDAK);				
+			}
+		}
+	}
+	
+	@Transactional
+	private EAdminBulanan updateAdminBulanan(String tahun, String bulan) {
+		
+		EAdminBulanan eAdminBulanan = adminBulananService.findByBk(tahun, bulan);
+		if (eAdminBulanan == null) {
+			eAdminBulanan = new EAdminBulanan();
+			eAdminBulanan.setTahun(tahun);
+			eAdminBulanan.setBulan(bulan);
+			eAdminBulanan.setFluplo(BaseConstants.TIDAK);
+			eAdminBulanan.setFlproi(BaseConstants.TIDAK);
+			
+			adminBulananService.add(eAdminBulanan);
+		}
+		
+		return eAdminBulanan;
+		
+	}
+	
+	// untuk menghapus semua transaksi live yang sudah ada
+	@Transactional
+	public void deleteTransaksiLive() {
+		List<TrxLive> trxLiveList = TrxLive.fromEntities(inisialisasiAdjusmentRptRepository.getDaftarTrxLive());
+		
+		int count = 1;
+		for(TrxLive trxLive : trxLiveList) {
+			trxLiveCompleteService.delete(trxLive.id, trxLive.version);
+
+			int prosen = (count * 100)/ trxLiveList.size();
+			
+			notificationMainService.sendCounterNotification(CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId())).code,
+					UserInfo.fromEntity(userService.get(CurrentUser.getUserId())).loginName, prosen);
+			
+			count = count + 1;
+		}
+	}
+
+	@Transactional
+	public void createTransaksiLiveDariIi002() {
+		List<ECustTanggalLive> listTglCustomerLive = inisialisasiAdjusmentRptRepository.getCustomerLive();
+		
+		int count = 1;
+		for (ECustTanggalLive eCustTanggalLive : listTglCustomerLive) {
+			
+			ECustomerGajiId eCustomerGajiId = customerGajiIdService.get(eCustTanggalLive.getIdMi010());
+			EProduk eProduk = produkService.get(eCustTanggalLive.getIdMi001());
+			
+			String currentDate = TimeUtil.convertDateToYyyyMmDd(new Date());
+			
+			// ciptakan trx live
+			// ciptakan transaksi live
+			// nb: tabel terkait : ti010, periode di mi011 dkk, ai003, ai004
+			TrxLive trxLive = new TrxLive();
+			trxLive.customer = CustomerGajiId.fromEntity(eCustomerGajiId);
+			trxLive.produk = Produk.fromEntity(eProduk);
+			trxLive.tgtrn = new Date();
+			trxLive.tglive = TimeUtil.getDate(eCustTanggalLive.getTglive());
+			
+			trxLiveCompleteService.add(trxLive, BaseConstants.JENIS_TRX_LIVE);
+			
+			int prosen = (count * 100)/ listTglCustomerLive.size();
+			
+			notificationMainService.sendCounterNotification(CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId())).code,
+					UserInfo.fromEntity(userService.get(CurrentUser.getUserId())).loginName, prosen);
+			
+			count = count + 1;
+			
+		}
+	}
+	
+}

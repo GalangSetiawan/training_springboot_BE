@@ -1,0 +1,136 @@
+package co.id.sofcograha.base.master.company.pojos;
+
+//import id.co.sofcograha.gajiidapi.base.constants.BaseConstants;
+//import id.co.sofcograha.gajiidapi.base.extendables.BasePojo;
+//import id.co.sofcograha.gajiidapi.base.mst.company.entities.Company;
+//import id.co.sofcograha.gajiidapi.base.mst.company.entities.CompanyLogo;
+//import id.co.sofcograha.gajiidapi.base.search.SearchFieldMapping;
+//import id.co.sofcograha.gajiidapi.base.utils.ImageUtil;
+
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+
+import org.apache.commons.lang3.ArrayUtils;
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.entities.ECompanyLogo;
+import co.id.sofcograha.base.utils.ImageUtil;
+import co.id.sofcograha.base.utils.pojos.PojoUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class CompanyLogoPojo {
+	
+	private static final long serialVersionUID = 7144228424167144241L;
+	public static final String SINGLE = "companyLogo";
+	public static final String MULTI = "companyLogos";
+	
+	public String id;
+	public Long version;
+	public CompanyPojo company;
+	public Integer orderNumber;
+	public String fileExtension;
+	public String fileName;
+	public Integer fileSize;
+	public String file;
+	
+	public ECompanyLogo toEntity() {
+		
+		ECompanyLogo entity = new ECompanyLogo();
+
+		entity.setId(id);
+		entity.setVersion(version);
+
+		entity.setOrderNumber(orderNumber);
+		entity.setFileExtension(fileExtension);
+		entity.setFileName(fileName);
+		entity.setFileSize(fileSize);
+		entity.setFile(toEntityByteArray(ImageUtil.getBase64RawData(file)));
+		
+		if (company != null && !StringUtils.isEmpty(company.id)) {
+			ECompany eCompany = new ECompany();
+			
+			eCompany.setId(company.id);
+			eCompany.setVersion(company.version);
+			
+			entity.setCompany(eCompany);
+			
+		} else {
+			entity.setCompany(null);
+		}
+		
+		
+		return entity;
+	}
+	
+	public static CompanyLogoPojo fromEntity(ECompanyLogo entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static CompanyLogoPojo fromEntity(ECompanyLogo entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		CompanyLogoPojo pojo = new CompanyLogoPojo();
+
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+			
+			pojo.version = entity.getVersion();
+			pojo.company = CompanyPojo.fromEntity(entity.getCompany(), depthLevel);
+			pojo.orderNumber = entity.getOrderNumber();
+			pojo.fileExtension = entity.getFileExtension();
+			pojo.fileName = entity.getFileName();
+			pojo.fileSize = entity.getFileSize();
+			pojo.file = ImageUtil.getBase64FormatImage(entity.getFileExtension(), fromEntityByteArray(entity.getFile()));
+		}
+		return pojo;
+	}
+	
+	public static List<CompanyLogoPojo> fromEntities(List<ECompanyLogo> entities) {
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static List<CompanyLogoPojo> fromEntities(List<ECompanyLogo> entities, int depthLevel) {
+		if (entities == null) return new ArrayList<CompanyLogoPojo>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<CompanyLogoPojo> pojos = new ArrayList<CompanyLogoPojo>();
+		for(ECompanyLogo entity: entities) {
+			pojos.add(CompanyLogoPojo.fromEntity(entity));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("companyId", "company.id").searchOnly());
+		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class));
+		mappings.add(new SearchFieldMapping("fileName", "fileName"));
+		
+		return mappings;
+	}
+	
+	protected Byte[] toEntityByteArray(String val) {
+		return val == null ? null : PojoUtil.string2Base64ByteArray(val);
+	}
+	
+	protected static String fromEntityByteArray(Byte[] val) {
+		String result = null;
+		if (val != null) {
+			result = Base64.getEncoder().encodeToString(ArrayUtils.toPrimitive(val));
+		}
+		
+		return result;
+	}
+}

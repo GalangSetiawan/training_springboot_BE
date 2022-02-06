@@ -1,0 +1,228 @@
+package co.id.sofcograha.domain.invoicing.admin.diskon.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.diskon.entities.EAdminDiskon;
+import co.id.sofcograha.domain.invoicing.admin.diskon.repositories.EAdminDiskonRepository;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.services.CustomerGajiIdService;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.services.ProdukService;
+
+@Service("adminDiskonService")
+public class AdminDiskonService extends BaseService {
+	
+	@Autowired private CustomerGajiIdService customerGajiIdService;
+	@Autowired private ProdukService produkService;
+
+	@Autowired private EAdminDiskonRepository repo;
+	
+	//@Autowired private ActionAuthorizationService actionAuthorizationService;
+	
+	public EAdminDiskon findByBk(String tahun, String bulan, String idMi010, String idMi001, String jnsdis) {
+		return repo.findByBK(tahun, bulan, idMi010, idMi001, jnsdis);
+	}
+	
+	public EAdminDiskon findById(final String id) {
+		return repo.getOne(id);
+	}
+
+	public SearchResult<EAdminDiskon> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+    
+	@Transactional
+    public EAdminDiskon add(EAdminDiskon entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EAdminDiskon addedEntity = repo.add(entity);
+		
+		throwBatchError();
+		return addedEntity;	
+		
+    }
+       
+    //private void valOnAdd(final EAdminDiskon valuta) {
+    //}
+
+	@Transactional
+	public EAdminDiskon edit(EAdminDiskon entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EAdminDiskon toBeSaved = repo.getOne(entity.getId());
+		//EAdminDiskon oldEntity = (EAdminDiskon) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+		
+		throwBatchError();
+		return toBeSaved;
+		
+	}
+
+	//private void valOnEdit(final EAdminDiskon valuta) {
+    //}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EAdminDiskon.class.getSimpleName());
+		throwBatchError();
+		
+		EAdminDiskon toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		repo.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	//private void valOnDelete(EAdminDiskon entity) {
+    //}
+	
+	//private void valAuthAdd() {
+	//  if(!actionAuthorizationService.valHakAdd()) {
+	//    error("NoRightToAdd");
+	//  }
+	//}
+	
+	//private void valAuthEdit() {
+    //  if(!actionAuthorizationService.valHakEdit()) {
+    //    error("NoRightToChange");
+    //  }
+    //}
+	
+    //private void valAuthDelete() {
+    //  if(!actionAuthorizationService.valHakDelete()) {
+    //    error("NoRightToDelete");
+    //  }
+    //}
+
+    protected void defineDefaultValuesOnAdd(EAdminDiskon entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+    
+    protected void valRequiredValues(EAdminDiskon entity) {
+	}
+    
+    protected void manageMinMaxValues(EAdminDiskon entity) {
+	}
+    
+    protected void manageReferences(EAdminDiskon entity) {
+		if (entity.getCustomer() != null) {
+			ECustomerGajiId eFromDb = customerGajiIdService.get(entity.getCustomer().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setCustomer(eFromDb);
+				} else {
+					batchError("customerGajiId.not.active");
+				}
+			} else {
+				batchError("customerGajiId.not.found");
+			}			
+		}		
+
+		if (entity.getProduk() != null) {
+			EProduk eFromDb = produkService.get(entity.getProduk().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setProduk(eFromDb);
+				} else {
+					batchError("produk.not.active");
+				}
+			} else {
+				batchError("produk.not.found");
+			}			
+		}		
+
+    }
+
+    protected void valUniquenessOnAdd(EAdminDiskon addedEntity) {
+		EAdminDiskon entityFromDb = repo.findByBK(addedEntity.getTahun(), addedEntity.getBulan(), addedEntity.getCustomer().getId(), addedEntity.getProduk().getId(), addedEntity.getJnsdis());
+		if (entityFromDb != null) {
+			throw new BusinessException("admin.diskon.bk");
+		}
+	}
+    
+    private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EAdminDiskon dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+    
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void valUniquenessOnEdit(EAdminDiskon editedEntity) {
+		EAdminDiskon entityFromDb = repo.findByBK(editedEntity.getTahun(), editedEntity.getBulan(), editedEntity.getCustomer().getId(), editedEntity.getProduk().getId(), editedEntity.getJnsdis());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("admin.diskon.bk");
+			}
+		}
+	}
+	
+	protected void defineEditableValues(EAdminDiskon newValues, EAdminDiskon toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setTahun(newValues.getTahun());
+			toBeSaved.setBulan(newValues.getBulan());
+			toBeSaved.setJnsdis(newValues.getJnsdis());
+			toBeSaved.setIdref(newValues.getIdref());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valDelete(EAdminDiskon toBeDeleted) {	}
+    
+    
+	public EAdminDiskon get(String id) {
+		return repo.getOne(id);
+	}
+}

@@ -1,0 +1,43 @@
+package co.id.sofcograha.domain.invoicing.proses.hitung.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceSubDetailPerhitunganDiskon;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceSubDetailPerhitunganSkemaTarif;
+
+@JsonInclude(Include.ALWAYS)
+public class HitungTarifModel {
+	
+	public Integer jumkar;  
+	public Double harga;
+	public Integer pengali;
+	public Double bruto;
+	public Double diskon;
+	public Double netto;
+ 
+//	public List<HitungTarifDetailPerhitungan> detailSkema;
+//	public List<HitungTarifDetailDiskon> detailDiskon;
+	public List<InvoiceSubDetailPerhitunganSkemaTarif> detailSkema;
+	public List<InvoiceSubDetailPerhitunganDiskon> detailDiskon;
+
+//	public List<SkemaHargaDetail> detailSkemaHarga;
+//	public GrupDiskonDetail detailGrupDiskon;
+//	public DiskonKhususHeader diskonKhusus;
+//	public CustomerProdukTarifDetail diskonProsen;
+//	public CustomerProdukTarifDetail diskonNilai;
+    
+	// untuk keperluan matching error message di front end (bila input di grid)
+	public String keyIn;
+
+	// untuk penanda apakah detail ini tertandai delete (dari front end)
+	public boolean isSelect;
+	
+	// Untuk menampung message error di grid
+	public ArrayList<Message> errorMsg;
+	
+}

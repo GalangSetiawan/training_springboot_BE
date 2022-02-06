@@ -1,0 +1,13 @@
+package co.id.sofcograha.domain.invoicing.kelola.invoice.sort;
+
+import java.util.Comparator;
+
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+ 
+public class CustomerSorter implements Comparator<InvoiceHeader> 
+{
+    @Override
+    public int compare(InvoiceHeader o1, InvoiceHeader o2) {
+        return o2.customer.id.compareToIgnoreCase(o1.customer.id);
+    }
+}

@@ -1,0 +1,152 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.proses.upload.entities.EUploadData;
+
+@JsonInclude(Include.ALWAYS)
+public class UploadData {
+	
+	public String id;
+	public String tahunbulan;
+	public String tahun;
+	public String bulan;
+	public String kodept;
+	public String namapt;
+	public String npwp;
+	public String namanpwp;
+	public String kodekp;
+	public String namakp;
+	public Integer jkbulini;
+	public Integer revjkbullalu;
+	public Integer seljkbullalu;
+	public Integer jnkbulini;
+	public Integer revjnkbullalu;
+	public Integer seljnkbullalu;
+	public boolean flexist;
+	public Long version;  
+	
+	public EUploadData toEntity() {
+		
+		EUploadData entity = new EUploadData();
+		
+		entity.setId(id);
+		entity.setTahunbulan(tahunbulan);
+		entity.setKodept(kodept);
+		entity.setNamapt(namapt);
+		entity.setNpwp(npwp);
+		entity.setNamanpwp(namanpwp);
+		entity.setKodekp(kodekp);
+		entity.setNamakp(namakp);
+		entity.setJkbulini(jkbulini);
+		entity.setRevjkbullalu(revjkbullalu);
+		entity.setSeljkbullalu(seljkbullalu);
+		entity.setJnkbulini(jnkbulini);
+		entity.setRevjnkbullalu(revjnkbullalu);
+		entity.setSeljnkbullalu(seljnkbullalu);		
+		entity.setFlexist(flexist ? "Y" : "T");
+		entity.setVersion(version);
+
+  		return entity;
+	}
+	
+	public static List<EUploadData> toEntities(List<UploadData> pojos) {
+		if (pojos == null) return null;
+
+		List<EUploadData> entities = new ArrayList<EUploadData>();
+		for (UploadData pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static UploadData fromEntity (EUploadData entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static UploadData fromEntity (EUploadData entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static UploadData fromEntity(EUploadData entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		UploadData pojo = new UploadData();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.tahunbulan = entity.getTahunbulan();
+			pojo.tahun = pojo.tahunbulan.substring(0, 4);
+			pojo.bulan = pojo.tahunbulan.substring(4, 6);
+			pojo.kodept = entity.getKodept();
+			pojo.namapt = entity.getNamapt();
+			pojo.npwp = entity.getNpwp();
+			pojo.namanpwp = entity.getNamanpwp();
+			pojo.kodekp = entity.getKodekp();
+			pojo.namakp = entity.getNamakp();
+			pojo.jkbulini = entity.getJkbulini();
+			pojo.revjkbullalu = entity.getRevjkbullalu();
+			pojo.seljkbullalu = entity.getSeljkbullalu();
+			pojo.jnkbulini = entity.getJnkbulini();
+			pojo.revjnkbullalu = entity.getRevjnkbullalu();
+			pojo.seljnkbullalu = entity.getSeljnkbullalu();
+			pojo.flexist = entity.getFlexist() == null ? false : entity.getFlexist().trim().equals("Y") ? true : false;
+			pojo.version = entity.getVersion();
+			
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+			}
+		}
+
+		return pojo;
+	}
+	
+	public static List<UploadData> fromEntities(List<EUploadData> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static List<UploadData> fromEntities(List<EUploadData> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<UploadData> pojos = new ArrayList<>();
+		
+		for (EUploadData entity : entities) {
+			pojos.add(UploadData.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("tahunbulan", "tahunbulan"));
+		mappings.add(new SearchFieldMapping("kodept", "kodept"));
+		mappings.add(new SearchFieldMapping("namapt", "namapt"));
+		mappings.add(new SearchFieldMapping("npwp", "npwp"));
+		mappings.add(new SearchFieldMapping("kodekp", "kodekp"));
+		mappings.add(new SearchFieldMapping("namakp", "namakp"));
+		mappings.add(new SearchFieldMapping("flexist", "flexist"));
+//		mappings.add(new SearchFieldMapping("flakt", "flakt").searchOnly());
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}	

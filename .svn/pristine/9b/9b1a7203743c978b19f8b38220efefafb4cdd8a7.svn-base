@@ -1,0 +1,88 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.proses.upload.entities.EUploadDataRpt;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class UploadDataRpt {
+	
+	public String id;
+	public String idMi010;
+	public String nama;
+	public String idMi013;
+	public String kodept;
+	public String namapt;
+	public String npwp;
+	public String idAi001;
+	public boolean fluplo;
+	
+	public ArrayList<Message> errorMsg;
+	
+	public static UploadDataRpt fromEntity (EUploadDataRpt entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static UploadDataRpt fromEntity(EUploadDataRpt entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		
+		UploadDataRpt pojo = new UploadDataRpt();
+		
+		pojo.id = entity.getId();
+		
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.idMi010 = entity.getIdMi010();
+			pojo.nama = entity.getNama();
+			pojo.idMi013 = entity.getIdMi013();
+			pojo.kodept = entity.getKodept();
+			pojo.namapt = entity.getNamapt();
+			pojo.npwp = entity.getNpwp();
+			pojo.idAi001 = entity.getIdAi001();
+			pojo.fluplo = entity.getFluplo() == null ? false : entity.getFluplo().trim().equals(BaseConstants.YA) ? true : false;
+
+		}
+
+		return pojo;
+	}
+	
+	public static List<UploadDataRpt> fromEntities(List<EUploadDataRpt> entities) {
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static List<UploadDataRpt> fromEntities(List<EUploadDataRpt> entities, int depthLevel) {
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<UploadDataRpt> pojos = new ArrayList<>();
+		
+		for (EUploadDataRpt entity : entities) {
+			pojos.add(UploadDataRpt.fromEntity(entity, depthLevel));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("tahun", "tahun"));
+		mappings.add(new SearchFieldMapping("bulan", "bulan"));
+		mappings.add(new SearchFieldMapping("idMi001", "idMi001"));
+		mappings.add(new SearchFieldMapping("nama", "nama", String.class).sortOnly());
+		mappings.add(new SearchFieldMapping("kodept", "kodept", String.class).sortOnly());
+		
+		return mappings;
+	}
+
+}

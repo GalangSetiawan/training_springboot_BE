@@ -1,0 +1,165 @@
+package co.id.sofcograha.base.queue.processparam.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.queue.common.QueueConstants;
+import co.id.sofcograha.base.queue.processparam.entities.EProcessParam;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.queue.processstatus.pojos.ProcessStatusPojo;
+import co.id.sofcograha.base.utils.pojos.PojoUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class ProcessParamPojo {
+	
+	private static final long serialVersionUID = -813024281671398433L;
+	
+	public String id;
+	public Long version;
+	public ProcessStatusPojo processStatus;
+	public String paramKey;
+	public String paramType;
+	public String paramValue;
+	public String paramValue1;
+	public String paramValue2;
+	public String paramValue3;
+	public String paramValue4;
+	public String paramValue5;
+	public String paramValue6;
+	public String paramValue7;
+	public String paramValue8;
+	public String paramValue9;
+	public String paramValue10;
+	public String paramValue11;
+	public String paramValue12;
+	public String paramValue13;
+	public String paramValue14;
+	public String paramValue15;
+	
+	public EProcessParam toEntity() {
+		EProcessParam entity = new EProcessParam();
+		
+		entity.setId(id);
+		entity.setVersion(version);
+		entity.setParamKey(paramKey);
+		entity.setParamType(PojoUtil.string2Enum(paramType, QueueConstants.ProcessParamType.class));
+		entity.setParamValue(paramValue);
+		entity.setParamValue1(paramValue1);
+		entity.setParamValue2(paramValue2);
+		entity.setParamValue3(paramValue3);
+		entity.setParamValue4(paramValue4);
+		entity.setParamValue5(paramValue5);
+		entity.setParamValue6(paramValue6);
+		entity.setParamValue7(paramValue7);
+		entity.setParamValue8(paramValue8);
+		entity.setParamValue9(paramValue9);
+		entity.setParamValue10(paramValue10);
+		entity.setParamValue11(paramValue11);
+		entity.setParamValue12(paramValue12);
+		entity.setParamValue13(paramValue13);
+		entity.setParamValue14(paramValue14);
+		entity.setParamValue15(paramValue15);
+		
+		if (processStatus != null && !StringUtils.isEmpty(processStatus.id)) {
+			EProcessStatus eProcessStatus = new EProcessStatus();
+			
+			eProcessStatus.setId(processStatus.id);
+			eProcessStatus.setVersion(processStatus.version);
+			
+			entity.setProcessStatus(eProcessStatus);
+			
+		} else {
+			entity.setProcessStatus(null);
+		}
+		
+		return entity;
+	}
+	
+	public static ProcessParamPojo fromEntity(EProcessParam entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static ProcessParamPojo fromEntity(EProcessParam entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		ProcessParamPojo pojo = new ProcessParamPojo();
+
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+		
+			pojo.version = entity.getVersion();
+			pojo.processStatus = ProcessStatusPojo.fromEntity(entity.getProcessStatus(), depthLevel);
+			pojo.paramKey = entity.getParamKey();
+			pojo.paramType = entity.getParamType().name();
+			pojo.paramValue = entity.getParamValue();
+			pojo.paramValue1 = entity.getParamValue1();
+			pojo.paramValue2 = entity.getParamValue2();
+			pojo.paramValue3 = entity.getParamValue3();
+			pojo.paramValue4 = entity.getParamValue4();
+			pojo.paramValue5 = entity.getParamValue5();
+			pojo.paramValue6 = entity.getParamValue6();
+			pojo.paramValue7 = entity.getParamValue7();
+			pojo.paramValue8 = entity.getParamValue8();
+			pojo.paramValue9 = entity.getParamValue9();
+			pojo.paramValue10 = entity.getParamValue10();
+			pojo.paramValue11 = entity.getParamValue11();
+			pojo.paramValue12 = entity.getParamValue12();
+			pojo.paramValue13 = entity.getParamValue13();
+			pojo.paramValue14 = entity.getParamValue14();
+			pojo.paramValue15 = entity.getParamValue15();
+		}
+		return pojo;
+	}
+	
+	public static List<ProcessParamPojo> fromEntities(List<EProcessParam> entities) {
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static List<ProcessParamPojo> fromEntities(List<EProcessParam> entities, int depthLevel) {
+		if (entities == null) return new ArrayList<ProcessParamPojo>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<ProcessParamPojo> pojos = new ArrayList<ProcessParamPojo>();
+		for(EProcessParam entity: entities) {
+			pojos.add(ProcessParamPojo.fromEntity(entity));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("processStatusId", "processStatus.id").searchOnly());
+		mappings.add(new SearchFieldMapping("paramKey", "paramKey"));
+		mappings.add(new SearchFieldMapping("paramType", "paramType", QueueConstants.ProcessParamType.class));
+		mappings.add(new SearchFieldMapping("paramValue", "paramValue"));
+		mappings.add(new SearchFieldMapping("paramValue1", "paramValue1"));
+		mappings.add(new SearchFieldMapping("paramValue2", "paramValue2"));
+		mappings.add(new SearchFieldMapping("paramValue3", "paramValue3"));
+		mappings.add(new SearchFieldMapping("paramValue4", "paramValue4"));
+		mappings.add(new SearchFieldMapping("paramValue5", "paramValue5"));
+		mappings.add(new SearchFieldMapping("paramValue6", "paramValue6"));
+		mappings.add(new SearchFieldMapping("paramValue7", "paramValue7"));
+		mappings.add(new SearchFieldMapping("paramValue8", "paramValue8"));
+		mappings.add(new SearchFieldMapping("paramValue9", "paramValue9"));
+		mappings.add(new SearchFieldMapping("paramValue10", "paramValue10"));
+		mappings.add(new SearchFieldMapping("paramValue11", "paramValue11"));
+		mappings.add(new SearchFieldMapping("paramValue12", "paramValue12"));
+		mappings.add(new SearchFieldMapping("paramValue13", "paramValue13"));
+		mappings.add(new SearchFieldMapping("paramValue14", "paramValue14"));
+		mappings.add(new SearchFieldMapping("paramValue15", "paramValue15"));
+		
+		return mappings;
+	}
+}

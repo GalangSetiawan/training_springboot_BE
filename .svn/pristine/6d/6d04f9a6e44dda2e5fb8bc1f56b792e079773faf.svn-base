@@ -1,0 +1,268 @@
+package co.id.sofcograha.domain.invoicing.transaksi.unhold.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.services.CustomerGajiIdService;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.services.ProdukService;
+import co.id.sofcograha.domain.invoicing.transaksi.unhold.entities.ETrxUnhold;
+import co.id.sofcograha.domain.invoicing.transaksi.unhold.pojos.TrxUnhold;
+import co.id.sofcograha.domain.invoicing.transaksi.unhold.repositories.ETrxUnholdRepository;
+
+@Service("trxUnholdService")
+public class TrxUnholdService extends BaseService {
+	
+	@Autowired private ETrxUnholdRepository repo;
+	@Autowired private CustomerGajiIdService customerGajiIdService;
+	@Autowired private ProdukService produkService;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public TrxUnhold findByBk(String nomor) {
+		return TrxUnhold.fromEntity(repo.findByBK(nomor));
+	}
+	
+	public SearchResult<ETrxUnhold> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public ETrxUnhold add(ETrxUnhold entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		ETrxUnhold addedEntity = repo.add(entity);
+		postAdd(addedEntity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+	
+	@Transactional
+	public ETrxUnhold edit(ETrxUnhold entity) {
+				
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		ETrxUnhold toBeSaved = repo.getOne(entity.getId());
+		ETrxUnhold oldEntity = (ETrxUnhold) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, ETrxUnhold.class.getSimpleName());
+		throwBatchError();
+		
+		ETrxUnhold toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		throwBatchError();
+		
+	}
+	
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ETrxUnhold dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(ETrxUnhold entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(ETrxUnhold newValues, ETrxUnhold toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setNomor(newValues.getNomor());
+			toBeSaved.setTgtrn(newValues.getTgtrn());
+			toBeSaved.setTgunhold(newValues.getTgunhold());
+			toBeSaved.setTglive(newValues.getTglive());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(ETrxUnhold entity) {
+		valRequiredString(entity.getNomor(), "trx.unhold.nomor.required");
+		valRequiredString(entity.getTgtrn(), "trx.unhold.tgtrn.required");
+		//valRequiredString(entity.getTgunhold(), "trx.unhold.tgunhold.required");
+	}
+	
+	protected void manageMinMaxValues(ETrxUnhold entity) {
+		valMaxString(entity.getNomor(), 50, "trx.unhold.nomor.max.length");
+		valMaxString(entity.getTgtrn(), 8, "trx.unhold.tgtrn.max.length");
+		valMaxString(entity.getTgunhold(), 8, "trx.unhold.tgunhold.max.length");
+		valMaxString(entity.getKeterangan(), 1500, "trx.unhold.keterangan.max.length");
+	}
+
+	protected void manageReferences(ETrxUnhold entity) {
+		if (entity.getCustomer() != null) {
+			ECustomerGajiId eFromDb = customerGajiIdService.get(entity.getCustomer().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setCustomer(eFromDb);
+				} else {
+					batchError("customerGajiId.not.active");
+				}
+			} else {
+				batchError("customerGajiId.not.found");
+			}			
+		}		
+
+		if (entity.getProduk() != null) {
+			EProduk eFromDb = produkService.get(entity.getProduk().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setProduk(eFromDb);
+				} else {
+					batchError("produk.not.active");
+				}
+			} else {
+				batchError("produk.not.found");
+			}			
+		}		
+
+	}
+
+	protected void valDelete(ETrxUnhold toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(ETrxUnhold addedEntity) {
+		ETrxUnhold entityFromDb = repo.findByBK(addedEntity.getNomor());
+		if (entityFromDb != null) {
+			throw new BusinessException("trx.unhold.bk");
+		}
+	}
+
+	protected void valUniquenessOnEdit(ETrxUnhold editedEntity) {
+		ETrxUnhold entityFromDb = repo.findByBK(editedEntity.getNomor());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("trx.unhold.bk");
+			}
+		}
+	}
+	
+	protected void preAdd(ETrxUnhold entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(ETrxUnhold entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(ETrxUnhold toBeSaved, ETrxUnhold oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(ETrxUnhold toBeSaved, ETrxUnhold oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(ETrxUnhold entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(ETrxUnhold entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+	
+	public ETrxUnhold get(String id) {
+		return repo.getOne(id);
+	}
+	
+}

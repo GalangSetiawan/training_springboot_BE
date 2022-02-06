@@ -1,0 +1,37 @@
+package co.id.sofcograha.base.queue.notification;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.queue.queuenotification.pojos.SysNotificationPojo;
+
+@Service
+public class NotificationMainService {
+
+	@Autowired
+	private SimpMessagingTemplate template;
+
+	public void sendNotification(SysNotificationPojo sysNotificationPojo) {
+		if ((sysNotificationPojo.user == null) && (sysNotificationPojo.company == null)) {
+			// notif for all
+			template.convertAndSend(NotificationMainConstants.TOPIC_NOTIF_ALL, sysNotificationPojo.id);
+		} else if ((sysNotificationPojo.user == null) && (sysNotificationPojo.company != null)) {
+			// notif for company
+			template.convertAndSend(NotificationMainConstants.TOPIC + "/" + sysNotificationPojo.company.code,
+					sysNotificationPojo.id);
+		} else if ((sysNotificationPojo.user != null) && (sysNotificationPojo.company != null)) {
+			// notif for user
+//			template.convertAndSend(NotificationMainConstants.TOPIC + "/" + sysNotificationPojo.company.code
+//					+ sysNotificationPojo.user.userName, sysNotificationPojo.id);
+			template.convertAndSend(NotificationMainConstants.TOPIC + "/" + sysNotificationPojo.company.code
+					+ sysNotificationPojo.user.loginName, sysNotificationPojo.id);
+		}
+	}
+
+	public void sendCounterNotification(String companyCode, String loginName, Integer prosen) {
+		System.out.println(">>>" + companyCode + loginName + prosen);
+		template.convertAndSend(NotificationMainConstants.TOPIC + "/progressbar/" + companyCode + loginName, prosen);
+		
+	}
+}

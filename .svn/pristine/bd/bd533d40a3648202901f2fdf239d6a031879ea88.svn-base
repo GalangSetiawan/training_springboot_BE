@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailLainLainMaster;
+
+@Repository
+public class EInvoiceDetailLainLainMasterRepository extends SimpleJpaRepository<EInvoiceDetailLainLainMaster, String> {
+
+	protected final EntityManager em;
+
+	public EInvoiceDetailLainLainMasterRepository(EntityManager em) {
+		super(EInvoiceDetailLainLainMaster.class, em);
+		this.em = em;
+	}
+	
+	public EInvoiceDetailLainLainMaster findByBK(String idTi001, Integer nourut) {
+		
+		String query = "SELECT e FROM EInvoiceDetailLainLainMaster e " + 
+                       "WHERE e.header.id = :idTi001 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EInvoiceDetailLainLainMaster.class)
+					 .setParameter("idTi001", idTi001)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EInvoiceDetailLainLainMaster getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EInvoiceDetailLainLainMaster> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EInvoiceDetailLainLainMaster> search = new HqlSimpleSearchBuilder<>(EInvoiceDetailLainLainMaster.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EInvoiceDetailLainLainMaster add(EInvoiceDetailLainLainMaster entity) {
+		return save(entity);
+	}
+
+	public EInvoiceDetailLainLainMaster edit(EInvoiceDetailLainLainMaster entity) {
+		return save(entity);
+	}
+}

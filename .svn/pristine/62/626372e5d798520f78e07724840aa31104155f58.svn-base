@@ -1,0 +1,204 @@
+package co.id.sofcograha.domain.invoicing.transaksi.unhold.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+import co.id.sofcograha.base.master.jenisTransaksi.services.JenisTransaksiService;
+import co.id.sofcograha.base.utils.StringUtil;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingComponent;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.services.AutomaticNumberingService;
+import co.id.sofcograha.domain.invoicing.saldo.live.pojos.SaldoLive;
+import co.id.sofcograha.domain.invoicing.saldo.live.services.SaldoLiveCompleteService;
+import co.id.sofcograha.domain.invoicing.saldo.live.services.SaldoLiveService;
+import co.id.sofcograha.domain.invoicing.transaksi.unhold.entities.ETrxUnhold;
+import co.id.sofcograha.domain.invoicing.transaksi.unhold.pojos.TrxUnhold;
+import co.id.sofcograha.domain.invoicing.transaksi.unhold.repositories.ETrxUnholdRepository;
+
+@Service("trxUnholdCompleteService")
+public class TrxUnholdCompleteService extends BaseService {
+	
+	@Autowired private TrxUnholdService trxUnholdService;
+	@Autowired private SaldoLiveCompleteService saldoLiveCompleteService;
+	
+	//@Autowired private SaldoDepositCompleteService saldoDepositCompleteService;
+
+	@Autowired private JenisTransaksiService jenisTransaksiService;
+	@Autowired private AutomaticNumberingService automaticNumberingService;
+	@Autowired private SaldoLiveService saldoLiveService;
+
+	@Autowired private ETrxUnholdRepository eTrxUnholdRepository;
+	
+	public TrxUnhold findByBk(String nomor) {
+		return TrxUnhold.fromEntity(eTrxUnholdRepository.findByBK(nomor));
+	}
+
+	public SearchResult<ETrxUnhold> search(SearchParameter searchParameter) {
+		return eTrxUnholdRepository.search(searchParameter);
+	}
+	
+	@Transactional
+	public ETrxUnhold add(TrxUnhold pojo, String jenisTransaksi) {
+		
+		EJenisTransaksi eJenisTransaksi = jenisTransaksiService.findByBk(jenisTransaksi);
+
+		ETrxUnhold entityHeader = pojo.toEntity();
+		entityHeader.setJenisTransaksi(eJenisTransaksi);
+		
+		if (StringUtil.isBlank(entityHeader.getNomor())) {
+			List<EAutomaticNumberingComponent> autoNumbList = automaticNumberingService.getNumberComponentsByTransactionId(eJenisTransaksi.getId());
+			if (autoNumbList == null || autoNumbList.isEmpty()) {
+				// bila tidak ada definisi nomor otomatis di setting nomor otomatis (AM59), maka generate nomor otomatis dari
+				// default (AM59.id_am90 = 10000)
+				entityHeader.setNomor(automaticNumberingService.manageDocumentNumber(jenisTransaksi, 
+						TimeUtil.getDate(entityHeader.getTgtrn()), true));
+			} else {
+				// generate nomor otomatis berdasarkan jenis transaksi ini
+				entityHeader.setNomor(automaticNumberingService.manageDocumentNumber(jenisTransaksi,
+						TimeUtil.getDate(entityHeader.getTgtrn()), false));
+			}
+		} else {
+			// tulis ke am59log untuk nomor tersebut
+			automaticNumberingService.logNewNumber(eJenisTransaksi, entityHeader.getNomor());
+		}
+		
+		valAdaData(entityHeader);
+		throwBatchError();
+		
+		valSudahLive(entityHeader);
+		throwBatchError();
+
+		valBelumBerhenti(entityHeader);
+		throwBatchError();
+		
+		valSedangHold(entityHeader);
+		throwBatchError();
+		
+		// ambil tanggal live
+		SaldoLive saldoLive = saldoLiveService.findLiveCustomerProduk(entityHeader.getCustomer().getId(), entityHeader.getProduk().getId());
+		entityHeader.setTglive(TimeUtil.convertDateToYyyyMmDd(saldoLive.tglive));
+		
+		ETrxUnhold entityAdded = trxUnholdService.add(entityHeader);
+		throwBatchError();
+		
+		saldoLiveCompleteService.updateUnhold(entityAdded);
+		throwBatchError();
+		
+		return entityAdded;
+
+	}
+	
+	private void valAdaData(ETrxUnhold entity) {
+		if (entity == null) {
+			batchError("trx.berhenti.no.data");
+		}
+	}
+	
+	private void valSudahLive(ETrxUnhold ETrxUnhold) {
+		
+		//SaldoLive saldoLive = saldoLiveCompleteService.findByBk(ETrxUnhold.getCustomer().getId(), ETrxUnhold.getProduk().getId());
+		SaldoLive saldoLive = saldoLiveService.findLiveCustomerProduk(ETrxUnhold.getCustomer().getId(), ETrxUnhold.getProduk().getId());
+		
+		if (saldoLive == null) {
+			batchError("trx.berhenti.belum.live", ETrxUnhold.getCustomer().getNama(), ETrxUnhold.getProduk().getNama());
+		}
+	}
+	
+	private void valBelumBerhenti(ETrxUnhold ETrxUnhold) {
+		
+		//SaldoLive saldoLive = saldoLiveCompleteService.findByBk(ETrxUnhold.getCustomer().getId(), ETrxUnhold.getProduk().getId());
+		SaldoLive saldoLive = saldoLiveService.findLiveCustomerProduk(ETrxUnhold.getCustomer().getId(), ETrxUnhold.getProduk().getId());
+		
+		if (saldoLive != null) {
+			if (saldoLive.tgstop != null) {
+				batchError("trx.berhenti.sudah.dihentikan", ETrxUnhold.getCustomer().getNama(), ETrxUnhold.getProduk().getNama());				
+			}
+		}
+	}
+	
+	private void valSedangHold(ETrxUnhold ETrxUnhold) {
+		
+		SaldoLive saldoLive = saldoLiveService.findLiveCustomerProduk(ETrxUnhold.getCustomer().getId(), ETrxUnhold.getProduk().getId());
+		
+		if (saldoLive != null) {
+			if (saldoLive.tghold == null) {
+				batchError("trx.unhold.tidak.sedang.hold", ETrxUnhold.getCustomer().getNama(), ETrxUnhold.getProduk().getNama());				
+			}
+		}
+	}
+	
+	@Transactional
+	public ETrxUnhold edit(TrxUnhold pojo) {
+		
+		ETrxUnhold entityHeader = pojo.toEntity();
+		
+		valAdaData(entityHeader);
+		throwBatchError();
+		
+		valBelumBerhenti(entityHeader);
+		throwBatchError();
+		
+		ETrxUnhold newHeader = trxUnholdService.get(entityHeader.getId());
+		
+		saldoLiveCompleteService.cancelUnhold(newHeader);
+		throwBatchError();
+		
+		newHeader = trxUnholdService.edit(entityHeader);
+		throwBatchError();
+		
+		saldoLiveCompleteService.updateUnhold(newHeader);
+		throwBatchError();
+		
+		return newHeader;
+	}
+	
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valRootVersion(id, version);
+		throwBatchError();
+		
+		ETrxUnhold newHeader = trxUnholdService.get(id);
+
+		valBelumBerhenti(newHeader);
+		throwBatchError();
+		
+		saldoLiveCompleteService.cancelUnhold(newHeader);
+		throwBatchError();
+
+		// delete trx header
+		trxUnholdService.delete(id, version);
+	}
+	
+	private void valTidakAdaYgLive(ETrxUnhold newHeader) {
+		
+		SaldoLive saldoLive = saldoLiveCompleteService.findLiveCustomerProduk(newHeader.getCustomer().getId(), newHeader.getProduk().getId());
+		
+		if (saldoLive != null) {
+			batchError("trx.berhenti.ada.yg.live", newHeader.getCustomer().getNama(), newHeader.getProduk().getNama());
+		}
+	}
+		
+	protected void valRootVersion(String id, Long version) {
+		valEntityExists(id);
+		ETrxUnhold dbEntity = trxUnholdService.get(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id) {
+		if (trxUnholdService.get(id) == null) {
+			throw new BusinessException("data.not.found", id);
+		}
+	}
+	
+}

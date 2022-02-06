@@ -1,0 +1,83 @@
+package co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.entities.EMappingCustomerProduk;
+
+@Repository
+public class EMappingCustomerProdukRepository extends SimpleJpaRepository<EMappingCustomerProduk, String> {
+
+	protected final EntityManager em;
+
+	public EMappingCustomerProdukRepository(EntityManager em) {
+		super(EMappingCustomerProduk.class, em);
+		this.em = em;
+	}
+	
+	public EMappingCustomerProduk findByBK(String idMi011, String kodept, String npwp) {
+		
+		String query = "SELECT e FROM EMappingCustomerProduk e " + 
+                       "WHERE e.header.id = :idMi011 And " +
+  	                         "e.kodept = :kodept And " +
+                             "e.npwp = :npwp";
+		
+		try {
+			return em.createQuery(query, EMappingCustomerProduk.class)
+					 .setParameter("idMi011", idMi011)
+					 .setParameter("kodept", kodept)
+					 .setParameter("npwp", npwp)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public List<EMappingCustomerProduk> getMappingByCustomerProduk(String idMi010, String idMi001) {
+		
+		String query = "SELECT e FROM EMappingCustomerProduk e " + 
+                       "WHERE e.header.customer.id = :idMi010 And " +
+                             "e.header.produk.id = :idMi001 " +
+                       "ORDER BY e.kodept, e.npwp";
+	
+		try {
+			return em.createQuery(query, EMappingCustomerProduk.class)
+					.setParameter("idMi010", idMi010)
+					.setParameter("idMi001", idMi001)
+					.getResultList();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EMappingCustomerProduk getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EMappingCustomerProduk> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EMappingCustomerProduk> search = new HqlSimpleSearchBuilder<>(EMappingCustomerProduk.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EMappingCustomerProduk add(EMappingCustomerProduk entity) {
+		return save(entity);
+	}
+
+	public EMappingCustomerProduk edit(EMappingCustomerProduk entity) {
+		return save(entity);
+	}
+}

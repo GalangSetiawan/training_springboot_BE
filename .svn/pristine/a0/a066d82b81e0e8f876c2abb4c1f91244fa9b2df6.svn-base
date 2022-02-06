@@ -1,0 +1,117 @@
+package co.id.sofcograha.base.authentication.filters;
+
+import java.io.IOException;
+import java.util.Map;
+
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import co.id.sofcograha.base.authentication.token.TokenAuthentication;
+import co.id.sofcograha.base.authentication.token.TokenAuthenticationService;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.TokenAuthenticationException;
+import co.id.sofcograha.base.multitenancy.TenantContext;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TokenUtil;
+//import id.co.sofcograha.gajiidapi.base.authentication.token.TokenAuthentication;
+//import id.co.sofcograha.gajiidapi.base.authentication.token.TokenAuthenticationService;
+//import id.co.sofcograha.gajiidapi.base.constants.BaseConstants;
+//import id.co.sofcograha.gajiidapi.base.constants.BaseUriConstants;
+//import id.co.sofcograha.gajiidapi.base.exceptions.TokenAuthenticationException;
+//import id.co.sofcograha.gajiidapi.base.multitenancy.TenantContext;
+//import id.co.sofcograha.gajiidapi.base.responses.ApiResponse;
+//import id.co.sofcograha.gajiidapi.base.responses.Message;
+//import id.co.sofcograha.gajiidapi.base.utils.TokenUtil;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.SignatureException;
+import io.jsonwebtoken.UnsupportedJwtException;
+
+public class TokenAuthenticationFilter extends AbstractAuthenticationProcessingFilter {
+
+  private TokenAuthenticationService tokenAuthService;
+
+  public TokenAuthenticationFilter(TokenAuthenticationService authService) {
+    
+    // ini digunakan untuk men set bahwa semua request yang melalui alamat :
+    // /private/... harus ada otentikasi token nya
+    super(new AntPathRequestMatcher(BaseConstants.PRIVATE + "/**"));
+
+    this.tokenAuthService = authService;
+  }
+
+  @Override
+  public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
+      throws AuthenticationException, IOException, ServletException {
+
+    Map<String, String> authInfo = getAuthorizationTokenFromRequest(request);
+
+    TokenAuthentication auth = tokenAuthService.authenticate(authInfo);
+    SecurityContextHolder.getContext().setAuthentication(auth);
+
+    String companyCode = authInfo.get(TokenUtil.KEY_COMPANY_CODE);
+    TenantContext.setCurrentTenant(companyCode);
+
+    return auth;
+  }
+
+  private Map<String, String> getAuthorizationTokenFromRequest(HttpServletRequest request) {
+    String token = request.getHeader(BaseConstants.AUTHORIZATION_HEADER);
+    String menu = request.getHeader(BaseConstants.MENU_CODE);
+
+    Map<String, String> authInfo = null;
+    try {
+      authInfo = TokenUtil.parseToken(token);
+      authInfo.put(BaseConstants.MENU_CODE, menu);
+    } catch (ExpiredJwtException e) {
+      throw new TokenAuthenticationException("Token expired!", e.getCause());
+    } catch (UnsupportedJwtException e) {
+      throw new TokenAuthenticationException("Token format unsupported!", e.getCause());
+    } catch (MalformedJwtException e) {
+      throw new TokenAuthenticationException("Token was not correctly constructed!", e.getCause());
+    } catch (SignatureException e) {
+      throw new TokenAuthenticationException("Token was not correctly constructed!", e.getCause());
+    } catch (IllegalArgumentException e) {
+      throw new TokenAuthenticationException("Token was not correctly constructed!", e.getCause());
+    } 
+
+    return authInfo;
+  }
+
+  @Override
+  protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain,
+      Authentication authResult) throws IOException, ServletException {
+    chain.doFilter(request, response);
+  }
+
+  @Override
+  protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
+      AuthenticationException failed) throws IOException, ServletException {
+
+    response.setStatus(HttpStatus.UNAUTHORIZED.value());
+    response.setHeader(HttpHeaders.CONTENT_TYPE, "application/json;charset=UTF-8");
+
+    writeErrorResponse(response, ApiResponse
+        .error(Message.create().setCode(BaseConstants.AUTH_ERROR_CODE).setDesc(failed.getMessage())));
+  }
+
+  private void writeErrorResponse(HttpServletResponse response, ApiResponse responseObj) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+
+    response.getWriter().write(mapper.writeValueAsString(responseObj));
+    response.getWriter().close();
+  }
+}

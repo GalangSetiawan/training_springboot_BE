@@ -1,0 +1,113 @@
+package co.id.sofcograha.domain.invoicing.implementasi.programKecil.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.Query;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.domain.invoicing.implementasi.programKecil.entities.ECustTanggalLive;
+import co.id.sofcograha.domain.invoicing.implementasi.programKecil.entities.EInisialisasiAdjusmentRpt;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.transaksi.live.entities.ETrxLive;
+
+@Repository
+public class InisialisasiAdjusmentRptRepository {
+	
+	@Autowired
+	EntityManager em;
+	
+	public InisialisasiAdjusmentRptRepository() {
+	}
+
+    @SuppressWarnings("unchecked")
+	public EInisialisasiAdjusmentRpt getAdjustmentPerBulanCustomer(String tahun, String bulan, String idMi010, String idMi001) {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select a.* from ii001 a "); 
+        queryStringBuilder.append("where a.tahunbulan = :tahunbulan and "); 
+        queryStringBuilder.append("      a.id_mi010 = :idMi010 and "); 
+        queryStringBuilder.append("      a.id_mi001 = :idMi001 "); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), EInisialisasiAdjusmentRpt.class);
+        
+        query.setParameter("tahunbulan", tahun+bulan);
+        query.setParameter("idMi010", idMi010);
+        query.setParameter("idMi001", idMi001);
+        
+        List<EInisialisasiAdjusmentRpt> list = query.getResultList();
+
+        if (!list.isEmpty()) {
+        	return list.get(0);
+        } else {
+        	return null;
+        }
+    }	
+	
+    @SuppressWarnings("unchecked")
+	public List<ECustTanggalLive> getCustomerLive() {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select public.sys_guid() as id_ii002, a.id_mi010 as id_mi010, a.id_mi001 as id_mi001, a.tglive as tglive from ii002 a group by a.id_mi010, a.id_mi001, a.tglive "); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), ECustTanggalLive.class);
+        
+        List<ECustTanggalLive> list = query.getResultList();
+
+        if (!list.isEmpty()) {
+        	return list;
+        } else {
+        	return null;
+        }
+    }	
+	
+    @SuppressWarnings("unchecked")
+	public List<String> getTahunBulanPerCustomer(String idMi010, String idMi001) {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select distinct a.tahunbulan from ii001 a "); 
+        queryStringBuilder.append("where a.id_mi010 = :idMi010 and "); 
+        queryStringBuilder.append("      a.id_mi001 = :idMi001 "); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString());
+        
+        query.setParameter("idMi010", idMi010);
+        query.setParameter("idMi001", idMi001);
+        
+        List<String> list = query.getResultList();
+
+        if (!list.isEmpty()) {
+        	return list;
+        } else {
+        	return null;
+        }
+    }
+    
+	public List<ETrxLive> getDaftarTrxLive() {
+
+		String query = "SELECT e FROM ETrxLive e " + 
+				       "ORDER BY e.nomor";
+	
+		try {
+			return em.createQuery(query, ETrxLive.class)
+					.getResultList();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+
+}
+

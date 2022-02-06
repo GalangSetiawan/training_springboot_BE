@@ -1,0 +1,308 @@
+package co.id.sofcograha.base.master.userwidget.services;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.transaction.Transactional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.master.userwidget.entities.EUserWidget;
+import co.id.sofcograha.base.master.userwidget.repositories.UserWidgetRepository;
+import co.id.sofcograha.base.master.widget.entities.EWidget;
+import co.id.sofcograha.base.master.widget.services.WidgetService;
+import co.id.sofcograha.base.utils.StringUtil;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+//import id.co.sofcograha.gajiidapi.base.exceptions.BusinessException;
+//import id.co.sofcograha.gajiidapi.base.extendables.BaseService;
+//import id.co.sofcograha.gajiidapi.base.mst.user.entities.User;
+//import id.co.sofcograha.gajiidapi.base.mst.user.services.UserService;
+//import id.co.sofcograha.gajiidapi.base.mst.userwidget.entities.UserWidget;
+//import id.co.sofcograha.gajiidapi.base.mst.userwidget.repositories.UserWidgetRepository;
+//import id.co.sofcograha.gajiidapi.base.mst.widget.entities.Widget;
+//import id.co.sofcograha.gajiidapi.base.mst.widget.services.WidgetService;
+//import id.co.sofcograha.gajiidapi.base.search.SearchParameter;
+//import id.co.sofcograha.gajiidapi.base.search.SearchResult;
+//import id.co.sofcograha.gajiidapi.base.utils.OptionalConsumerUtil;
+//import id.co.sofcograha.gajiidapi.base.utils.StringUtil;
+
+@Service
+public class UserWidgetService extends BaseService {
+
+	@Autowired private WidgetService widgetService;
+	@Autowired private UserService userService;
+
+	@Autowired UserWidgetRepository userWidgetRepository;
+	
+	@Transactional
+	public EUserWidget add(EUserWidget entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		EUserWidget addedEntity = userWidgetRepository.add(entity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+
+	@Transactional
+	public EUserWidget edit(EUserWidget entity) {
+		
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EUserWidget toBeSaved = userWidgetRepository.getOne(entity.getId());
+		EUserWidget oldEntity = (EUserWidget) toBeSaved.clone();
+		
+		//TODO: this may cause org.hibernate.TransientPropertyValueException
+		// (set reference to non existing data, then before reaching manageReferences, another thread trigger hibernate flush)
+		defineEditableValues(entity, toBeSaved);
+		
+		toBeSaved = userWidgetRepository.edit(toBeSaved);
+
+		throwBatchError();
+		return toBeSaved;	
+	}
+	
+	@Transactional
+	public void delete(String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EUserWidget.class.getSimpleName());
+		throwBatchError();
+		
+		EUserWidget toBeDeleted = userWidgetRepository.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		userWidgetRepository.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EUserWidget dbEntity = userWidgetRepository.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (userWidgetRepository.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EUserWidget entity) { }
+
+	protected void defineEditableValues(EUserWidget newValues, EUserWidget toBeSaved) {
+		toBeSaved.setWidget(newValues.getWidget());
+		toBeSaved.setUser(newValues.getUser());
+		toBeSaved.setOrderNumber(newValues.getOrderNumber());
+		toBeSaved.setCols(newValues.getCols());
+		toBeSaved.setRows(newValues.getRows());
+		toBeSaved.setX(newValues.getX());
+		toBeSaved.setY(newValues.getY());
+	}
+
+	protected void valRequiredValues(EUserWidget entity) {
+		valRequiredReferenceWidget(entity.getWidget(), "userWidget.widget.required");
+		valRequiredReferenceUser(entity.getUser(), "userWidget.user.required");
+		
+		if (!StringUtil.isBlank(entity.getId())) {
+			valRequiredInteger(entity.getOrderNumber(), "userWidget.orderNumber.required");
+		}
+	}
+
+	// TODO : code yang berulang ini kelak kalau standar sudah jadi harus dipikirkan apakah hendak disatukan
+	protected void valRequiredReferenceWidget(EWidget ref, String msgCode, Object... args) {
+		if (ref == null) { batchError(msgCode, args); return; }
+		if (ref.getId() == null) { batchError(msgCode, args); return; }
+		if (ref.getId().equals("")) { batchError(msgCode, args); return; }
+	}
+	
+	protected void valRequiredReferenceUser(EUser ref, String msgCode, Object... args) {
+		if (ref == null) { batchError(msgCode, args); return; }
+		if (ref.getId() == null) { batchError(msgCode, args); return; }
+		if (ref.getId().equals("")) { batchError(msgCode, args); return; }
+	}
+	
+	protected void manageMinMaxValues(EUserWidget entity) {
+		valMaxInteger(entity.getOrderNumber(), 999, "userWidget.orderNumber.max.length");
+	}
+
+	protected void manageReferences(EUserWidget entity) {
+//		OptionalConsumerUtil.of(widgetService.find(entity.getWidget().getId()))
+//		.ifPresent(widget -> {
+//			if (widget.getActive()) {
+//				entity.setWidget(widget);
+//			} else {
+//				batchError("userWidget.widget.not.active");
+//			}
+//		})
+//		.ifNotPresent(() -> {
+//			batchError("userWidget.widget.not.found");
+//		});
+		EWidget eWidgetFromDb = widgetService.get(entity.getWidget().getId());
+		if (eWidgetFromDb != null) {
+			if (eWidgetFromDb.getActive()) {
+				entity.setWidget(eWidgetFromDb);
+			} else {
+				batchError("userWidget.widget.not.active");
+			}
+		} else {
+			batchError("userWidget.widget.not.found");
+		}
+
+//		OptionalConsumerUtil.of(userService.find(entity.getUser().getId()))
+//		.ifPresent(user -> {
+//			if (user.getActive()) {
+//				entity.setUser(user);
+//			} else {
+//				batchError("userWidget.user.not.active");
+//			}
+//		})
+//		.ifNotPresent(() -> {
+//			batchError("userWidget.user.not.found");
+//		});
+		EUser eUserFromDb = userService.get(entity.getUser().getId());
+		if (eUserFromDb != null) {
+			if (eUserFromDb.getActive()) {
+				entity.setUser(eUserFromDb);
+			} else {
+				batchError("userWidget.user.not.active");
+			}
+		} else {
+			batchError("userWidget.user.not.found");
+		}
+	}
+/*	
+	@Override
+	protected void valValid(UserWidget entity) { }
+
+	@Override
+	protected void valAdd(UserWidget entity) {	}
+
+	@Override
+	protected void valEdit(UserWidget entity, UserWidget fromDb) { }
+*/
+
+	protected void valDelete(EUserWidget toBeDeleted) {	}
+
+	protected void valUniquenessOnAdd(EUserWidget addedEntity) {
+//		OptionalConsumerUtil.of(findByBk(addedEntity.getWidget(), addedEntity.getUser()))
+//		.ifPresent(fromDb -> {
+//			throw new BusinessException("userWidget.bk", addedEntity.getWidget().getWidgetName(), addedEntity.getUser().getName());
+//		});
+		EUserWidget eUserWidgetFromDb = userWidgetRepository.findByBK(addedEntity.getWidget(), addedEntity.getUser());
+		if (eUserWidgetFromDb != null) {
+			throw new BusinessException("userWidget.bk", addedEntity.getWidget().getWidgetName(), addedEntity.getUser().getUserName());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EUserWidget editedEntity) {
+//		OptionalConsumerUtil.of(findByBk(editedEntity.getWidget(), editedEntity.getUser()))
+//		.ifPresent(fromDb -> {
+//			if (!editedEntity.getId().equals(fromDb.getId())) {
+//				throw new BusinessException("userWidget.bk", editedEntity.getWidget().getWidgetName(), editedEntity.getUser().getName());
+//			}
+//		});
+		EUserWidget eUserWidgetFromDb = userWidgetRepository.findByBK(editedEntity.getWidget(), editedEntity.getUser());
+		if (eUserWidgetFromDb != null) {
+			if (!editedEntity.getId().equals(eUserWidgetFromDb.getId())) {
+				throw new BusinessException("userWidget.bk", editedEntity.getWidget().getWidgetName(), editedEntity.getUser().getUserName());
+			}
+		}
+	}
+	
+	protected void preAdd(EUserWidget entity) {
+		Integer orderNumber = maxResult(entity.getUser());
+		if (orderNumber != null) {
+			entity.setOrderNumber(orderNumber + 1);
+		} else {
+			entity.setOrderNumber(1);
+		}
+	}
+	
+	@Transactional
+	public List<EUserWidget> addMany(List<EUserWidget> entities) {
+		List<EUserWidget> userWidgets = new ArrayList<EUserWidget>(); 
+		for (EUserWidget entity: entities) {
+			userWidgets.add(add(entity));
+		}
+		return userWidgets;
+	}
+	
+	@Transactional
+	public List<EUserWidget> editMany(List<EUserWidget> entities) {
+		List<EUserWidget> userWidgets = new ArrayList<EUserWidget>(); 
+		for (EUserWidget entity: entities) {
+			if (entity.isDeleted()) {
+				delete(entity.getId(), entity.getVersion());
+			} else {
+				if (StringUtil.isBlank(entity.getId())) {
+					userWidgets.add(add(entity));
+				} else {
+					userWidgets.add(edit(entity));
+				}
+			}
+		}
+		return userWidgets;
+	}
+
+	public EUserWidget findByBk(EWidget widget, EUser user) {
+		return userWidgetRepository.findByBK(widget, user);
+	}
+	
+	public EUserWidget get(String id) {
+		return userWidgetRepository.getOne(id);
+	}
+	
+	public Integer maxResult(EUser user) {
+		if (user == null) {
+			return 1;
+		}
+		return userWidgetRepository.getMaxResult(user);
+	}
+	
+	public SearchResult<EUserWidget>search(SearchParameter searchParameter) {
+		return userWidgetRepository.search(searchParameter);
+	}
+}

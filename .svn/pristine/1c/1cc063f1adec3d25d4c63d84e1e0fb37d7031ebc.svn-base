@@ -1,0 +1,379 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.services;
+
+import java.util.Date;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewal;
+import co.id.sofcograha.domain.invoicing.admin.renewal.repositories.EAdminRenewalRepository;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.services.CustomerGajiIdService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifDetail;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifDetailService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifHeaderService;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.services.ProdukService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+import co.id.sofcograha.domain.invoicing.transaksi.live.entities.ETrxLive;
+
+@Service("adminRenewalService")
+public class AdminRenewalService extends BaseService {
+	
+	@Autowired private CustomerGajiIdService customerGajiIdService;
+	@Autowired private ProdukService produkService;
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	@Autowired private CustomerProdukTarifHeaderService customerProdukTarifHeaderService;
+	@Autowired private CustomerProdukTarifDetailService customerProdukTarifDetailService;
+
+	@Autowired private EAdminRenewalRepository repo;
+	
+	//@Autowired private ActionAuthorizationService actionAuthorizationService;
+	
+	public EAdminRenewal findByBk(String tahun, String bulan, String idMi010, String idMi001) {
+		return repo.findByBK(tahun, bulan, idMi010, idMi001);
+	}
+	
+	public EAdminRenewal findById(final String id) {
+		return repo.getOne(id);
+	}
+
+	public SearchResult<EAdminRenewal> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+    
+	@Transactional
+	private Date getRenewalDate(String idMi010, String idMi001, String tanggal) {
+		
+		Date result = null;
+		
+		// ambil header master tarif
+		CustomerProdukTarifHeader customerProdukTarifHeader = customerProdukTarifHeaderService.findByBk(idMi010, idMi001);
+
+		if (customerProdukTarifHeader != null) {
+			
+			// ambil free month (dengan cara seperti ambil skema tarif di HitungTarifService.java)
+			CustomerProdukTarifDetail detailTarifSkemaHarga = customerProdukTarifDetailService.getByCustProdukAndJenisTarifTanpaRange(idMi010, idMi001, "FREEM");
+
+			int freeMonth = 0;
+			if (detailTarifSkemaHarga != null) {
+				freeMonth = detailTarifSkemaHarga.freemo;
+			}
+			
+			int bulanSiklus = 0;
+			if (customerProdukTarifHeader.satsiklus.equals("TAHUN")) {
+				bulanSiklus = 12 * customerProdukTarifHeader.jumsiklus;
+			}
+			if (customerProdukTarifHeader.satsiklus.equals("BULAN")) {
+				bulanSiklus = customerProdukTarifHeader.jumsiklus;
+			}
+			
+			// misal tgl live = 1 januari 2021, siklus = 6 bulan, maka :
+			//    bulan 1 + 6 bulan = bulan 7
+			// dengan tentu diperhitungkan juga free month nya
+			result = TimeUtil.addMonths(TimeUtil.getDate(tanggal), bulanSiklus + freeMonth);
+
+		}
+		
+		return result;
+	}
+	
+	@Transactional
+    public EAdminRenewal createAdmin(ETrxLive eTrxLive) {
+
+		EAdminRenewal result = null;
+		
+		/*
+		// ambil header master tarif
+		CustomerProdukTarifHeader customerProdukTarifHeader = customerProdukTarifHeaderService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId());
+
+		if (customerProdukTarifHeader != null) {
+
+			// ambil free month (dengan cara seperti ambil skema tarif di HitungTarifService.java)
+			CustomerProdukTarifDetail detailTarifSkemaHarga = customerProdukTarifDetailService.getByCustProdukAndJenisTarifTanpaRange(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "FREEM");
+
+			int freeMonth = 0;
+			if (detailTarifSkemaHarga != null) {
+				freeMonth = detailTarifSkemaHarga.freemo;
+			}
+			
+			int bulanSiklus = 0;
+			if (customerProdukTarifHeader.satsiklus.equals("TAHUN")) {
+				bulanSiklus = 12 * customerProdukTarifHeader.jumsiklus;
+			}
+			if (customerProdukTarifHeader.satsiklus.equals("BULAN")) {
+				bulanSiklus = customerProdukTarifHeader.jumsiklus;
+			}
+			
+			// misal tgl live = 1 januari 2021, siklus = 6 bulan, maka :
+			//    bulan 1 + 6 bulan = bulan 7
+			// dengan tentu diperhitungkan juga free month nya
+			Date nextRenewal = TimeUtil.addMonths(TimeUtil.getDate(eTrxLive.getTglive()), bulanSiklus + freeMonth);
+
+			String bulan = TimeUtil.getStringMonth(nextRenewal);
+			String tahun = TimeUtil.getStringYear(nextRenewal);
+			
+			EAdminRenewal eAdminRenewal = new EAdminRenewal();
+			eAdminRenewal.setBulan(bulan);
+			eAdminRenewal.setTahun(tahun);
+			eAdminRenewal.setCustomer(eTrxLive.getCustomer());
+			eAdminRenewal.setProduk(eTrxLive.getProduk());
+			eAdminRenewal.setFlproi(BaseConstants.TIDAK);
+			eAdminRenewal.setInvoice(null);
+			
+			result = add(eAdminRenewal);
+		}
+		*/
+		
+		Date nextRenewal = getRenewalDate(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), eTrxLive.getTglive());
+		
+		if (nextRenewal != null) {
+			
+			String bulan = TimeUtil.getStringMonth(nextRenewal);
+			String tahun = TimeUtil.getStringYear(nextRenewal);
+			
+			EAdminRenewal eAdminRenewal = new EAdminRenewal();
+			eAdminRenewal.setBulan(bulan);
+			eAdminRenewal.setTahun(tahun);
+			eAdminRenewal.setCustomer(eTrxLive.getCustomer());
+			eAdminRenewal.setProduk(eTrxLive.getProduk());
+			eAdminRenewal.setFlproi(BaseConstants.TIDAK);
+			eAdminRenewal.setInvoice(null);
+			
+			result = add(eAdminRenewal);
+
+		}
+		
+		return result;
+	}
+	
+	@Transactional
+    public void deleteAdmin(ETrxLive eTrxLive) {
+
+		Date nextRenewal = getRenewalDate(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), eTrxLive.getTglive());
+
+		if (nextRenewal != null) {
+			
+			String tanggal = TimeUtil.convertDateToYyyyMmDd(nextRenewal);
+			String tahun = tanggal.substring(0,4);
+			String bulan = tanggal.substring(4,6);
+			
+			EAdminRenewal eAdminRenewal = findByBk(tahun, bulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId());
+			
+			System.out.println("tahun-" + tahun + "-");
+			System.out.println("bulan-" + bulan + "-");
+			
+			System.out.println("customer-" + eTrxLive.getCustomer().getId() + "-");
+			System.out.println("produk-" + eTrxLive.getProduk().getId() + "-");
+			if (eAdminRenewal != null) {
+				System.out.println("admin renewal found");
+				delete(eAdminRenewal.getId(), eAdminRenewal.getVersion());
+				System.out.println("admin renewal deleted");
+			}			
+		}
+	}
+	
+	@Transactional
+    public EAdminRenewal add(EAdminRenewal entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EAdminRenewal addedEntity = repo.add(entity);
+		
+		throwBatchError();
+		return addedEntity;	
+		
+    }
+       
+    //private void valOnAdd(final EAdminRenewal valuta) {
+    //}
+
+	@Transactional
+	public EAdminRenewal edit(EAdminRenewal entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EAdminRenewal toBeSaved = repo.getOne(entity.getId());
+		//EAdminRenewal oldEntity = (EAdminRenewal) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+		
+		throwBatchError();
+		return toBeSaved;
+		
+	}
+
+	//private void valOnEdit(final EAdminRenewal valuta) {
+    //}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EAdminRenewal.class.getSimpleName());
+		throwBatchError();
+		
+		EAdminRenewal toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		repo.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	//private void valOnDelete(EAdminRenewal entity) {
+    //}
+	
+	//private void valAuthAdd() {
+	//  if(!actionAuthorizationService.valHakAdd()) {
+	//    error("NoRightToAdd");
+	//  }
+	//}
+	
+	//private void valAuthEdit() {
+    //  if(!actionAuthorizationService.valHakEdit()) {
+    //    error("NoRightToChange");
+    //  }
+    //}
+	
+    //private void valAuthDelete() {
+    //  if(!actionAuthorizationService.valHakDelete()) {
+    //    error("NoRightToDelete");
+    //  }
+    //}
+
+    protected void defineDefaultValuesOnAdd(EAdminRenewal entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+    
+    protected void valRequiredValues(EAdminRenewal entity) {
+	}
+    
+    protected void manageMinMaxValues(EAdminRenewal entity) {
+	}
+    
+    protected void manageReferences(EAdminRenewal entity) {
+		if (entity.getCustomer() != null) {
+			ECustomerGajiId eFromDb = customerGajiIdService.get(entity.getCustomer().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setCustomer(eFromDb);
+				} else {
+					batchError("customerGajiId.not.active");
+				}
+			} else {
+				batchError("customerGajiId.not.found");
+			}			
+		}		
+
+		if (entity.getProduk() != null) {
+			EProduk eFromDb = produkService.get(entity.getProduk().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setProduk(eFromDb);
+				} else {
+					batchError("produk.not.active");
+				}
+			} else {
+				batchError("produk.not.found");
+			}			
+		}		
+
+		if (entity.getInvoice() != null) {
+			EInvoiceHeader eFromDb = invoiceHeaderService.get(entity.getInvoice().getId());
+			if (eFromDb != null) {
+				entity.setInvoice(eFromDb);
+			} else {
+				batchError("invoice.not.found");
+			}			
+		}		
+    }
+
+    protected void valUniquenessOnAdd(EAdminRenewal addedEntity) {
+		EAdminRenewal entityFromDb = repo.findByBK(addedEntity.getTahun(), addedEntity.getBulan(), addedEntity.getCustomer().getId(), addedEntity.getProduk().getId());
+		if (entityFromDb != null) {
+			throw new BusinessException("admin.renewal.bk");
+		}
+	}
+    
+    private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EAdminRenewal dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+    
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void valUniquenessOnEdit(EAdminRenewal editedEntity) {
+		EAdminRenewal entityFromDb = repo.findByBK(editedEntity.getTahun(), editedEntity.getBulan(), editedEntity.getCustomer().getId(), editedEntity.getProduk().getId());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("admin.renewal.bk");
+			}
+		}
+	}
+	
+	protected void defineEditableValues(EAdminRenewal newValues, EAdminRenewal toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setTahun(newValues.getTahun());
+			toBeSaved.setBulan(newValues.getBulan());
+			toBeSaved.setFlproi(newValues.getFlproi());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valDelete(EAdminRenewal toBeDeleted) {	}
+    
+    
+	public EAdminRenewal get(String id) {
+		return repo.getOne(id);
+	}
+}

@@ -1,0 +1,94 @@
+package co.id.sofcograha.base.queue.process.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.queue.process.entities.EProcess;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class ProcessPojo {
+	
+	private static final long serialVersionUID = -150443782092854059L;
+//	public static final String SINGLE = "process";
+//	public static final String MULTI = "processes";
+	
+	public String id;
+	public Long version;
+	public String processCode;
+	public String processName;
+	public String description;
+	public String processClass;
+	public Boolean active;
+	
+	public EProcess toEntity() {
+		EProcess entity = new EProcess();
+		
+		entity.setId(id);
+		entity.setVersion(version);
+		entity.setProcessCode(processCode);
+		entity.setProcessName(processName);
+		entity.setDescription(description);
+		entity.setProcessClass(processClass);
+		entity.setActive(active);
+		
+		return entity;
+	}
+	
+	public static ProcessPojo fromEntity(EProcess entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static ProcessPojo fromEntity(EProcess entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		ProcessPojo pojo = new ProcessPojo();
+
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+			
+			pojo.version = entity.getVersion();
+			pojo.processCode = entity.getProcessCode();
+			pojo.processName = entity.getProcessName();
+			pojo.description = entity.getDescription();
+			pojo.processClass = entity.getProcessClass();
+			pojo.active = entity.getActive();
+		}
+		return pojo;
+	}
+	
+	public static List<ProcessPojo> fromEntities(List<EProcess> entities) {
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static List<ProcessPojo> fromEntities(List<EProcess> entities, int depthLevel) {
+		if (entities == null) return new ArrayList<ProcessPojo>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<ProcessPojo> pojos = new ArrayList<ProcessPojo>();
+		for(EProcess entity: entities) {
+			pojos.add(ProcessPojo.fromEntity(entity));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("processCode", "processCode"));
+		mappings.add(new SearchFieldMapping("processName", "processName"));
+		mappings.add(new SearchFieldMapping("description", "description"));
+		mappings.add(new SearchFieldMapping("processClass", "processClass"));
+		mappings.add(new SearchFieldMapping("active", "active", Boolean.class));
+		
+		return mappings;
+	}
+}

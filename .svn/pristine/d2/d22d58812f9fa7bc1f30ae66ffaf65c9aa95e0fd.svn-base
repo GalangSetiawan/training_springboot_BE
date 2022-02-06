@@ -1,0 +1,146 @@
+package co.id.sofcograha.base.queue.queuenotification.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.constants.enums.NotificationType;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.pojos.CompanyPojo;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.pojos.UserInfo;
+import co.id.sofcograha.base.queue.queuenotification.entities.ESysNotification;
+import co.id.sofcograha.base.utils.pojos.PojoUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class SysNotificationPojo {
+	
+	private static final long serialVersionUID = 2523335911771778897L;
+	
+	public String id;
+	public Long version;
+	public UserInfo user;
+	public CompanyPojo company;
+	public Date issueDate;
+	public Date endIssueDate;
+	public Boolean readFlag;
+	public Boolean pinFlag;
+	public String notificationType;
+	public String notificationMsg;
+	public String param1;
+	public String param2;
+	public Boolean active;
+	
+	public ESysNotification toEntity() {
+		
+		ESysNotification entity = new ESysNotification();
+		
+		entity.setId(id);
+		entity.setVersion(version);
+		entity.setIssueDate(issueDate);
+		entity.setEndIssueDate(endIssueDate);
+		entity.setReadFlag(readFlag);
+		entity.setPinFlag(pinFlag);
+		entity.setNotificationType(PojoUtil.string2Enum(notificationType, NotificationType.class));
+		entity.setNotificationMsg(notificationMsg);
+		entity.setParam1(param1);
+		entity.setParam2(param2);
+		entity.setActive(active);
+
+		if (user != null && !StringUtils.isEmpty(user.id)) {
+			EUser eUser = new EUser();
+			
+			eUser.setId(user.id);
+			
+			entity.setUser(eUser);
+			
+		} else {
+			entity.setUser(null);
+		}
+
+		if (company != null && !StringUtils.isEmpty(company.id)) {
+			ECompany eCompany = new ECompany();
+			
+			eCompany.setId(company.id);
+			
+			entity.setCompany(eCompany);
+			
+		} else {
+			entity.setCompany(null);
+		}
+		
+		return entity;
+	}
+	
+	public static SysNotificationPojo fromEntity(ESysNotification entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static SysNotificationPojo fromEntity(ESysNotification entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		SysNotificationPojo pojo = new SysNotificationPojo();
+
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+			
+			pojo.version = entity.getVersion();
+			pojo.user = UserInfo.fromEntity(entity.getUser(), depthLevel);
+			pojo.company = CompanyPojo.fromEntity(entity.getCompany(), depthLevel);
+			pojo.issueDate = entity.getIssueDate();
+			pojo.endIssueDate = entity.getEndIssueDate();
+			pojo.readFlag = entity.getReadFlag();
+			pojo.pinFlag = entity.getPinFlag();
+			pojo.notificationType = entity.getNotificationType().name();
+			pojo.notificationMsg = entity.getNotificationMsg();
+			pojo.param1 = entity.getParam1();
+			pojo.param2 = entity.getParam2();
+			pojo.active = entity.getActive();
+		}
+		return pojo;
+	}
+	
+	public static List<SysNotificationPojo> fromEntities(List<ESysNotification> entities) {
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static List<SysNotificationPojo> fromEntities(List<ESysNotification> entities, int depthLevel) {
+		if (entities == null) return new ArrayList<SysNotificationPojo>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<SysNotificationPojo> pojos = new ArrayList<SysNotificationPojo>();
+		for(ESysNotification entity: entities) {
+			pojos.add(SysNotificationPojo.fromEntity(entity));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("userId", "user.id").searchOnly());
+		mappings.add(new SearchFieldMapping("companyId", "company.id").searchOnly());
+		mappings.add(new SearchFieldMapping("issueDate", "issueDate", Date.class));
+		mappings.add(new SearchFieldMapping("issueDateStart", "issueDateStart", Date.class).searchOnly());
+		mappings.add(new SearchFieldMapping("issueDateEnd", "issueDateEnd", Date.class).searchOnly());
+		mappings.add(new SearchFieldMapping("endIssueDate", "endIssueDate", Date.class));
+		mappings.add(new SearchFieldMapping("readFlag", "readFlag", Boolean.class));
+		mappings.add(new SearchFieldMapping("pinFlag", "pinFlag", Boolean.class));
+		mappings.add(new SearchFieldMapping("notificationType", "notificationType", NotificationType.class));
+		mappings.add(new SearchFieldMapping("notificationMsg", "notificationMsg"));
+		mappings.add(new SearchFieldMapping("active", "active", Boolean.class));
+		
+		return mappings;
+	}
+}

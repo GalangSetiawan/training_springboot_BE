@@ -1,0 +1,94 @@
+package co.id.sofcograha.domain.invoicing.masters.produk.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+
+@JsonInclude(Include.ALWAYS)
+public class Produk {
+
+    public String id;
+	public String nama;
+	public Boolean flakt;
+    public Long version;
+    public boolean isDeleted;
+    
+    public EProduk toEntity() {
+		
+  	  EProduk entity = new EProduk();
+  		
+  	    entity.setId(id);
+  		entity.setNama(nama);
+  		
+  		if (flakt == true) {
+  		  entity.setFlakt("Y");
+  		} else {
+  		  entity.setFlakt("T");
+  		}
+  		
+        entity.setVersion(version);
+          
+  		return entity;
+  	}
+    
+	public static Produk fromEntity (EProduk entity) {
+		return fromEntity(entity,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static Produk fromEntity(EProduk entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		
+		Produk pojo = new Produk();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.nama = entity.getNama();
+		    
+		    if (entity.getFlakt().equals("Y")) {
+		      pojo.flakt = true;
+		    } else {
+		      pojo.flakt = false;
+		    }
+		    
+	        pojo.version = entity.getVersion();
+		}
+
+		return pojo;
+	}
+	
+	public static List<Produk> fromEntities(List<EProduk> entities){
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static List<Produk> fromEntities(List<EProduk> entities, int depthLevel){
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<Produk> pojos = new ArrayList<>();
+		
+		for (EProduk entity : entities) {
+			pojos.add(Produk.fromEntity(entity, depthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+	
+		mappings.add(new SearchFieldMapping("nama", "nama"));
+		mappings.add(new SearchFieldMapping("flakt", "flakt").searchOnly());
+//		mappings.add(new SearchFieldMapping("urutan", "urutan", Integer.class).sortOnly());
+	
+		return mappings;
+	} 
+	
+}

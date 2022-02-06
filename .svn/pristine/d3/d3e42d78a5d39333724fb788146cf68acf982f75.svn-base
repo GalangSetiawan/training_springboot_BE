@@ -1,0 +1,91 @@
+package co.id.sofcograha.domain.invoicing.masters.skemaharga.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.entities.ESkemaHargaHeader;
+
+@Repository
+public class ESkemaHargaHeaderRepository extends SimpleJpaRepository<ESkemaHargaHeader, String> {
+
+	protected final EntityManager em;
+
+	public ESkemaHargaHeaderRepository(EntityManager em) {
+		super(ESkemaHargaHeader.class, em);
+		this.em = em;
+	}
+	
+	public ESkemaHargaHeader findByBK(String nama) {
+		
+		String query = "SELECT e FROM ESkemaHargaHeader e " + 
+                       "WHERE e.nama = :nama";
+		
+		try {
+			return em.createQuery(query, ESkemaHargaHeader.class)
+					 .setParameter("nama", nama)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ESkemaHargaHeader getOne(String id) {
+
+		String query = "SELECT e FROM ESkemaHargaHeader e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, ESkemaHargaHeader.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public SearchResult<ESkemaHargaHeader> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ESkemaHargaHeader> search = new HqlSimpleSearchBuilder<>(ESkemaHargaHeader.class, em);
+		
+		String nama = (String) searchParameter.getValueFromMappedParam("nama");
+		String keterangan = (String) searchParameter.getValueFromMappedParam("keterangan");
+		String flakt = (String) searchParameter.getValueFromMappedParam("flakt");
+
+		if (!QueryUtil.isAll(nama)) {
+            search.addWhere("AND LOWER(nama) LIKE LOWER(:nama) ");
+            search.addParameter("nama", QueryUtil.formatStringForLikeFilter(nama));
+        }
+
+		if (!QueryUtil.isAll(keterangan)) {
+            search.addWhere("AND LOWER(keterangan) LIKE LOWER(:keterangan) ");
+            search.addParameter("keterangan", QueryUtil.formatStringForLikeFilter(keterangan));
+        }
+
+	    if (!QueryUtil.isAll(flakt)) {
+	      search.addWhere("AND LOWER(flakt) LIKE LOWER(:flakt) ");
+	      search.addParameter("flakt", QueryUtil.formatStringForLikeFilter(flakt));
+	    }
+		
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ESkemaHargaHeader add(ESkemaHargaHeader entity) {
+		return save(entity);
+	}
+
+	public ESkemaHargaHeader edit(ESkemaHargaHeader entity) {
+		return save(entity);
+	}
+}

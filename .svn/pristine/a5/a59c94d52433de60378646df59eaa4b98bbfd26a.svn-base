@@ -1,0 +1,32 @@
+package co.id.sofcograha.base.screencontrol.repositories;
+
+import javax.persistence.EntityManager;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.screencontrol.entities.ScreenControl;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Repository
+public class ScreenControlRepository extends SimpleJpaRepository<ScreenControl, String> { 
+
+	protected final EntityManager em;
+	
+	public ScreenControlRepository(EntityManager em) {
+		super(ScreenControl.class, em);
+		this.em = em;
+	}
+	
+	public SearchResult<ScreenControl> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ScreenControl> search = new HqlSimpleSearchBuilder<>(ScreenControl.class, em);
+		String screenId = (String) searchParameter.getValueFromMappedParam("screenId");
+		
+		search.addWhere("AND screenId = :screenId ");
+		search.addParameter("screenId", screenId);
+		
+		return search.getSearchResult();
+	}
+}

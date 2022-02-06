@@ -1,0 +1,59 @@
+package co.id.sofcograha.base.authentication;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import co.id.sofcograha.base.authentication.anonymous.AnonymousAuthentication;
+import co.id.sofcograha.base.authentication.token.TokenAuthentication;
+import co.id.sofcograha.base.exceptions.CustomAuthenticationException;
+
+//import id.co.sofcograha.gajiidapi.base.authentication.anonymous.AnonymousAuthentication;
+//import id.co.sofcograha.gajiidapi.base.authentication.token.TokenAuthentication;
+//import id.co.sofcograha.gajiidapi.base.exceptions.CustomAuthenticationException;
+//import id.co.sofcograha.gajiidapi.base.scheduler.SchedulerAuthentication;
+
+public class CurrentUser {
+
+  public static String getUserId() {
+    Authentication auth = getAuth();
+    
+    if (isTokenAuth(auth)) return ((TokenAuthentication)auth).getUserId();
+    if (isAnonymousAuth(auth)) return null;
+    
+    throw new CustomAuthenticationException("unexpected auth error!");
+  }
+  
+  public static String getCompanyId() {
+    Authentication auth = getAuth();
+    
+    if (isTokenAuth(auth)) return ((TokenAuthentication)auth).getCompanyId();
+    if (isAnonymousAuth(auth)) return null;
+    
+    throw new CustomAuthenticationException("unexpected auth error!");
+  }
+  
+  public static String getUsername() {
+    return getAuth().getName();
+  }
+  
+  private static Authentication getAuth() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    
+    valSupportedAuthentication(auth);
+    
+    return auth;
+  }
+  
+  private static void valSupportedAuthentication(Authentication auth) {
+    if (auth == null) throw new CustomAuthenticationException("No Authentication detected!");
+    if (isTokenAuth(auth)) return;
+    if (isAnonymousAuth(auth)) return;
+//    if (isSchedulerAuth(auth)) return;
+    
+    throw new CustomAuthenticationException("Authentication type not supported!");
+  }
+  
+  private static boolean isTokenAuth(Authentication auth) { return auth instanceof TokenAuthentication; }
+  private static boolean isAnonymousAuth(Authentication auth) { return auth instanceof AnonymousAuthentication; }
+//  private static boolean isSchedulerAuth(Authentication auth) { return auth instanceof SchedulerAuthentication; }
+}

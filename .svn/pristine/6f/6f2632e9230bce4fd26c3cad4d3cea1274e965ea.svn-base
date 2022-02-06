@@ -1,0 +1,93 @@
+package co.id.sofcograha.domain.invoicing.masters.produk.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+
+@Repository
+public class EProdukRepository extends SimpleJpaRepository<EProduk, String> {
+
+	protected final EntityManager em;
+
+	public EProdukRepository(EntityManager em) {
+		super(EProduk.class, em);
+		this.em = em;
+	}
+	
+	public EProduk findByBK(String nama) {
+		
+		String query = "SELECT e FROM EProduk e " + 
+					   "WHERE e.nama = :nama";
+
+		try {
+			return em.createQuery(query, EProduk.class)
+					.setParameter("nama", nama)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+
+	}
+	
+	public EProduk getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public EProduk findByNama(String nama) {
+
+		EProduk entity;
+
+		try {
+			entity = em.createQuery("FROM EProduk e " + 
+		                            "WHERE e.flakt = :flakt And " +
+					                        "LOWER(e.nama) = LOWER(:nama)", EProduk.class)
+					.setParameter("flakt", BaseConstants.YA)
+					.setParameter("nama", nama)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			entity = null;
+		}
+
+		return entity;
+	}
+		
+	public SearchResult<EProduk> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EProduk> search = new HqlSimpleSearchBuilder<>(EProduk.class, em);
+
+		String nama = (String) searchParameter.getValueFromMappedParam("nama");
+		String flakt = (String) searchParameter.getValueFromMappedParam("flakt");
+
+		if (!QueryUtil.isAll(nama)) {
+            search.addWhere("AND LOWER(nama) LIKE LOWER(:nama) ");
+            search.addParameter("nama", QueryUtil.formatStringForLikeFilter(nama));
+        }
+
+	    if (!QueryUtil.isAll(flakt)) {
+	      search.addWhere("AND LOWER(flakt) LIKE LOWER(:flakt) ");
+	      search.addParameter("flakt", QueryUtil.formatStringForLikeFilter(flakt));
+	    }
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EProduk add(EProduk entity) {
+		return save(entity);
+	}
+
+	public EProduk edit(EProduk entity) {
+		return save(entity);
+	}
+}

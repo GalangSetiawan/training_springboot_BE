@@ -1,0 +1,98 @@
+package co.id.sofcograha.base.master.jenisTransaksi.entities;
+
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import co.id.sofcograha.base.exceptions.DevException;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(schema="public", name = "am90", uniqueConstraints = @UniqueConstraint(columnNames = { "id_am90", "kode" }))
+public class EJenisTransaksi implements Cloneable {
+
+	@Id
+	@Column(name = "id_am90")
+	private String id;
+	
+	@Column(name = "kode")
+	private String kode;
+
+	@Column(name = "kode_display")
+	private String kodeDisplay;
+	
+	@Column(name = "keterangan")
+    private String keterangan;
+	
+	@Version
+    @Column(name = "version")
+    private Integer version;
+    
+    public String getId() {
+      return id;
+    }
+
+    public void setId(String id) {
+      this.id = id;
+    }
+
+    public Integer getVersion() {
+      return version;
+    }
+
+    public void setVersion(Integer version) {
+      this.version = version;
+    }
+    
+	public String getKode() {
+		return kode;
+	}
+
+	public void setKode(String kode) {
+		this.kode = kode;
+	}
+
+	public String getKodeDisplay() {
+		return kodeDisplay;
+	}
+
+	public void setKodeDisplay(String kodeDisplay) {
+		this.kodeDisplay = kodeDisplay;
+	}
+
+	public String getKeterangan() {
+		return keterangan;
+	}
+
+	public void setKeterangan(String keterangan) {
+		this.keterangan = keterangan;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+
+	@PrePersist
+	private void prePersist() {
+
+		this.id = UUID.randomUUID().toString();
+    
+	}
+
+	@PreUpdate
+	private void preUpdate() {
+	}
+}

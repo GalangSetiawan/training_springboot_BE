@@ -1,0 +1,108 @@
+package co.id.sofcograha.base.master.userwidget.controllers;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.userwidget.entities.EUserWidget;
+import co.id.sofcograha.base.master.userwidget.pojos.UserWidgetPojo;
+import co.id.sofcograha.base.master.userwidget.services.UserWidgetService;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+//import id.co.sofcograha.gajiidapi.base.authorization.annotation.AuthAdd;
+//import id.co.sofcograha.gajiidapi.base.authorization.annotation.AuthDelete;
+//import id.co.sofcograha.gajiidapi.base.authorization.annotation.AuthEdit;
+//import id.co.sofcograha.gajiidapi.base.authorization.annotation.NoAuth;
+//import id.co.sofcograha.gajiidapi.base.mst.userwidget.entities.UserWidget;
+//import id.co.sofcograha.gajiidapi.base.mst.userwidget.pojos.UserWidgetPojo;
+//import id.co.sofcograha.gajiidapi.base.mst.userwidget.services.UserWidgetService;
+//import id.co.sofcograha.gajiidapi.base.responses.ApiResponse;
+//import id.co.sofcograha.gajiidapi.base.search.SearchParameter;
+//import id.co.sofcograha.gajiidapi.base.search.SearchResult;
+//import id.co.sofcograha.gajiidapi.domain.constants.DomainFunctionConstants;
+//import id.co.sofcograha.gajiidapi.domain.constants.DomainUriConstants;
+
+@RestController
+@RequestMapping(value = "/api/userWidgets")
+public class UserWidgetController {
+	
+	@Autowired
+	private UserWidgetService userWidgetService;
+	
+	@NoAuth
+	@GetMapping(value = BaseConstants.ID)
+	public ApiResponse get(@PathVariable String id) {
+		return ApiResponse.data("item", UserWidgetPojo.fromEntity(userWidgetService.get(id)));
+	}
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+	  SearchResult<EUserWidget> searchResult = userWidgetService.search(SearchParameter.generate(searchParameter, 
+			  																			UserWidgetPojo.getFieldMappings()));
+	  
+	  return ApiResponse.dataWithPaging("items", 
+			  							UserWidgetPojo.fromEntities(searchResult.getResult()),
+			  							searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@PostMapping
+	public ApiResponse add(@RequestBody UserWidgetPojo pojo) {
+		EUserWidget entity = userWidgetService.add(pojo.toEntity());
+		return ApiResponse.data("item", UserWidgetPojo.fromEntity(entity));
+	}
+	
+	@NoAuth
+	@PostMapping(value = "/multi")
+	public ApiResponse addMany(@RequestBody List<UserWidgetPojo> pojos) {
+		List<EUserWidget> entities = new ArrayList<EUserWidget>();
+		for (UserWidgetPojo pojo: pojos) {
+			entities.add(pojo.toEntity());
+		}
+		
+		List<EUserWidget> result = userWidgetService.addMany(entities);
+		return ApiResponse.data("items", UserWidgetPojo.fromEntities(result));
+	}
+	
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody UserWidgetPojo pojo) {
+	  EUserWidget entity = userWidgetService.edit(pojo.toEntity());
+	  return ApiResponse.data("item", UserWidgetPojo.fromEntity(entity));
+	}
+	
+	@NoAuth
+	@PutMapping(value = "/multi")
+	public ApiResponse editMany(@RequestBody List<UserWidgetPojo> pojos) {
+		List<EUserWidget> entities = new ArrayList<EUserWidget>();
+		for (UserWidgetPojo pojo: pojos) {
+			entities.add(pojo.toEntity());
+		}
+		
+		List<EUserWidget> result = userWidgetService.editMany(entities);
+		return ApiResponse.data("items", UserWidgetPojo.fromEntities(result)); 
+	}
+	
+	@NoAuth
+	@DeleteMapping(value = BaseConstants.ID)
+	public ApiResponse delete(@PathVariable String id, @RequestParam(required = false) Long version) {
+	  userWidgetService.delete(id, version);
+	  return ApiResponse.ok();
+	}
+}

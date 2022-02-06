@@ -1,0 +1,16 @@
+package co.id.sofcograha.base.loginlogoutlog;
+
+public class LoginLogoutLogContext {
+	private static ThreadLocal<String> currentLoginLogoutLogId = new ThreadLocal<String>() {
+		public void set(String value) {
+			super.set(value);
+		}; 
+	};
+	
+    public static void setLoginLogoutLogId(String logId) {
+    	currentLoginLogoutLogId.set(logId);
+    }
+    public static String getLoginLogoutLogId() {
+    	return currentLoginLogoutLogId.get();
+    }
+}

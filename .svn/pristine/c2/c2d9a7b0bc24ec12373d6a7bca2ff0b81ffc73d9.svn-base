@@ -1,0 +1,304 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailHslPro;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailHslPro;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories.EInvoiceDetailHslProRepository;
+
+@Service("invoiceDetailHslProService")
+public class InvoiceDetailHslProService extends BaseService {
+	
+	@Autowired private EInvoiceDetailHslProRepository repo;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public InvoiceDetailHslPro findByBk(String idTi001, Integer nourut) {
+		return InvoiceDetailHslPro.fromEntity(repo.findByBK(idTi001, nourut));
+	}
+
+	public SearchResult<EInvoiceDetailHslPro> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public EInvoiceDetailHslPro addFromProses(EInvoiceDetailHslPro entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		EInvoiceDetailHslPro addedEntity = repo.add(entity);
+		postAdd(addedEntity);
+		throwBatchError();
+			
+		return addedEntity;	
+	}
+
+	@Transactional
+	public EInvoiceDetailHslPro add(EInvoiceDetailHslPro entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		manageMinMaxValues(entity);
+		//throwBatchError();
+		
+		manageReferences(entity);
+		//throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		//throwBatchError();
+		
+		if (!isAnyBatchErrors()) {
+			preAdd(entity);
+			EInvoiceDetailHslPro addedEntity = repo.add(entity);
+			postAdd(addedEntity);
+			
+			return addedEntity;	
+		}
+			
+		//throwBatchError();
+		return entity;	
+
+	}
+	
+	@Transactional
+	public EInvoiceDetailHslPro edit(EInvoiceDetailHslPro entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		EInvoiceDetailHslPro toBeSaved = repo.getOne(entity.getId());
+		EInvoiceDetailHslPro oldEntity = (EInvoiceDetailHslPro) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EInvoiceDetailHslPro.class.getSimpleName());
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		EInvoiceDetailHslPro toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		//throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		//throwBatchError();
+		
+	}
+	
+	// terkait manipulasi data
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EInvoiceDetailHslPro dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EInvoiceDetailHslPro entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(EInvoiceDetailHslPro newValues, EInvoiceDetailHslPro toBeSaved) {
+
+		if (toBeSaved != null) {			
+			toBeSaved.setNourut(newValues.getNourut());
+			toBeSaved.setTotjumkar(newValues.getTotjumkar());
+			toBeSaved.setPengali(newValues.getPengali());
+			toBeSaved.setHarga(newValues.getHarga());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+			toBeSaved.setBruto(newValues.getBruto());
+			toBeSaved.setPctdisc(newValues.getPctdisc());
+			toBeSaved.setNilpctdisc(newValues.getNilpctdisc());
+			toBeSaved.setNildisc(newValues.getNildisc());
+			toBeSaved.setNetto(newValues.getNetto());
+			toBeSaved.setJumkar(newValues.getJumkar());
+			toBeSaved.setJumnkar(newValues.getJumnkar());
+			toBeSaved.setNouskm(newValues.getNouskm());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(EInvoiceDetailHslPro entity) {
+		valRequiredInteger(entity.getNourut(), "invoicemanual.detail.hsl.pro.nourut.required");
+		valRequiredInteger(entity.getTotjumkar(), "invoicemanual.detail.hsl.pro.totjumkar.required");
+		valRequiredString(entity.getKeterangan(), "invoicemanual.detail.hsl.pro.keterangan.required");
+		valRequiredInteger(entity.getPengali(), "invoicemanual.detail.hsl.pro.pengali.required");
+		valRequiredDouble(entity.getHarga(), "invoicemanual.detail.hsl.pro.harga.required");
+		valRequiredDouble(entity.getBruto(), "invoicemanual.detail.hsl.pro.bruto.required");
+		//valRequiredDouble(entity.getPctdisc(), "invoicemanual.detail.hsl.pro.pctdisc.required");
+		//valRequiredDouble(entity.getNilpctdisc(), "invoicemanual.detail.hsl.pro.nilpctdisc.required");
+		valRequiredDouble(entity.getNildisc(), "invoicemanual.detail.hsl.pro.nildisc.required");
+		valRequiredDouble(entity.getNetto(), "invoicemanual.detail.hsl.pro.netto.required");
+		valRequiredInteger(entity.getJumkar(), "invoicemanual.detail.hsl.pro.jumkar.required");
+		valRequiredInteger(entity.getJumnkar(), "invoicemanual.detail.hsl.pro.jumnkar.required");
+	}
+	
+	protected void manageMinMaxValues(EInvoiceDetailHslPro entity) {
+		valMinInteger(entity.getNourut(), 0, "invoicemanual.detail.hsl.pro.nourut.min.length");
+		valMaxInteger(entity.getNourut(), 999, "invoicemanual.detail.hsl.pro.nourut.max.length");
+		valMinInteger(entity.getTotjumkar(), 0, "invoicemanual.detail.hsl.pro.totjumkar.min.length");
+		valMaxInteger(entity.getTotjumkar(), 9999999, "invoicemanual.detail.hsl.pro.totjumkar.max.length");
+		valMaxString(entity.getKeterangan(), 200, "invoicemanual.detail.hsl.pro.keterangan.max.length");
+		valMinInteger(entity.getPengali(), 0, "invoicemanual.detail.hsl.pro.pengali.min.length");
+		valMaxInteger(entity.getPengali(), 9999, "invoicemanual.detail.hsl.pro.pengali.max.length");
+		valMinDouble(entity.getHarga(), 0D, "invoicemanual.detail.hsl.pro.harga.min.length");
+		valMaxDouble(entity.getHarga(), 999999999D, "invoicemanual.detail.hsl.pro.harga.max.length");
+		valMinDouble(entity.getPctdisc(), 0D, "invoicemanual.detail.hsl.pro.pctdisc.min.length");
+		valMaxDouble(entity.getPctdisc(), 9999D, "invoicemanual.detail.hsl.pro.pctdisc.max.length");
+		valMinDouble(entity.getNilpctdisc(), -999999999D, "invoicemanual.detail.hsl.pro.nilpctdisc.min.length");
+		valMaxDouble(entity.getNilpctdisc(), 999999999D, "invoicemanual.detail.hsl.pro.nilpctdisc.max.length");
+		valMinDouble(entity.getNildisc(), -999999999D, "invoicemanual.detail.hsl.pro.nildisc.min.length");
+		valMaxDouble(entity.getNildisc(), 999999999D, "invoicemanual.detail.hsl.pro.nildisc.max.length");
+		valMinDouble(entity.getBruto(), -999999999D, "invoicemanual.detail.hsl.pro.bruto.min.length");
+		valMaxDouble(entity.getBruto(), 999999999D, "invoicemanual.detail.hsl.pro.bruto.max.length");
+		valMinDouble(entity.getNetto(), -999999999D, "invoicemanual.detail.hsl.pro.netto.min.length");
+		valMaxDouble(entity.getNetto(), 999999999D, "invoicemanual.detail.hsl.pro.netto.max.length");
+		valMinInteger(entity.getJumkar(), 0, "invoicemanual.detail.hsl.pro.jumkar.min.length");
+		valMaxInteger(entity.getJumkar(), 999999, "invoicemanual.detail.hsl.pro.jumkar.max.length");
+		valMinInteger(entity.getJumnkar(), 0, "invoicemanual.detail.hsl.pro.jumnkar.min.length");
+		valMaxInteger(entity.getJumnkar(), 999999, "invoicemanual.detail.hsl.pro.jumnkar.max.length");
+	}
+
+	protected void manageReferences(EInvoiceDetailHslPro entity) {
+	}
+
+	protected void valDelete(EInvoiceDetailHslPro toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(EInvoiceDetailHslPro addedEntity) {
+		EInvoiceDetailHslPro entityFromDb = repo.findByBK(addedEntity.getHeader().getId(), addedEntity.getNourut());
+		if (entityFromDb != null) {
+			throw new BusinessException("invoicemanual.detail.hsl.pro.bk", addedEntity.getNourut());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EInvoiceDetailHslPro editedEntity) {
+		EInvoiceDetailHslPro entityFromDb = repo.findByBK(editedEntity.getHeader().getId(), editedEntity.getNourut());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("invoicemanual.detail.hsl.pro.bk", editedEntity.getNourut());
+			}
+		}
+	}
+
+	protected void preAdd(EInvoiceDetailHslPro entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(EInvoiceDetailHslPro entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(EInvoiceDetailHslPro toBeSaved, EInvoiceDetailHslPro oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(EInvoiceDetailHslPro toBeSaved, EInvoiceDetailHslPro oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(EInvoiceDetailHslPro entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(EInvoiceDetailHslPro entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	// ----
+	
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya	
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+}

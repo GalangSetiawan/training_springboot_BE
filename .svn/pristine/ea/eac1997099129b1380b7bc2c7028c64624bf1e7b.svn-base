@@ -1,0 +1,223 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewal;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetAdj;
+
+@JsonInclude(Include.ALWAYS)
+public class AdminRenewalDetAdj {
+	
+	public String id;
+	public String tahun;  
+	public String bulan;
+	public String keterangan;
+	public Integer jkbulini;
+	public Integer revjkbullalu;
+	public Integer seljkbullalu;
+	public Integer jnkbulini;
+	public Integer revjnkbullalu;
+	public Integer seljnkbullalu;
+    public Double harga;
+    public Double bruto;
+    public Double nildisc;
+    public Double netto;
+	public Integer nouskm;
+	public String fltgh;
+    
+	public Long version;  
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+	
+	// untuk keperluan matching error message di front end (bila input di grid)
+	public String keyIn;
+
+	// untuk penanda apakah detail ini tertandai delete (dari front end)
+	public boolean isSelect;
+	
+	public AdminRenewal header;
+	public List<AdminRenewalDetAdjSubDetSkemaTarif> subDetailSkemaTarif;
+	public List<AdminRenewalDetAdjSubDetDiskon> subDetailDiskon;
+
+	// Untuk menampung message error di grid
+	public ArrayList<Message> errorMsg;
+	
+	public EAdminRenewalDetAdj toEntity() {
+		
+		EAdminRenewalDetAdj entity = new EAdminRenewalDetAdj();
+		
+	    entity.setId(id);
+		entity.setTahun(tahun);
+		entity.setBulan(bulan);
+		entity.setJkbulini(jkbulini);
+		entity.setRevjkbullalu(revjkbullalu);
+		entity.setSeljkbullalu(seljkbullalu);
+		entity.setJnkbulini(jnkbulini);
+		entity.setRevjnkbullalu(revjnkbullalu);
+		entity.setSeljnkbullalu(seljnkbullalu);
+		entity.setHarga(harga);
+		entity.setBruto(bruto);
+		entity.setNildisc(nildisc);
+		entity.setNetto(netto);
+		entity.setKeterangan(keterangan);
+		entity.setNouskm(nouskm);
+		entity.setFltgh(fltgh);
+
+		entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+		
+		if (header != null && !StringUtils.isEmpty(header.id)) {
+			EAdminRenewal entityRef = new EAdminRenewal();
+		
+			entityRef.setId(header.id);
+			entityRef.setVersion(header.version);
+		
+			entity.setHeader(entityRef);
+		
+		} else {
+			entity.setHeader(null);
+		}
+
+		return entity;
+	}
+		
+	public static List<EAdminRenewalDetAdj> toEntities(final List<AdminRenewalDetAdj> pojos) {
+		List<EAdminRenewalDetAdj> entities = new ArrayList<EAdminRenewalDetAdj>();
+		for (AdminRenewalDetAdj pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static AdminRenewalDetAdj fromEntity(EAdminRenewalDetAdj entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static AdminRenewalDetAdj fromEntity(EAdminRenewalDetAdj entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static AdminRenewalDetAdj fromEntity(EAdminRenewalDetAdj entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		AdminRenewalDetAdj pojo = new AdminRenewalDetAdj();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.tahun = entity.getTahun();
+			pojo.bulan = entity.getBulan();
+			pojo.jkbulini = entity.getJkbulini();
+			pojo.revjkbullalu = entity.getRevjkbullalu();
+			pojo.seljkbullalu = entity.getSeljkbullalu();
+			pojo.jnkbulini = entity.getJnkbulini();
+			pojo.revjnkbullalu = entity.getRevjnkbullalu();
+			pojo.seljnkbullalu = entity.getSeljnkbullalu();
+			pojo.harga = entity.getHarga();
+			pojo.bruto = entity.getBruto();
+			pojo.nildisc = entity.getNildisc();
+			pojo.netto = entity.getNetto();
+			pojo.keterangan = entity.getKeterangan();
+			pojo.nouskm = entity.getNouskm();
+			pojo.fltgh = entity.getFltgh();
+
+			pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+			
+			pojo.header = AdminRenewal.fromEntity(entity.getHeader(), depthLevel);
+	        
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+				pojo.subDetailSkemaTarif = AdminRenewalDetAdjSubDetSkemaTarif.fromEntities(entity.getSubDetailSkemaTarif(), depthLevel + 1, detailDepthLevel);
+				pojo.subDetailDiskon = AdminRenewalDetAdjSubDetDiskon.fromEntities(entity.getSubDetailDiskon(), depthLevel + 1, detailDepthLevel);
+			}
+			
+			pojo.isSelect = false;
+		}
+				
+		return pojo;
+	}
+	
+	public static List<AdminRenewalDetAdj> fromEntities(List<EAdminRenewalDetAdj> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<AdminRenewalDetAdj> fromEntities(final List<EAdminRenewalDetAdj> entities, int depthLevel) {
+		return fromEntities(entities, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<AdminRenewalDetAdj> fromEntities(List<EAdminRenewalDetAdj> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<AdminRenewalDetAdj> pojos = new ArrayList<>();
+		
+		for (EAdminRenewalDetAdj entity : entities) {
+			pojos.add(AdminRenewalDetAdj.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}

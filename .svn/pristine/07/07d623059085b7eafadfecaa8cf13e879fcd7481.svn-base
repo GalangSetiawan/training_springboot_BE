@@ -1,0 +1,252 @@
+package co.id.sofcograha.domain.invoicing.saldo.live.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.pojos.Produk;
+import co.id.sofcograha.domain.invoicing.saldo.live.entities.ESaldoLive;
+import co.id.sofcograha.domain.invoicing.transaksi.berhenti.entities.ETrxBerhenti;
+import co.id.sofcograha.domain.invoicing.transaksi.berhenti.pojos.TrxBerhenti;
+import co.id.sofcograha.domain.invoicing.transaksi.live.entities.ETrxLive;
+import co.id.sofcograha.domain.invoicing.transaksi.live.pojos.TrxLive;
+
+@JsonInclude(Include.ALWAYS)
+public class SaldoLive {
+	
+	public String id;
+	public Date tglive;
+	public Date tgstop;
+	public boolean flproi;
+	public boolean fluplo; 
+    public String thpro;
+    public String blpro;
+    
+	public Long version;  
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+	
+	public CustomerGajiId customer;
+	public Produk produk;
+	public TrxLive trxLive;
+	public TrxBerhenti trxBerhenti;
+
+	// Untuk menampung message kegagalan proses invoice
+	public ArrayList<Message> errorMsg;
+	
+	public ESaldoLive toEntity() {
+		
+		ESaldoLive entity = new ESaldoLive();
+
+		entity.setId(id);
+
+		if (tglive != null) {
+			entity.setTglive(TimeUtil.convertDateToYyyyMmDd(tglive)); 
+		}
+		
+		if (tgstop != null) {
+			entity.setTgstop(TimeUtil.convertDateToYyyyMmDd(tgstop)); 
+		}
+		
+		entity.setFlproi(flproi ? "Y" : "T");
+		entity.setFluplo(fluplo ? "Y" : "T");
+        entity.setThpro(thpro);
+        entity.setBlpro(blpro);
+
+		entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+		
+		if (customer != null && !StringUtils.isEmpty(customer.id)) {
+			ECustomerGajiId entityRef = new ECustomerGajiId();
+		
+			entityRef.setId(customer.id);
+			entityRef.setVersion(customer.version);
+		
+			entity.setCustomer(entityRef);
+		
+		} else {
+			entity.setCustomer(null);
+		}
+        
+		if (produk != null && !StringUtils.isEmpty(produk.id)) {
+			EProduk entityRef = new EProduk();
+		
+			entityRef.setId(produk.id);
+			entityRef.setVersion(produk.version);
+		
+			entity.setProduk(entityRef);
+		
+		} else {
+			entity.setProduk(null);
+		}
+        
+		if (trxLive != null && !StringUtils.isEmpty(trxLive.id)) {
+			ETrxLive entityRef = new ETrxLive();
+		
+			entityRef.setId(trxLive.id);
+			entityRef.setVersion(trxLive.version);
+		
+			entity.setTrxLive(entityRef);
+		
+		} else {
+			entity.setTrxLive(null);
+		}
+        
+		if (trxBerhenti != null && !StringUtils.isEmpty(trxBerhenti.id)) {
+			ETrxBerhenti entityRef = new ETrxBerhenti();
+		
+			entityRef.setId(trxBerhenti.id);
+			entityRef.setVersion(trxBerhenti.version);
+		
+			entity.setTrxBerhenti(entityRef);
+		
+		} else {
+			entity.setTrxBerhenti(null);
+		}
+        
+		return entity;
+	}
+	
+	public static List<ESaldoLive> toEntities(List<SaldoLive> pojos) {
+		if (pojos == null) return null;
+
+		List<ESaldoLive> entities = new ArrayList<ESaldoLive>();
+		for (SaldoLive pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static SaldoLive fromEntity (ESaldoLive entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static SaldoLive fromEntity (ESaldoLive entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static SaldoLive fromEntity(ESaldoLive entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		SaldoLive pojo = new SaldoLive();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			if (entity.getTglive() != null && !entity.getTglive().trim().equals("")) {
+				pojo.tglive = TimeUtil.getDate(entity.getTglive());				
+			} else {
+				pojo.tglive = null;
+			}
+
+			if (entity.getTgstop() != null && !entity.getTgstop().trim().equals("")) {
+				pojo.tgstop = TimeUtil.getDate(entity.getTgstop());				
+			} else {
+				pojo.tgstop = null;
+			}
+			
+			pojo.flproi = entity.getFlproi() == null ? false : entity.getFlproi().trim().equals("Y") ? true : false;
+			pojo.fluplo = entity.getFluplo() == null ? false : entity.getFluplo().trim().equals("Y") ? true : false;
+	        pojo.thpro = entity.getThpro();
+	        pojo.blpro = entity.getBlpro();
+
+			pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+	      
+			pojo.customer = CustomerGajiId.fromEntity(entity.getCustomer());
+			pojo.produk = Produk.fromEntity(entity.getProduk());
+			pojo.trxLive = TrxLive.fromEntity(entity.getTrxLive());
+			pojo.trxBerhenti = TrxBerhenti.fromEntity(entity.getTrxBerhenti());
+			
+			pojo.errorMsg = new ArrayList<Message>();
+			
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+			}
+		}
+
+		return pojo;
+	}
+	
+	public static List<SaldoLive> fromEntities(List<ESaldoLive> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static List<SaldoLive> fromEntities(List<ESaldoLive> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<SaldoLive> pojos = new ArrayList<>();
+		
+		for (ESaldoLive entity : entities) {
+			pojos.add(SaldoLive.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("customer", "customer.nama"));
+		mappings.add(new SearchFieldMapping("produk", "produk.nama"));
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}	

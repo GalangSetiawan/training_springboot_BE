@@ -1,0 +1,168 @@
+package co.id.sofcograha.base.queue.process.entities;
+
+import java.util.Date;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.exceptions.DevException;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(schema="public", name="std_proses", uniqueConstraints = @UniqueConstraint(columnNames = { "process_code" }))
+@JsonIgnoreProperties(ignoreUnknown=true)
+public class EProcess implements Cloneable {
+	
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@Version
+	@Column(name = "version")
+	private Long version;
+
+	@Column(name = "process_code")
+	private String processCode;
+
+	@Column(name = "process_name")
+	private String processName;
+
+	@Column(name = "description")
+	private String description;
+
+	@Column(name = "process_class")
+	private String processClass;
+
+	@Column(name = "active")
+	private Boolean active;
+
+	@Column(name = "user_create")
+	private String userCreate;
+
+	@Column(name = "creation_time")
+	private Date creationTime;
+
+	@Column(name = "user_modify")
+	private String userModify;
+
+	@Column(name = "modification_time")
+	private Date modificationTime;
+
+	public String getProcessCode() {
+		return processCode;
+	}
+
+	public void setProcessCode(String processCode) {
+		this.processCode = processCode;
+	}
+
+	public String getProcessName() {
+		return processName;
+	}
+
+	public void setProcessName(String processName) {
+		this.processName = processName;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public String getProcessClass() {
+		return processClass;
+	}
+
+	public void setProcessClass(String processClass) {
+		this.processClass = processClass;
+	}
+
+	public Boolean getActive() {
+		return active;
+	}
+
+	public void setActive(Boolean active) {
+		this.active = active;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public String getUserCreate() {
+		return userCreate;
+	}
+
+	public void setUserCreate(String userCreate) {
+		this.userCreate = userCreate;
+	}
+
+	public Date getCreationTime() {
+		return creationTime;
+	}
+
+	public void setCreationTime(Date creationTime) {
+		this.creationTime = creationTime;
+	}
+
+	public String getUserModify() {
+		return userModify;
+	}
+
+	public void setUserModify(String userModify) {
+		this.userModify = userModify;
+	}
+
+	public Date getModificationTime() {
+		return modificationTime;
+	}
+
+	public void setModificationTime(Date modificationTime) {
+		this.modificationTime = modificationTime;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+	
+	@PrePersist
+	private void prePersist() {
+		Date currentDateTime = new Date();
+		
+		this.id = UUID.randomUUID().toString();
+		this.userCreate = CurrentUser.getUsername();
+		this.creationTime = currentDateTime;
+		this.userModify = CurrentUser.getUsername();
+		this.modificationTime = currentDateTime;
+	}
+}

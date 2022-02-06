@@ -1,0 +1,562 @@
+package co.id.sofcograha.domain.invoicing.kelola.invoice.services;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeUtility;
+
+import org.apache.commons.compress.utils.IOUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.PasswordUtil;
+import co.id.sofcograha.base.utils.download.FileGenerator;
+import co.id.sofcograha.base.utils.pojos.UploadDownloadTemplate;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+import co.id.sofcograha.domain.invoicing.kelola.invoice.pojos.InvoiceComplete;
+import co.id.sofcograha.domain.invoicing.kelola.invoice.sort.CustomerSorter;
+import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories.EInvoiceHeaderRepository;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+
+@Service("kelolaInvoiceCompleteService")
+public class KelolaInvoiceCompleteService extends BaseService {
+	
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	@Autowired private EInvoiceHeaderRepository eInvoiceHeaderRepository;
+	@Autowired private KelolaInvoiceExportPdfService kelolaInvoiceExportPdfService;
+    @Autowired private Environment env;
+	
+	public SearchResult<EInvoiceHeader> search(SearchParameter searchParameter) {
+		return eInvoiceHeaderRepository.search(searchParameter);
+	}
+	
+	public InvoiceComplete findByBk(String nomor) {
+		return InvoiceComplete.setFromEntity(eInvoiceHeaderRepository.findByBK(nomor));
+	}
+	
+	private String createEmailText(InvoiceHeader invoiceHeader, List<Map<String, String>> listNamaFilePdf) {
+		
+    	String alamat = invoiceHeader.alamat;
+
+		// replace karakter enter (char 10) dengan <br/>
+		alamat = alamat.replace("\n", "<br/>");
+		
+		String emailText = "Kepada Yth." + "<br/>" +
+                           "<br/>" +
+                           invoiceHeader.nama + "<br/>" +
+                           alamat + "<br/>" + 
+                           "<br/>" +
+                           "Bersama ini kami kirimkan file elektronik terkait tagihan atas pemakaian program Gaji.id."  + "<br/>" +
+                           "File yang kami kirimkan sejumlah " + listNamaFilePdf.size() + " file, dengan perincian :"  + "<br/>" +
+                           "<br/>";
+
+		int nourut = 1;
+		for (Map<String, String> namaFile : listNamaFilePdf) {
+			emailText = emailText + nourut + ". " + namaFile.get("file") + " untuk invoice nomor " + namaFile.get("nomor") + "<br/>"; 
+		}
+
+		emailText = emailText + "<br/>";
+		emailText = emailText + "Demikian informasi yang dapat kami sampaikan, untuk perhatiannya kami ucapkan terima kasih." + "<br/>";
+		emailText = emailText + "<br/><br/>";
+		emailText = emailText + "Hormat Kami<br/>";
+		emailText = emailText + "PT. Sofco Graha";
+
+		emailText = "<html><body>" + emailText + "</html></body>";
+		
+		return emailText;
+		
+	}
+	
+	private void sendSingleEmail(String emailAddress, String content, List<Map<String, String>> listNamaFilePdf) {
+		// bentuk dan kirim email
+		// kirim email berisi password ke alamat email user
+    	JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+      	 
+        mailSender.setHost(env.getProperty("spring.mail.host"));
+        mailSender.setPort(Integer.valueOf(env.getProperty("spring.mail.port")));
+        mailSender.setUsername(env.getProperty("spring.mail.username"));
+        mailSender.setPassword(env.getProperty("spring.mail.password"));
+ 
+        Properties javaMailProperties = new Properties();
+        javaMailProperties.put("mail.smtp.starttls.enable", "true");
+        javaMailProperties.put("mail.smtp.auth", "true");
+        javaMailProperties.put("mail.transport.protocol", "smtp");
+        javaMailProperties.put("mail.debug", "true");
+ 
+        mailSender.setJavaMailProperties(javaMailProperties);    	
+    	
+    	MimeMessage mimeMessage = mailSender.createMimeMessage();
+    	
+        MimeMessageHelper mimeMessageHelper;
+		try {
+			mimeMessageHelper = new MimeMessageHelper(mimeMessage, true);
+			
+	        mimeMessageHelper.setSubject("Invoice terkait pemakaian program Gaji.id");
+	        mimeMessageHelper.setFrom(new InternetAddress(env.getProperty("spring.mail.username")));
+	        mimeMessageHelper.setTo(emailAddress);
+	        mimeMessageHelper.setText(content, true);
+	        
+	        for (Map<String, String> namaFile : listNamaFilePdf) {
+	        	FileSystemResource file = new FileSystemResource(FileGenerator.openPdfTempFile(namaFile.get("file")));
+	        	
+	        	if (file != null) {
+			        mimeMessageHelper.addAttachment(file.getFilename(), file);				        					        		
+	        	}
+	        }
+	        
+	        				    	
+	        mailSender.send(mimeMessageHelper.getMimeMessage());
+	        
+	        for (Map<String, String> namaFile : listNamaFilePdf) {
+	        	setSent(namaFile.get("nomor"));	 
+	        	/*
+				if (isAnyBatchErrors()) {
+					isErrorDetail = true;
+					
+					// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+						
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+						
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+			
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+						
+						if (detail.errorMsg == null) {
+							detail.errorMsg = new ArrayList<Message>();
+						}
+			
+						detail.errorMsg.add(message);					
+					}
+					
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();
+				}
+				*/
+	        }
+	        
+		} catch (Exception e) {
+			e.printStackTrace();
+//			batchError("error.could.not.send.email");
+//			throwBatchError();
+		}		
+	}
+	
+	public void sendEmails(ArrayList<InvoiceHeader> listInvoice) {
+
+		// urutkan parameter input supaya urut per customer
+		listInvoice.sort(new CustomerSorter());
+
+		String idCustomer = "";
+		InvoiceHeader prevInvoiceHeader = null;
+		List<Map<String, String>> listNamaFilePdf = new ArrayList<Map<String, String>>();
+		int jumlahFile = 0;
+		for (InvoiceHeader invoiceHeader : listInvoice) {
+			
+			if (!idCustomer.equals(invoiceHeader.customer.id)) {
+
+				if (!idCustomer.equals("")) {
+					// id sebelumnya tidak kosong artinya ada perubahan customer, 
+					// jadi generate email untuk customer ini lalu kirim emailnya
+					
+					String emailText = createEmailText(prevInvoiceHeader, listNamaFilePdf);
+
+					// ambil alamat email dari customer ini
+					String alamatEmail = prevInvoiceHeader.customer.billemail;
+					
+					//sendSingleEmail(alamatEmail, emailText, listNamaFilePdf);
+		
+					List<Map<String, String>> a = listNamaFilePdf;
+					
+					ExecutorService emailExecutor = Executors.newSingleThreadExecutor();
+			        emailExecutor.execute(new Runnable() {
+			            @Override
+			            public void run() {
+//			                try {
+								sendSingleEmail(alamatEmail, emailText, a);
+//			                } catch (IOException e) {
+//			                	e.printStackTrace();
+//			                }
+			            }
+			        });
+			        emailExecutor.shutdown(); // it is very important to shutdown your non-singleton ExecutorService.
+
+					
+					/*
+					// bentuk dan kirim email
+					// kirim email berisi password ke alamat email user
+			    	JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+			      	 
+			        mailSender.setHost(env.getProperty("spring.mail.host"));
+			        mailSender.setPort(Integer.valueOf(env.getProperty("spring.mail.port")));
+			        mailSender.setUsername(env.getProperty("spring.mail.username"));
+			        mailSender.setPassword(env.getProperty("spring.mail.password"));
+			 
+			        Properties javaMailProperties = new Properties();
+			        javaMailProperties.put("mail.smtp.starttls.enable", "true");
+			        javaMailProperties.put("mail.smtp.auth", "true");
+			        javaMailProperties.put("mail.transport.protocol", "smtp");
+			        javaMailProperties.put("mail.debug", "true");
+			 
+			        mailSender.setJavaMailProperties(javaMailProperties);    	
+			    	
+			    	MimeMessage mimeMessage = mailSender.createMimeMessage();
+			    	
+			        MimeMessageHelper mimeMessageHelper;
+					try {
+						mimeMessageHelper = new MimeMessageHelper(mimeMessage, true);
+						
+				        mimeMessageHelper.setSubject("Invoice terkait pemakaian program Gaji.id");
+				        mimeMessageHelper.setFrom(new InternetAddress(env.getProperty("spring.mail.username")));
+				        mimeMessageHelper.setTo(alamatEmail);
+				        mimeMessageHelper.setText(emailText, true);
+				        
+				        for (Map<String, String> namaFile : listNamaFilePdf) {
+				        	FileSystemResource file = new FileSystemResource(FileGenerator.openPdfTempFile(namaFile.get("file")));
+				        	
+				        	if (file != null) {
+						        mimeMessageHelper.addAttachment(file.getFilename(), file);				        					        		
+				        	}
+				        }
+				        
+				        				    	
+				        mailSender.send(mimeMessageHelper.getMimeMessage());
+				        
+					} catch (Exception e) {
+						e.printStackTrace();
+//						batchError("error.could.not.send.email");
+//						throwBatchError();
+					}
+					*/
+				}
+
+				idCustomer = invoiceHeader.customer.id;
+				listNamaFilePdf = new ArrayList<Map<String, String>>();
+				jumlahFile = 0;
+			}
+			
+			// generate pdf invoice
+			String nomor = invoiceHeader.nomor;
+			Base64StringEncodedPojo b64 = kelolaInvoiceExportPdfService.pdfReport(nomor);
+			
+			try {
+				String namaFile = nomor.replace("/", "");
+				File file = FileGenerator.createPdfTempFile(namaFile + ".pdf");
+				FileOutputStream fos = new FileOutputStream(file);
+
+				Map<String, String> map = new HashMap<String, String>();
+				map.put("file", namaFile + ".pdf");
+				map.put("nomor", nomor);
+				
+				listNamaFilePdf.add(map);
+				
+				byte[] decoder = Base64.getDecoder().decode(b64.base64String);
+
+				fos.write(decoder);
+				fos.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			
+			prevInvoiceHeader = invoiceHeader;
+			jumlahFile = jumlahFile + 1;
+		}
+		
+		// kirim email untuk customer looping terakhir
+		if (!listInvoice.isEmpty()) {
+			
+			//InvoiceHeader invoiceHeader = listInvoice.get(listInvoice.size() - 1);
+			
+			String emailText = createEmailText(prevInvoiceHeader, listNamaFilePdf);
+			
+			/*
+	    	String alamat = invoiceHeader.alamat;
+
+			// replace karakter enter (char 10) dengan <br/>
+			alamat = alamat.replace("\n", "<br/>");
+			
+			String emailText = "Kepada Yth." + "<br/>" +
+	                           "<br/>" +
+			                   invoiceHeader.nama + "<br/>" +
+			                   alamat + "<br/>" + 
+			                   "<br/>" +
+			                   "Bersama ini kami kirimkan file elektronik terkait tagihan atas pemakaian program Gaji.id."  + "<br/>" +
+			                   "File yang kami kirimkan sejumlah " + jumlahFile + " file, dengan perincian :"  + "<br/>" +
+			                   "<br/>";
+			
+			int nourut = 1;
+			for (Map<String, String> namaFile : listNamaFilePdf) {
+				emailText = emailText + nourut + ". " + namaFile.get("file") + " untuk invoice nomor " + namaFile.get("nomor") + "<br/>"; 
+			}
+			
+			emailText = emailText + "<br/>";
+			emailText = emailText + "Demikian informasi yang dapat kami sampaikan, untuk perhatiannya kami ucapkan terima kasih." + "<br/>";
+			emailText = emailText + "<br/><br/>";
+			emailText = emailText + "Hormat Kami<br/>";
+			emailText = emailText + "PT. Sofco Graha";
+			
+			emailText = "<html><body>" + emailText + "</html></body>";
+			*/	        
+			
+			String alamatEmail = prevInvoiceHeader.customer.billemail;
+			
+//			sendSingleEmail(alamatEmail, emailText, listNamaFilePdf);
+			
+			List<Map<String, String>> a = listNamaFilePdf;
+			
+			ExecutorService emailExecutor = Executors.newSingleThreadExecutor();
+	        emailExecutor.execute(new Runnable() {
+	            @Override
+	            public void run() {
+//	                try {
+						sendSingleEmail(alamatEmail, emailText, a);
+//	                } catch (IOException e) {
+//	                	e.printStackTrace();
+//	                }
+	            }
+	        });
+	        emailExecutor.shutdown(); // it is very important to shutdown your non-singleton ExecutorService.
+			
+
+			/*
+			// bentuk dan kirim email
+			// kirim email berisi password ke alamat email user
+	    	JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+	      	 
+	        mailSender.setHost(env.getProperty("spring.mail.host"));
+	        mailSender.setPort(Integer.valueOf(env.getProperty("spring.mail.port")));
+	        mailSender.setUsername(env.getProperty("spring.mail.username"));
+	        mailSender.setPassword(env.getProperty("spring.mail.password"));
+	 
+	        Properties javaMailProperties = new Properties();
+	        javaMailProperties.put("mail.smtp.starttls.enable", "true");
+	        javaMailProperties.put("mail.smtp.auth", "true");
+	        javaMailProperties.put("mail.transport.protocol", "smtp");
+	        javaMailProperties.put("mail.debug", "true");
+	 
+	        mailSender.setJavaMailProperties(javaMailProperties);    	
+	    	
+	    	MimeMessage mimeMessage = mailSender.createMimeMessage();
+	    	
+	        MimeMessageHelper mimeMessageHelper;
+			try {
+				mimeMessageHelper = new MimeMessageHelper(mimeMessage, true);
+				
+		        mimeMessageHelper.setSubject("Invoice terkait pemakaian program Gaji.id");
+		        mimeMessageHelper.setFrom(new InternetAddress(env.getProperty("spring.mail.username")));
+		        mimeMessageHelper.setTo(alamatEmail);
+		        //mimeMessageHelper.setText("-", true);
+		        mimeMessageHelper.setText(emailText, true);
+		        
+		        for (Map<String, String> namaFile : listNamaFilePdf) {
+		        	FileSystemResource file = new FileSystemResource(FileGenerator.openPdfTempFile(namaFile.get("file")));
+		        	
+		        	if (file != null) {
+				        //mimeMessageHelper.addAttachment(file.getFilename(), file, "application/pdf");				        					        		
+				        mimeMessageHelper.addAttachment(file.getFilename(), file);				        					        		
+				        //mimeMessageHelper.addAttachment(MimeUtility.encodeText(""), new ByteArrayResource(IOUtils.toByteArray(inputStream)));
+		        	}
+		        }
+		        				    	
+		        mailSender.send(mimeMessageHelper.getMimeMessage());
+		        
+			} catch (Exception e) {
+				e.printStackTrace();
+//				batchError("error.could.not.send.email");
+//				throwBatchError();
+			}
+			*/
+
+		}
+		
+		//    kirim email
+		
+		
+		/*
+		//EUser eUser = eUserRepository.getOne(CurrentUser.getUserId());
+		EUser eUser = eUserRepository.findByLoginName(loginName);
+		
+		// ambil alamat email user login
+		String alamatEmail = eUser.getEmail();
+		
+		// generate password baru
+		String newPassword = getRandomNumberString();
+		String hashedPassword = PasswordUtil.hashPassword(newPassword);
+		
+		// kirim email berisi password ke alamat email user
+    	JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+      	 
+        mailSender.setHost(env.getProperty("spring.mail.host"));
+        mailSender.setPort(Integer.valueOf(env.getProperty("spring.mail.port")));
+        mailSender.setUsername(env.getProperty("spring.mail.username"));
+        mailSender.setPassword(env.getProperty("spring.mail.password"));
+ 
+        Properties javaMailProperties = new Properties();
+        javaMailProperties.put("mail.smtp.starttls.enable", "true");
+        javaMailProperties.put("mail.smtp.auth", "true");
+        javaMailProperties.put("mail.transport.protocol", "smtp");
+        javaMailProperties.put("mail.debug", "true");
+ 
+        mailSender.setJavaMailProperties(javaMailProperties);    	
+    	
+    	MimeMessage mimeMessage = mailSender.createMimeMessage();
+    	
+        MimeMessageHelper mimeMessageHelper;
+		try {
+			mimeMessageHelper = new MimeMessageHelper(mimeMessage, true);
+			
+	        mimeMessageHelper.setSubject("Password Reset for Sofco Cloud App ...");
+	        mimeMessageHelper.setFrom(new InternetAddress(env.getProperty("spring.mail.username")));
+	        mimeMessageHelper.setTo(alamatEmail);
+	        mimeMessageHelper.setText("New Password : " + newPassword);
+	    	
+	        mailSender.send(mimeMessageHelper.getMimeMessage());
+	        
+			// simpan password baru ke data user 
+			eUser.setPassword(hashedPassword);
+			eUserRepository.save(eUser);
+
+		} catch (Exception e) {
+			batchError("error.could.not.send.email");
+			throwBatchError();
+		}
+		*/
+		
+	}
+	
+	@Transactional
+	public EInvoiceHeader setBayar(InvoiceHeader pojo) {
+		
+		EInvoiceHeader entityHeader = pojo.toEntity();
+		
+		valDataAda(entityHeader);
+		valInvoiceBelumKirim(entityHeader);
+		throwBatchError();
+		
+		EInvoiceHeader newEInvoiceHeader = invoiceHeaderService.get(entityHeader.getId());
+
+		if (entityHeader.getStatus().equals(BaseConstants.STATUS_INV_BAYAR)) {
+			entityHeader.setStatus(BaseConstants.STATUS_INV_KIRIM);			
+		} else {
+			entityHeader.setStatus(BaseConstants.STATUS_INV_BAYAR);			
+		}
+		
+		newEInvoiceHeader = invoiceHeaderService.edit(entityHeader);
+		throwBatchError();
+		
+		return newEInvoiceHeader;
+	}
+	
+	@Transactional
+	public EInvoiceHeader setSent(String nomor) {
+		
+		InvoiceHeader invoiceHeader = invoiceHeaderService.findByBk(nomor);
+		EInvoiceHeader entityHeader = invoiceHeader.toEntity();
+		
+		entityHeader.setStatus(BaseConstants.STATUS_INV_KIRIM);			
+		
+		entityHeader = invoiceHeaderService.edit(entityHeader);
+		//throwBatchError();
+		
+		return entityHeader;
+	}
+	
+	@Transactional
+	public EInvoiceHeader setNotes(InvoiceHeader pojo) {
+		
+		EInvoiceHeader entityHeader = pojo.toEntity();
+		
+		valDataAda(entityHeader);
+		throwBatchError();
+		
+		EInvoiceHeader newEInvoiceHeader = invoiceHeaderService.edit(entityHeader);
+		throwBatchError();
+		
+		return newEInvoiceHeader;
+	}
+	
+	private void valDataAda(EInvoiceHeader entity) {
+		if (entity == null) {
+			batchError("invoice.general.no.data");
+		}
+	}
+	
+	private void valInvoiceBelumKirim(EInvoiceHeader entity) {
+		if (entity.getStatus().equals(BaseConstants.STATUS_INV_BELUM_KIRIM)) {
+			batchError("invoice.general.belum.kirim");
+		}
+	}
+	
+	public UploadDownloadTemplate downloaSeveralPdfs(String[] listNomorInvoice) {
+
+		//Base64StringEncodedPojo b64 = kelolaInvoiceExportPdfService.pdfReport("INV/GJ/00039/II/2021");
+		
+		List<String> listNamaFilePdf = new ArrayList<String>();
+		for(String nomor : listNomorInvoice) {
+			
+			Base64StringEncodedPojo b64 = kelolaInvoiceExportPdfService.pdfReport(nomor);
+			
+			try {
+				String namaFile = nomor.replace("/", "");
+				File file = FileGenerator.createPdfTempFile(namaFile + ".pdf");
+				FileOutputStream fos = new FileOutputStream(file);
+
+				listNamaFilePdf.add(namaFile + ".pdf");
+				byte[] decoder = Base64.getDecoder().decode(b64.base64String);
+
+				fos.write(decoder);
+				fos.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
+//		String[] files = {"pic1.png",
+//				  "pic2.png",
+//				  "pic3.png",
+//				  "pic4.png"};
+		
+	    String fileName = "InvoicePdfs" + Long.toString(System.currentTimeMillis());
+	    
+	    UploadDownloadTemplate entity = new UploadDownloadTemplate();
+	    entity.fileExtension = "application/zip";
+	    entity.fileName = fileName;
+	    entity.file = FileGenerator.zipSeveralPdfFiles(listNamaFilePdf);
+
+	    return entity;
+	}	
+}

@@ -1,0 +1,250 @@
+package co.id.sofcograha.base.authentication.token;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.authorization.services.ActionAuthorizationService;
+import co.id.sofcograha.base.constants.enums.AccessStatusLog;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.exceptions.TokenAuthenticationException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.loginlogoutlog.LoginLogoutMainLogService;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.master.usercompany.entities.EUserCompany;
+import co.id.sofcograha.base.master.usercompany.services.UserCompanyLoginService;
+import co.id.sofcograha.base.utils.PasswordUtil;
+import co.id.sofcograha.base.utils.StringUtil;
+import co.id.sofcograha.base.utils.TokenUtil;
+import co.id.sofcograha.base.utils.exceptionHandler.MessageService;
+
+@Service
+public class TokenAuthenticationService extends BaseService {
+
+  @Autowired
+  private UserService userService;
+
+  @Autowired
+  private CompanyService companyService;
+
+  @Autowired
+  private UserCompanyLoginService userCompanyLoginService;
+
+  @Autowired
+  private MessageService messageService;
+  
+  @Autowired
+  private LoginLogoutMainLogService loginLogoutMainLogService;
+  
+  @Autowired
+  private ActionAuthorizationService actionAuthorizationService;
+
+  public TokenAuthentication authenticate(Map<String, String> authInfo) throws TokenAuthenticationException {
+    if (authInfo == null)
+      throw new TokenAuthenticationException("Authentication required!");
+
+    String token = authInfo.get(TokenUtil.KEY_TOKEN);
+    if (token == null)
+      throw new TokenAuthenticationException("Authentication token required!");
+
+    TokenAuthentication auth = null;
+    try {
+
+      String username = authInfo.get(TokenUtil.KEY_USERNAME);
+//      User user = userService.findByUserName(username).orElse(null);
+      EUser user = userService.findByLoginName(username);
+      if (user == null)
+        throw new TokenAuthenticationException("Token's user is not recognized!");
+      validateUserActive(user);
+      validateUserLocked(user);
+
+      String companyCode = authInfo.get(TokenUtil.KEY_COMPANY_CODE);
+//      ECompany company = companyService.findByBk(companyCode).orElse(null);
+      ECompany company = companyService.findByBk(companyCode);
+      if (company == null)
+        throw new TokenAuthenticationException("Token's company is not recognized!");
+      
+      validateCompanyActive(company);
+
+      validateUserAndCompany(user, company);
+
+      auth = new TokenAuthentication(token, user.getId(), username, company.getId());
+      auth.setAuthenticated(true);
+      
+      actionAuthorizationService.setMenuCode(authInfo.get("Menu-Code"));
+
+    } catch (IllegalArgumentException e) {
+      throw new TokenAuthenticationException("Authentication token required!", e.getCause());
+    } catch (BusinessException e) {
+      e.printStackTrace();
+      throw new TokenAuthenticationException(messageService.get(e.getMessage()), e.getCause());
+    }
+    return auth;
+  }
+
+  public String authenticate(String username, String password) {
+    String companyName = "";
+    
+    try {
+      if (StringUtil.isBlank(username))
+        batchError("token.authentication.username.required");
+      if (StringUtil.isBlank(password))
+        batchError("token.authentication.password.required");
+      throwBatchError();
+      
+//      EUser user = userService.findByLoginName(username.trim()).orElse(null);
+      EUser user = userService.findByLoginName(username.trim());
+      
+      if (user == null)
+        throw getError("token.authentication.not.found");
+      
+      ECompany company = getDefaultCompany(user);
+      companyName = company.getName();
+      
+      if (!PasswordUtil.isValidPassword(password, user.getPassword()))
+        throw getError("token.authentication.not.found");
+      
+      validateUserActive(user);
+      validateUserLocked(user);
+      validateUserAndCompany(user, company);
+  
+      String result = TokenUtil.generateTokenFromUsernameAndCompanyCode(username, company.getCode());
+      
+      loginLogoutMainLogService.writeCreateHeaderLoginLog(username, AccessStatusLog.Success, companyName);
+      
+      return result;
+      
+    } catch (Exception e) {
+      loginLogoutMainLogService.writeCreateHeaderLoginLog(username, AccessStatusLog.Failed, companyName);
+      
+      throw e;
+    }
+  }
+
+  public String switchTenant(String companyCode) {
+    String fromCompanyName = "";
+    String toCompanyName = "";
+    
+    try {
+//      ECompany fromCompany = companyService.find(CurrentUser.getCompanyId()).orElse(null);
+//      ECompany fromCompany = companyService.find(CurrentUser.getCompanyId());
+      ECompany fromCompany = companyService.get(CurrentUser.getCompanyId());
+      if (fromCompany != null)
+        fromCompanyName = fromCompany.getName();
+      
+//      ECompany company = companyService.findByBk(companyCode).orElse(null);
+      ECompany company = companyService.findByBk(companyCode);
+      if (company == null)
+        throw getError("token.authentication.company.not.found");
+      
+      toCompanyName = company.getName();
+      
+//      EUser user = userService.findByUserName(CurrentUser.getUsername()).orElse(null);
+      EUser user = userService.findByLoginName(CurrentUser.getUsername());
+      if (user == null)
+        throw getError("token.authentication.not.found");
+      
+      validateUserActive(user);
+      validateUserLocked(user);
+      validateCompanyActive(company);
+      validateUserAndCompany(user, company);
+      
+      String result = TokenUtil.generateTokenFromUsernameAndCompanyCode(user.getUserName(), companyCode);
+      
+      loginLogoutMainLogService.writeCreateHeaderSwitchLog(AccessStatusLog.Success, fromCompanyName, toCompanyName);
+      
+      return result;
+      
+    } catch (Exception e) {
+      loginLogoutMainLogService.writeCreateHeaderSwitchLog(AccessStatusLog.Failed, fromCompanyName, toCompanyName);
+      
+      throw e;
+    }
+  }
+  
+  public void logout() {
+    loginLogoutMainLogService.writeCreateHeaderLogoutLog();
+  }
+
+  private void validateUserActive(EUser user) {
+    String msg = null;
+    if (!user.getActive())
+      msg = "inactive";
+    if (msg != null)
+      throw getError("token.authentication.user.status", msg);
+  }
+
+  private void validateUserLocked(EUser user) {
+    String msg = null;
+    if (user.getLocked())
+      msg = "locked";
+    if (msg != null)
+      throw getError("token.authentication.user.status", msg);
+  }
+
+  private void validateCompanyActive(ECompany company) {
+    String msg = null;
+    if (!company.getActive())
+      msg = "inactive";
+    if (msg != null)
+      throw getError("token.authentication.company.status", msg);
+  }
+
+  private void validateUserAndCompany(EUser user, ECompany company) {
+    List<EUserCompany> listUserCompanyByUser = userCompanyLoginService.getActiveListUserCompanyByUser(user);
+    if (listUserCompanyByUser.isEmpty())
+      throw getError("token.authentication.userCompany.not.found");
+
+    Boolean contains = false;
+    for (EUserCompany userCompany : listUserCompanyByUser) {
+      if (userCompany.getCompany().getCode().equals(company.getCode())) {
+        contains = true;
+        break;
+      }
+    }
+    if (!contains)
+      throw getError("token.authentication.userCompany.not.found");
+  }
+
+  // XXX field company.active, company.activeStartMonth, company.activeEndMonth
+  // dan userCompany.active dianggap selalu sinkron. 
+  // pengecekan active diambil dari tbl UserCompany
+  private ECompany getDefaultCompany(EUser user) {
+    ECompany company = null;
+    if (user.geteCompany() != null) {
+      company = user.geteCompany();
+    }
+
+    List<EUserCompany> listUserCompanyByUser = userCompanyLoginService.getActiveListUserCompanyByUser(user);
+    if (listUserCompanyByUser.isEmpty())
+      throw getError("token.authentication.userCompany.not.found");
+    Collections.reverse(listUserCompanyByUser);
+
+    ECompany companyInList = null;
+    for (EUserCompany userCompany : listUserCompanyByUser) {
+      if (userCompany.getCompany() == null)
+        throw getError("token.authentication.userCompany.not.found");
+      if (userCompany.getCompany().getActive()) {
+        companyInList = userCompany.getCompany();
+        if (company != null && company.getCode().equals(companyInList.getCode()))
+          return company;
+        if (company == null)
+          return companyInList;
+      }
+    }
+    // kasus: user.getCompany() tidak aktif. 
+    // akan diambil company lain yg aktif dari ActiveListUserCompanyByUser
+    if (companyInList != null)
+      return companyInList;
+
+    // jika tidak ada company yg aktif di dalam list UserCompany, throw error
+    throw getError("token.authentication.userCompany.not.found");
+  }
+}

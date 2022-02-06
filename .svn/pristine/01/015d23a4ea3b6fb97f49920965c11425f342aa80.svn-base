@@ -1,0 +1,48 @@
+package co.id.sofcograha.base.master.helpInfo.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.helpInfo.entities.EStdInfoHeader;
+
+@JsonInclude(Include.ALWAYS)
+public class StdInfoComplete {
+
+	public StdInfoHeader header;
+	public List<StdInfoDetail> details;
+	
+	@JsonIgnore
+	public EStdInfoHeader getEntityHeader() {
+		return header.toEntity();
+	}
+
+	public static StdInfoComplete setFromEntity(EStdInfoHeader entity) {
+		
+		StdInfoComplete pojo = new StdInfoComplete();
+		pojo.header = StdInfoHeader.fromEntity(entity);
+
+		// detail depth level diisi = 1, supaya sub detail ikutan diambil (karena detail punya sub detail0
+		pojo.details = StdInfoDetail.fromEntities(entity.getDetailInfo(), BaseConstants.DEFAULT_QUERY_DEPTH, 1);
+		
+		return pojo;
+	}
+	
+	public static List<StdInfoComplete> fromEntities(List<EStdInfoHeader> entities){
+	
+		if (entities == null) return new ArrayList<>();
+		
+		List<StdInfoComplete> pojos = new ArrayList<>();
+		
+		for (EStdInfoHeader entity : entities) {
+			pojos.add(setFromEntity(entity));
+		}
+		return pojos;
+		
+	}
+	
+}

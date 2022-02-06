@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.transaksi.tagihanTerjadwal.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.tagihanTerjadwal.entities.ETagihanTerjadwalDetailLainLainMaster;
+
+@Repository
+public class ETagihanTerjadwalDetailLainLainMasterRepository extends SimpleJpaRepository<ETagihanTerjadwalDetailLainLainMaster, String> {
+
+	protected final EntityManager em;
+
+	public ETagihanTerjadwalDetailLainLainMasterRepository(EntityManager em) {
+		super(ETagihanTerjadwalDetailLainLainMaster.class, em);
+		this.em = em;
+	}
+	
+	public ETagihanTerjadwalDetailLainLainMaster findByBK(String idTi050, Integer nourut) {
+		
+		String query = "SELECT e FROM ETagihanTerjadwalDetailLainLainMaster e " + 
+                       "WHERE e.header.id = :idTi050 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, ETagihanTerjadwalDetailLainLainMaster.class)
+					 .setParameter("idTi050", idTi050)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ETagihanTerjadwalDetailLainLainMaster getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<ETagihanTerjadwalDetailLainLainMaster> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ETagihanTerjadwalDetailLainLainMaster> search = new HqlSimpleSearchBuilder<>(ETagihanTerjadwalDetailLainLainMaster.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ETagihanTerjadwalDetailLainLainMaster add(ETagihanTerjadwalDetailLainLainMaster entity) {
+		return save(entity);
+	}
+
+	public ETagihanTerjadwalDetailLainLainMaster edit(ETagihanTerjadwalDetailLainLainMaster entity) {
+		return save(entity);
+	}
+}

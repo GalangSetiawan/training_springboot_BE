@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.entities.EPenerimaanBayarSubDetailAlokasi;
+
+@Repository
+public class EPenerimaanBayarSubDetailAlokasiRepository extends SimpleJpaRepository<EPenerimaanBayarSubDetailAlokasi, String> {
+
+	protected final EntityManager em;
+
+	public EPenerimaanBayarSubDetailAlokasiRepository(EntityManager em) {
+		super(EPenerimaanBayarSubDetailAlokasi.class, em);
+		this.em = em;
+	}
+	
+	public EPenerimaanBayarSubDetailAlokasi findByBK(String idTi610, Integer nourut) {
+		
+		String query = "SELECT e FROM EPenerimaanBayarSubDetailAlokasi e " + 
+                       "WHERE e.detailCustomer.id = :idTi610 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EPenerimaanBayarSubDetailAlokasi.class)
+					 .setParameter("idTi610", idTi610)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EPenerimaanBayarSubDetailAlokasi getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EPenerimaanBayarSubDetailAlokasi> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EPenerimaanBayarSubDetailAlokasi> search = new HqlSimpleSearchBuilder<>(EPenerimaanBayarSubDetailAlokasi.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EPenerimaanBayarSubDetailAlokasi add(EPenerimaanBayarSubDetailAlokasi entity) {
+		return save(entity);
+	}
+
+	public EPenerimaanBayarSubDetailAlokasi edit(EPenerimaanBayarSubDetailAlokasi entity) {
+		return save(entity);
+	}
+}

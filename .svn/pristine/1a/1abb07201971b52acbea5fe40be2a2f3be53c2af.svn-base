@@ -1,0 +1,77 @@
+package co.id.sofcograha.domain.invoicing.report.invoice.controller;
+
+import java.text.ParseException;
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.report.invoice.entities.ERptRekapCustomerPerTahun;
+import co.id.sofcograha.domain.invoicing.report.invoice.pojos.RptRekapCustomerPerTahun;
+import co.id.sofcograha.domain.invoicing.report.invoice.service.RekapInvoicePerBulanExportXlsService;
+import co.id.sofcograha.domain.invoicing.report.invoice.service.RekapInvoiceService;
+import co.id.sofcograha.domain.invoicing.report.invoice.service.RekapPerTahunExportXlsService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+
+@RestController
+@RequestMapping("/api/report-invoice")
+public class ReportInvoiceController {
+
+	public static final Logger logger = LoggerFactory.getLogger(ReportInvoiceController.class);
+
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	@Autowired private RekapInvoicePerBulanExportXlsService rekapInvoicePerBulanExportXlsService;
+	@Autowired private RekapInvoiceService rekapInvoiceService;
+	@Autowired private RekapPerTahunExportXlsService rekapPerTahunExportXlsService;
+	
+	@NoAuth
+	@GetMapping(value = "/search-rekap-invoice")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<EInvoiceHeader> searchResult = invoiceHeaderService.search(SearchParameter.generate(searchParameter, 
+				InvoiceHeader.getFieldMappings()));
+		
+		return ApiResponse.dataWithPaging("items", 
+				InvoiceHeader.fromEntities(searchResult.getResult()), 
+				searchResult.getPaging());
+	}
+	
+	@NoAuth
+    @GetMapping("/xls-rekap-invoice")
+	public ApiResponse createAndSendXls(@RequestParam Map<String, String> searchParameter) throws ParseException {
+		
+		Base64StringEncodedPojo result = rekapInvoicePerBulanExportXlsService.exportExcel(searchParameter);
+		return ApiResponse.data("item", result);
+	}
+
+	@NoAuth
+	@GetMapping(value = "/rekap-customer-per-tahun")
+	public ApiResponse rekapCustomerPerTahun(@RequestParam String tahun, @RequestParam String idMi001) {
+		
+		List<ERptRekapCustomerPerTahun> result = rekapInvoiceService.prosesRekapCustomerPerTahun(tahun, idMi001);
+		
+		return ApiResponse.data("items", RptRekapCustomerPerTahun.fromEntities(result));
+	}
+	
+	@NoAuth
+    @GetMapping("/xls-rekap-per-tahun")
+	public ApiResponse createAndSendRekapPerTahunXls(@RequestParam String tahun, @RequestParam String idMi001) throws ParseException {
+		
+		Base64StringEncodedPojo result = rekapPerTahunExportXlsService.exportExcel(tahun, idMi001);
+		return ApiResponse.data("item", result);
+	}
+
+}

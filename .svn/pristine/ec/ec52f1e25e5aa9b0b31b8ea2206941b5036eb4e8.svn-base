@@ -1,0 +1,101 @@
+package co.id.sofcograha.base.master.kamus.entities;
+
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import co.id.sofcograha.base.exceptions.DevException;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(schema="public", name="std_kamus", uniqueConstraints = @UniqueConstraint(columnNames = { "bahasa", "key" }))
+@JsonIgnoreProperties(ignoreUnknown=true)
+public class EStdKamus implements Cloneable {
+
+	@Id
+	@Column(name = "id_std_kamus")
+	private String id;
+
+	@Column(name = "bahasa")
+	private String bahasa;
+
+	@Column(name = "key")
+	private String key;
+
+	@Column(name = "value")
+	private String value;
+
+	@Version
+	@Column(name = "version")
+	private Long version;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getBahasa() {
+		return bahasa;
+	}
+
+	public void setBahasa(String bahasa) {
+		this.bahasa = bahasa;
+	}
+
+	public String getKey() {
+		return key;
+	}
+
+	public void setKey(String key) {
+		this.key = key;
+	}
+
+	public String getValue() {
+		return value;
+	}
+
+	public void setValue(String value) {
+		this.value = value;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+
+	@PrePersist
+	private void prePersist() {
+
+		this.id = UUID.randomUUID().toString();
+
+	}
+
+	@PreUpdate
+	private void preUpdate() {
+	}
+}

@@ -1,0 +1,177 @@
+package co.id.sofcograha.domain.invoicing.admin.diskon.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.admin.diskon.entities.EAdminDiskon;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.pojos.Produk;
+
+@JsonInclude(Include.ALWAYS)
+public class AdminDiskon {
+
+    public String id;
+	public String tahun;
+	public String bulan;
+	public String jnsdis;
+	public Integer diske;
+	public Double pctdis;
+	public Double nildis;
+	public String idref;
+    public Long version;
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+    
+	public CustomerGajiId customer;
+	public Produk produk;
+
+	public EAdminDiskon toEntity() {
+		
+  	  EAdminDiskon entity = new EAdminDiskon();
+  		
+  	    entity.setId(id);
+  		entity.setTahun(tahun);
+  		entity.setBulan(bulan);
+  		entity.setJnsdis(jnsdis);
+  		entity.setDiske(diske);
+  		entity.setPctdis(pctdis);
+  		entity.setNildis(nildis);
+  		entity.setIdref(idref);
+  		
+        entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+          
+		if (customer != null && !StringUtils.isEmpty(customer.id)) {
+			ECustomerGajiId entityRef = new ECustomerGajiId();
+		
+			entityRef.setId(customer.id);
+			entityRef.setVersion(customer.version);
+		
+			entity.setCustomer(entityRef);
+		
+		} else {
+			entity.setCustomer(null);
+		}
+        
+		if (produk != null && !StringUtils.isEmpty(produk.id)) {
+			EProduk entityRef = new EProduk();
+		
+			entityRef.setId(produk.id);
+			entityRef.setVersion(produk.version);
+		
+			entity.setProduk(entityRef);
+		
+		} else {
+			entity.setProduk(null);
+		}
+        
+  		return entity;
+  	}
+    
+	public static AdminDiskon fromEntity (EAdminDiskon entity) {
+		return fromEntity(entity,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static AdminDiskon fromEntity(EAdminDiskon entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		
+		AdminDiskon pojo = new AdminDiskon();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.tahun = entity.getTahun();
+			pojo.bulan = entity.getBulan();
+			pojo.jnsdis = entity.getJnsdis();
+			pojo.pctdis = entity.getPctdis();
+			pojo.nildis = entity.getNildis();
+			pojo.idref = entity.getIdref();
+		    
+	        pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+
+			pojo.customer = CustomerGajiId.fromEntity(entity.getCustomer());
+			pojo.produk = Produk.fromEntity(entity.getProduk());
+			
+		}
+
+		return pojo;
+	}
+	
+	public static List<AdminDiskon> fromEntities(List<EAdminDiskon> entities){
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static List<AdminDiskon> fromEntities(List<EAdminDiskon> entities, int depthLevel){
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<AdminDiskon> pojos = new ArrayList<>();
+		
+		for (EAdminDiskon entity : entities) {
+			pojos.add(AdminDiskon.fromEntity(entity, depthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+	
+		mappings.add(new SearchFieldMapping("tahun", "tahun"));
+		mappings.add(new SearchFieldMapping("bulan", "bulan"));
+		mappings.add(new SearchFieldMapping("customer", "customer.nama"));
+		mappings.add(new SearchFieldMapping("produk", "produk.nama"));
+		mappings.add(new SearchFieldMapping("jnsdis", "jnsdis"));
+//		mappings.add(new SearchFieldMapping("urutan", "urutan", Integer.class).sortOnly());
+	
+		return mappings;
+	} 
+	
+}

@@ -1,0 +1,281 @@
+package co.id.sofcograha.domain.invoicing.report.invoice.entities;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+@Entity
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class ERptRekapCustomerPerTahun {
+
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@Column(name = "nama")
+	private String nama;
+
+	@Column(name = "tglive")
+	private String tglive;
+	
+	@Column(name = "tgstop")
+    private String tgstop;
+	
+	@Column(name = "status")
+	private String status;
+	   
+	@Column(name = "siklus")
+	private String siklus;
+	   
+	@Column(name = "tipe")
+	private String tipe;
+	   
+	@Column(name = "jnstgh")
+	private String jnstgh;
+	   
+	@Column(name = "diskon")
+	private String diskon;
+	   
+	@Column(name = "bulan_renewal")
+	private String bulanRenewal;
+	   
+	@Column(name = "last_jumkar")
+	private Integer lastJumkar;
+	   
+	@Column(name = "default_nilai")
+	private Double defaultNilai;
+	   
+	@Column(name = "januari")
+	private Double januari;
+
+	@Column(name = "pebruari")
+	private Double pebruari;
+
+	@Column(name = "maret")
+	private Double maret;
+
+	@Column(name = "april")
+	private Double april;
+
+	@Column(name = "mei")
+	private Double mei;
+
+	@Column(name = "juni")
+	private Double juni;
+
+	@Column(name = "juli")
+	private Double juli;
+
+	@Column(name = "agustus")
+	private Double agustus;
+
+	@Column(name = "september")
+	private Double september;
+
+	@Column(name = "oktober")
+	private Double oktober;
+
+	@Column(name = "november")
+	private Double november;
+
+	@Column(name = "desember")
+	private Double desember;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getNama() {
+		return nama;
+	}
+
+	public void setNama(String nama) {
+		this.nama = nama;
+	}
+
+	public String getTglive() {
+		return tglive;
+	}
+
+	public void setTglive(String tglive) {
+		this.tglive = tglive;
+	}
+
+	public String getTgstop() {
+		return tgstop;
+	}
+
+	public void setTgstop(String tgstop) {
+		this.tgstop = tgstop;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
+	public String getSiklus() {
+		return siklus;
+	}
+
+	public void setSiklus(String siklus) {
+		this.siklus = siklus;
+	}
+
+	public String getTipe() {
+		return tipe;
+	}
+
+	public void setTipe(String tipe) {
+		this.tipe = tipe;
+	}
+
+	public String getJnstgh() {
+		return jnstgh;
+	}
+
+	public void setJnstgh(String jnstgh) {
+		this.jnstgh = jnstgh;
+	}
+
+	public String getDiskon() {
+		return diskon;
+	}
+
+	public void setDiskon(String diskon) {
+		this.diskon = diskon;
+	}
+
+	public String getBulanRenewal() {
+		return bulanRenewal;
+	}
+
+	public void setBulanRenewal(String bulanRenewal) {
+		this.bulanRenewal = bulanRenewal;
+	}
+
+	public Integer getLastJumkar() {
+		return lastJumkar;
+	}
+
+	public void setLastJumkar(Integer lastJumkar) {
+		this.lastJumkar = lastJumkar;
+	}
+
+	public Double getDefaultNilai() {
+		return defaultNilai;
+	}
+
+	public void setDefaultNilai(Double defaultNilai) {
+		this.defaultNilai = defaultNilai;
+	}
+
+	public Double getJanuari() {
+		return januari;
+	}
+
+	public void setJanuari(Double januari) {
+		this.januari = januari;
+	}
+
+	public Double getPebruari() {
+		return pebruari;
+	}
+
+	public void setPebruari(Double pebruari) {
+		this.pebruari = pebruari;
+	}
+
+	public Double getMaret() {
+		return maret;
+	}
+
+	public void setMaret(Double maret) {
+		this.maret = maret;
+	}
+
+	public Double getApril() {
+		return april;
+	}
+
+	public void setApril(Double april) {
+		this.april = april;
+	}
+
+	public Double getMei() {
+		return mei;
+	}
+
+	public void setMei(Double mei) {
+		this.mei = mei;
+	}
+
+	public Double getJuni() {
+		return juni;
+	}
+
+	public void setJuni(Double juni) {
+		this.juni = juni;
+	}
+
+	public Double getJuli() {
+		return juli;
+	}
+
+	public void setJuli(Double juli) {
+		this.juli = juli;
+	}
+
+	public Double getAgustus() {
+		return agustus;
+	}
+
+	public void setAgustus(Double agustus) {
+		this.agustus = agustus;
+	}
+
+	public Double getSeptember() {
+		return september;
+	}
+
+	public void setSeptember(Double september) {
+		this.september = september;
+	}
+
+	public Double getOktober() {
+		return oktober;
+	}
+
+	public void setOktober(Double oktober) {
+		this.oktober = oktober;
+	}
+
+	public Double getNovember() {
+		return november;
+	}
+
+	public void setNovember(Double november) {
+		this.november = november;
+	}
+
+	public Double getDesember() {
+		return desember;
+	}
+
+	public void setDesember(Double desember) {
+		this.desember = desember;
+	}
+
+}

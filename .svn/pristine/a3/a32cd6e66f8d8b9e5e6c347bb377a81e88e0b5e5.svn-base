@@ -1,0 +1,20 @@
+package co.id.sofcograha.base.master.helpInfo.repositories;
+
+import javax.persistence.EntityManager;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.master.helpInfo.entities.EStdInfoDetail;
+
+@Repository
+public class EStdInfoDetailRepository extends SimpleJpaRepository<EStdInfoDetail, String> {
+
+	protected final EntityManager em;
+
+	public EStdInfoDetailRepository(EntityManager em) {
+		super(EStdInfoDetail.class, em);
+		this.em = em;
+	}
+	
+}

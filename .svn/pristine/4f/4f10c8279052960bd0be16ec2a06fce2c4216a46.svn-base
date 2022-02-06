@@ -1,0 +1,8 @@
+package co.id.sofcograha.domain.invoicing.constants;
+
+public class ProcessConstants {
+	public static final String SIMPLE_VOID_SP = "SimpleVoidSp";	
+	public static final String PROCESS_NAME_SIMPLE_VOID_SP = "Stored Procedure Void Sederhana";
+	public static final String MONTHLY_PROCESS = "ProsesBulanan";
+	public static final String CANCEL_MONTHLY_PROCESS = "BatalProsesBulanan";
+}

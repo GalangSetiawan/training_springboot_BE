@@ -1,0 +1,106 @@
+package co.id.sofcograha.base.master.userwidget.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.userwidget.entities.EUserWidget;
+import co.id.sofcograha.base.master.widget.entities.EWidget;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+//import id.co.sofcograha.gajiidapi.base.extendables.BaseRepository;
+//import id.co.sofcograha.gajiidapi.base.mst.user.entities.User;
+//import id.co.sofcograha.gajiidapi.base.mst.userwidget.entities.UserWidget;
+//import id.co.sofcograha.gajiidapi.base.mst.widget.entities.Widget;
+//import id.co.sofcograha.gajiidapi.base.search.HqlSimpleSearchBuilder;
+//import id.co.sofcograha.gajiidapi.base.search.SearchParameter;
+//import id.co.sofcograha.gajiidapi.base.search.SearchResult;
+
+@Repository
+public class UserWidgetRepository extends SimpleJpaRepository<EUserWidget, String> {
+
+	protected final EntityManager em;
+	
+	public UserWidgetRepository(EntityManager em) {
+		super(EUserWidget.class, em);
+		this.em = em;
+	}
+
+	public EUserWidget findByBK(EWidget widget, EUser user) {
+		
+		String query = "SELECT e FROM EUserWidget e " + 
+                       "WHERE e.widget = :widget And " +
+				             "e.user = :user";
+	
+		try {
+			return em.createQuery(query, EUserWidget.class)
+					 .setParameter("widget", widget)
+					 .setParameter("user", user)
+					 .getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}		
+	}
+	
+	public Integer getMaxResult(EUser user) {
+		
+		return em.createQuery("SELECT MAX(e.orderNumber) " +
+							  "FROM EUserWidget e " +
+							  "WHERE e.user = :user", Integer.class)
+				   .setParameter("user", user)
+				   .getSingleResult();
+	}
+
+	public SearchResult<EUserWidget> search(SearchParameter searchParameter) {
+		
+		HqlSimpleSearchBuilder<EUserWidget> search = new HqlSimpleSearchBuilder<>(EUserWidget.class, em);
+
+		String widgetId = (String) searchParameter.getValueFromMappedParam("widget.id");
+		String userId = (String) searchParameter.getValueFromMappedParam("user.id");
+		Integer orderNumber = (Integer) searchParameter.getValueFromMappedParam("orderNumber");
+		Integer orderNumberFrom = (Integer) searchParameter.getValueFromMappedParam("orderNumberFrom");
+		Integer orderNumberTo = (Integer) searchParameter.getValueFromMappedParam("orderNumberTo");
+
+		if (widgetId != null) {
+			search.addWhere("AND widget.id = :widgetId ");
+			search.addParameter("widgetId", widgetId);
+		}
+		
+		if (userId != null) {
+			search.addWhere("AND user.id = :userId ");
+			search.addParameter("userId", userId);
+		}
+		
+		if (orderNumber != null) {
+			search.addWhere("AND orderNumber = :orderNumber ");
+			search.addParameter("orderNumber", orderNumber);
+
+			if (orderNumberFrom != null) {
+				search.addWhere("AND orderNumber >= :orderNumberFrom ");
+				search.addParameter("orderNumberFrom", orderNumberFrom);
+			}
+			if (orderNumberTo != null) {
+				search.addWhere("AND orderNumber <= :orderNumberTo ");
+				search.addParameter("orderNumberTo", orderNumberTo);
+			}		
+		}
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EUserWidget add(EUserWidget entity) {
+		return save(entity);
+	}
+
+	public EUserWidget edit(EUserWidget entity) {
+		return save(entity);
+	}
+}

@@ -1,0 +1,132 @@
+package co.id.sofcograha.base.queue.processstatus.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.queue.common.QueueConstants;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatusDetail;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Repository
+public class ProcessStatusDetailRepository extends SimpleJpaRepository<EProcessStatusDetail, String> {
+
+	protected final EntityManager em;
+	
+	public ProcessStatusDetailRepository(EntityManager em) {
+		super(EProcessStatusDetail.class, em);
+		this.em = em;
+	}
+
+	public EProcessStatusDetail findByBK(EProcessStatus processStatus, Integer nomorItem, QueueConstants.ProcessStatusType processStatusType) {
+		
+		String query = "SELECT e FROM EProcessStatusDetail e " + 
+                       "WHERE e.processStatus = :processStatus And " +
+			                 "e.nomorItem = :nomorItem And " +
+                             "e.processStatusType = :processStatusType";
+		
+		try {
+			return em.createQuery(query, EProcessStatusDetail.class)
+					 .setParameter("processStatus", processStatus)
+					 .setParameter("nomorItem", nomorItem)
+					 .setParameter("processStatusType", processStatusType)
+					 .getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}		
+		
+	}
+	
+	public Integer getMaxNomorStatus(EProcessStatus processStatus, QueueConstants.ProcessStatusType processStatusType) {
+		Integer result;
+
+		String query = "SELECT COALESCE(MAX(e.nomorItem), 0) FROM EProcessStatusDetail e " + 
+                       "WHERE e.processStatus = :processStatus And " +
+                             "e.processStatusType = :processStatusType";
+	
+		try {
+			result =  em.createQuery(query, Integer.class)
+					    .setParameter("processStatus", processStatus)
+					    .setParameter("processStatusType", processStatusType)
+					    .getSingleResult();
+			
+		} catch (NoResultException e) {
+			result= 0;
+		}
+		
+		return result;
+	}
+
+	public SearchResult<EProcessStatusDetail> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EProcessStatusDetail> search = new HqlSimpleSearchBuilder<>(EProcessStatusDetail.class, em);
+
+		String processStatusId = (String) searchParameter.getValueFromMappedParam("processStatus.id");
+		Integer nomorItem = (Integer) searchParameter.getValueFromMappedParam("nomorItem");
+		QueueConstants.ProcessStatusType processStatusType = (QueueConstants.ProcessStatusType) searchParameter.getValueFromMappedParam("processStatusType");
+		String msgKey = (String) searchParameter.getValueFromMappedParam("msgKey");
+		String msgParam = (String) searchParameter.getValueFromMappedParam("msgParam");
+
+		
+		if (processStatusId != null) {
+			search.addWhere("AND processStatus.id = :processStatusId ");
+			search.addParameter("processStatusId", processStatusId);
+		}
+		
+		if (nomorItem != null) {
+			search.addWhere("AND nomorItem = :nomorItem ");
+			search.addParameter("nomorItem", nomorItem);
+		}
+		
+		if (processStatusType != null) {
+			search.addWhere("AND processStatusType = :processStatusType ");
+			search.addParameter("processStatusType", processStatusType);
+		}
+		
+		if (!QueryUtil.isAll(msgKey)) {
+			search.addWhere("AND LOWER(msgKey) LIKE LOWER(:msgKey) ");
+			search.addParameter("msgKey", QueryUtil.formatStringForLikeFilter(msgKey));
+		}
+		
+		if (!QueryUtil.isAll(msgParam)) {
+			search.addWhere("AND LOWER(msgParam) LIKE LOWER(:msgParam) ");
+			search.addParameter("msgParam", QueryUtil.formatStringForLikeFilter(msgParam));
+		}
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EProcessStatusDetail add(EProcessStatusDetail entity) {
+		return save(entity);
+	}
+
+	public EProcessStatusDetail edit(EProcessStatusDetail entity) {
+		return save(entity);
+	}
+	
+	public List<EProcessStatusDetail> getListProcessStatusDetail(EProcessStatus processStatus,
+			QueueConstants.ProcessStatusType processStatusType) {
+		
+		String query = "FROM EProcessStatusDetail e WHERE e.processStatus = :processStatus " + 
+                       "AND e.processStatusType = :processStatusType";
+	
+		try {
+			return em.createQuery(query, EProcessStatusDetail.class)
+					.setParameter("processStatus", processStatus)
+					.setParameter("processStatusType", processStatusType)
+					.getResultList();
+		} catch (NoResultException e) {
+			return null;
+		}		
+	}
+}

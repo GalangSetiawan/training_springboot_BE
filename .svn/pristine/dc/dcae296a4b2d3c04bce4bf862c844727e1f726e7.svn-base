@@ -1,0 +1,202 @@
+package co.id.sofcograha.base.loginlogoutlog.entities;
+
+import java.util.Date;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.Id;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
+import javax.persistence.Version;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.constants.enums.AccessStatusLog;
+import co.id.sofcograha.base.constants.enums.AccessTypeLog;
+import co.id.sofcograha.base.exceptions.DevException;
+
+//import id.co.sofcograha.gajiidapi.base.constants.enums.AccessStatusLog;
+//import id.co.sofcograha.gajiidapi.base.constants.enums.AccessTypeLog;
+//import id.co.sofcograha.gajiidapi.base.extendables.BaseEntity;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(schema="public", name="std_loginlogout_log")
+@JsonIgnoreProperties(ignoreUnknown=true)
+public class ELoginLogoutLog {
+
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "tgl_jam")
+	private Date logDate;
+
+	@Column(name = "username")
+	private String username;
+
+	@Column(name = "access_type")
+	@Enumerated(EnumType.STRING)
+	private AccessTypeLog accessType;
+
+	@Column(name = "access_status")
+	@Enumerated(EnumType.STRING)
+	private AccessStatusLog accessStatus;
+
+	@Column(name = "from_company_name")
+	private String fromCompanyName;
+
+	@Column(name = "to_company_name")
+	private String toCompanyName;
+
+	@Column(name = "data_output")
+	private String dataOutput;
+
+	@Version
+	@Column(name = "version")
+	private Long version;
+	
+	@Column(name = "user_create")
+	private String userCreate;
+
+	@Column(name = "creation_time")
+	private Date creationTime;
+
+	@Column(name = "user_modify")
+	private String userModify;
+
+	@Column(name = "modification_time")
+	private Date modificationTime;
+	
+	public Date getLogDate() {
+		return logDate;
+	}
+
+	public void setLogDate(Date logDate) {
+		this.logDate = logDate;
+	}
+
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
+	public AccessTypeLog getAccessType() {
+		return accessType;
+	}
+
+	public void setAccessType(AccessTypeLog accessType) {
+		this.accessType = accessType;
+	}
+
+	public AccessStatusLog getAccessStatus() {
+		return accessStatus;
+	}
+
+	public void setAccessStatus(AccessStatusLog accessStatus) {
+		this.accessStatus = accessStatus;
+	}
+
+	public String getFromCompanyName() {
+		return fromCompanyName;
+	}
+
+	public void setFromCompanyName(String fromCompanyName) {
+		this.fromCompanyName = fromCompanyName;
+	}
+
+	public String getToCompanyName() {
+		return toCompanyName;
+	}
+
+	public void setToCompanyName(String toCompanyName) {
+		this.toCompanyName = toCompanyName;
+	}
+
+	public String getDataOutput() {
+		return dataOutput;
+	}
+
+	public void setDataOutput(String dataOutput) {
+		this.dataOutput = dataOutput;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+	
+	public String getUserCreate() {
+		return userCreate;
+	}
+
+	public void setUserCreate(String userCreate) {
+		this.userCreate = userCreate;
+	}
+
+	public Date getCreationTime() {
+		return creationTime;
+	}
+
+	public void setCreationTime(Date creationTime) {
+		this.creationTime = creationTime;
+	}
+
+	public String getUserModify() {
+		return userModify;
+	}
+
+	public void setUserModify(String userModify) {
+		this.userModify = userModify;
+	}
+
+	public Date getModificationTime() {
+		return modificationTime;
+	}
+
+	public void setModificationTime(Date modificationTime) {
+		this.modificationTime = modificationTime;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+	
+	@PrePersist
+	private void prePersist() {
+		Date currentDateTime = new Date();
+		
+		this.id = UUID.randomUUID().toString();
+		this.userCreate = CurrentUser.getUsername();
+		this.creationTime = currentDateTime;
+		this.userModify = CurrentUser.getUsername();
+		this.modificationTime = currentDateTime;
+	}
+}

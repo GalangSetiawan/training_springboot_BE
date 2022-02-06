@@ -1,0 +1,77 @@
+package co.id.sofcograha.base.queue.processstatus.controllers;
+
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.queue.processstatus.pojos.ProcessStatusPojo;
+import co.id.sofcograha.base.queue.processstatus.services.ProcessStatusService;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@RestController
+@RequestMapping(value = "/api/processStatus")
+public class ProcessStatusController {
+	
+	@Autowired
+	private ProcessStatusService processStatusService;
+	
+	@NoAuth
+	@GetMapping(value = BaseConstants.ID)
+	public ApiResponse get(@PathVariable String id) {
+		return ApiResponse.data("item", ProcessStatusPojo.fromEntity(processStatusService.get(id)));
+	}
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+	  SearchResult<EProcessStatus> searchResult = processStatusService.search(SearchParameter.generate(searchParameter, 
+			  																			ProcessStatusPojo.getFieldMappings()));
+	  
+	  return ApiResponse.dataWithPaging("items", 
+			  							ProcessStatusPojo.fromEntities(searchResult.getResult()),
+			  							searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@PostMapping
+	public ApiResponse add(@RequestBody ProcessStatusPojo pojo) {
+		EProcessStatus entity = processStatusService.add(pojo.toEntity());
+		return ApiResponse.data("item", ProcessStatusPojo.fromEntity(entity));
+	}
+	
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody ProcessStatusPojo pojo) {
+	  EProcessStatus entity = processStatusService.edit(pojo.toEntity());
+	  return ApiResponse.data("item", ProcessStatusPojo.fromEntity(entity));
+	}
+	
+	@NoAuth
+	@DeleteMapping(value = BaseConstants.ID)
+	public ApiResponse delete(@PathVariable String id, @RequestParam(required = false) Long version) {
+	  processStatusService.delete(id, version);
+	  return ApiResponse.ok();
+	}
+	
+	@NoAuth
+	@DeleteMapping(value = "/multi")
+	public ApiResponse deleteMulti(@RequestBody final List<ProcessStatusPojo> pojos) {
+		processStatusService.deleteMulti(pojos);
+		return ApiResponse.ok();
+	}
+}

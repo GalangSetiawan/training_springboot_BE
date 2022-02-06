@@ -1,0 +1,237 @@
+package co.id.sofcograha.domain.invoicing.masters.produk.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.authorization.services.ActionAuthorizationService;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.pojos.Produk;
+import co.id.sofcograha.domain.invoicing.masters.produk.repositories.EProdukRepository;
+
+@Service("produkService")
+public class ProdukService extends BaseService {
+	
+	@Autowired private EProdukRepository repo;
+	
+	@Autowired private ActionAuthorizationService actionAuthorizationService;
+	
+	public EProduk findByBk(String nama) {
+		return repo.findByBK(nama);
+	}
+	
+	public EProduk findById(final String id) {
+		return repo.getOne(id);
+	}
+
+	public SearchResult<EProduk> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+    
+	public Produk findByNama(String nama) {
+		return Produk.fromEntity(repo.findByNama(nama));
+	}
+	
+	@Transactional
+    public EProduk add(EProduk entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EProduk addedEntity = repo.add(entity);
+		
+		throwBatchError();
+		return addedEntity;	
+		
+    }
+       
+    private void valOnAdd(final EProduk valuta) {
+      //valAuthAdd();
+      
+      if (valuta.getNama() == null || valuta.getNama().trim().equals("")) {
+        batchError("produk.nama.harusDiisi");
+      }
+      
+    }
+
+	@Transactional
+	public EProduk edit(EProduk entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EProduk toBeSaved = repo.getOne(entity.getId());
+		EProduk oldEntity = (EProduk) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+		
+		throwBatchError();
+		return toBeSaved;
+		
+	}
+
+	private void valOnEdit(final EProduk valuta) {
+//      valAuthEdit();
+      
+      if (valuta.getNama() == null || valuta.getNama().trim().equals("")) {
+        batchError("produk.nama.harusAda");
+      }
+      
+    }
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EProduk.class.getSimpleName());
+		throwBatchError();
+		
+		EProduk toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		repo.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	private void valOnDelete(EProduk entity) {
+//      valAuthDelete();
+      
+      if (entity == null) {
+        error("produk.tidakAda", "Valuta");
+      }
+      
+    }
+	
+	private void valAuthAdd() {
+	  if(!actionAuthorizationService.valHakAdd()) {
+	    error("NoRightToAdd");
+	  }
+	}
+	
+	private void valAuthEdit() {
+      if(!actionAuthorizationService.valHakEdit()) {
+        error("NoRightToChange");
+      }
+    }
+	
+    private void valAuthDelete() {
+      if(!actionAuthorizationService.valHakDelete()) {
+        error("NoRightToDelete");
+      }
+    }
+
+    protected void defineDefaultValuesOnAdd(EProduk entity) {
+//		if (entity.getActive() == null) entity.setActive(true);
+		if (entity.getFlakt() == null) entity.setFlakt(BaseConstants.YA);
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+    
+    protected void valRequiredValues(EProduk entity) {
+		valRequiredString(entity.getNama(), "produk.nama.required");
+	}
+    
+    protected void manageMinMaxValues(EProduk entity) {
+		valMaxString(entity.getNama(), 200, "produk.nama.max.length");
+	}
+    
+    protected void manageReferences(EProduk entity) {
+		/*
+		if (entity.getFunctionAccess() != null) {
+			OptionalConsumerUtil.of(functionAccessService.find(entity.getFunctionAccess().getId()))
+			.ifPresent(functionAccess -> {
+				if (functionAccess.getActive()) {
+					entity.setFunctionAccess(functionAccess);
+				} else {
+					batchError("widget.functionAccess.not.active");
+				}
+			})
+			.ifNotPresent(() -> {
+				batchError("widget.functionAccess.not.found");
+			});
+		}
+		*/
+	}
+
+    protected void valUniquenessOnAdd(EProduk addedEntity) {
+		EProduk entityFromDb = repo.findByBK(addedEntity.getNama());
+		if (entityFromDb != null) {
+			throw new BusinessException("produk.bk", addedEntity.getNama());
+		}
+	}
+    
+    private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EProduk dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+    
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void valUniquenessOnEdit(EProduk editedEntity) {
+		EProduk entityFromDb = repo.findByBK(editedEntity.getNama());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("produk.bk", editedEntity.getNama());
+			}
+		}
+	}
+	
+	protected void defineEditableValues(EProduk newValues, EProduk toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setNama(newValues.getNama());
+			toBeSaved.setFlakt(newValues.getFlakt());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valDelete(EProduk toBeDeleted) {	}
+    
+    
+	public EProduk get(String id) {
+		return repo.getOne(id);
+	}
+}

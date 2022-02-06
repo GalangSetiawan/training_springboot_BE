@@ -1,0 +1,91 @@
+drop function public.spHitungTarifFlat(character varying, character varying, character varying, numeric, numeric);
+
+create or replace function public.spHitungTarifFlat(
+	character varying,
+	character varying,
+	character varying,
+	numeric,
+	numeric)
+	
+	returns numeric
+	language plpgsql
+as $function$
+
+declare
+	pIdMi010 alias for $1;
+	pIdMi001 alias for $2;
+	pTanggal alias for $3;
+	pTotalKar alias for $4;
+	pJumkar alias for $5;
+
+    vTglTarif          character varying; 
+    vDetailMasterTarif record;
+    f record;
+
+    vJumlah         numeric;
+    vHarga          numeric;
+    vOverheadFound  boolean;
+begin
+
+    vTglTarif = public.add_month_to_str_date(pTanggal, -1);
+    
+    -- ambil detail master customer tarif (mi012) yang sesuai
+    select a.*
+    into vDetailMasterTarif
+    from mi012 a
+    left join mi011 b on b.id_mi011 = a.id_mi011
+    where b.id_mi010 = pIdMi010 and b.id_mi001 = pIdMi001 and
+          a.jnstrf = 'SKEMA' and
+          ((pTanggal between b.tglstart and b.tglstop) or (pTanggal >= b.tglstart and b.tglstop is null)) and
+          ((pTanggal between a.tglstart and a.tglstop) or (pTanggal >= a.tglstart and a.tglstop is null));
+
+    raise notice '% - %', vDetailMasterTarif.id_mi002, vDetailMasterTarif.nourut;
+    
+    vJumlah = 1;
+    vHarga  = 0;
+    vOverheadFound = false;
+    -- ambil detail skema tarif overhead, loop untuk mencari apakah masuk dalam tier overhead
+    for f in select b.* from mi002 a
+             left join mi003 b on b.id_mi002 = a.id_mi002 
+             where a.id_mi002 = vDetailMasterTarif.id_mi002 and b.kltrf = 'OVERH'
+             order by b.max
+
+    loop 
+        raise notice '% - % : %', f.min, f.max, f.harga;
+        
+        if pTotalKar >= f.min and pTotalKar <= f.max then
+            vJumlah = f.max - f.min + 1;
+            vHarga = f.harga;
+            vOverheadFound = true;
+            exit;
+        end if;
+    end loop;
+    
+    raise notice 'jumlah % - harga overhead %', vJumlah, vHarga;    
+    raise notice 'vOverheadFound %', vOverheadFound;    
+    
+    if not vOverheadFound then
+    
+        -- ambil detail skema tarif utama, loop untuk mencari tier-tier harga progresif
+        for f in select b.* from mi002 a
+                 left join mi003 b on b.id_mi002 = a.id_mi002 
+                 where a.id_mi002 = vDetailMasterTarif.id_mi002 and b.kltrf = 'UTAMA'
+                 order by b.max
+
+        loop         
+            if pTotalKar >= f.min and pTotalKar <= f.max then
+                raise notice '% - % : % -> %', f.min, f.max, f.harga, (pJumkar * f.harga);
+                vHarga = vHarga + (pJumkar * f.harga);
+                exit;
+            end if;
+        end loop;
+           
+    end if;
+    
+    raise notice 'harga akhir %', vHarga;    
+    
+	return vHarga;
+end;
+
+$function$
+;

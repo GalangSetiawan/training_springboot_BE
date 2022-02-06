@@ -1,0 +1,220 @@
+package co.id.sofcograha.domain.invoicing.masters.implementasi.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.authorization.services.ActionAuthorizationService;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.implementasi.entities.EImplementasi;
+import co.id.sofcograha.domain.invoicing.masters.implementasi.repositories.EImplementasiRepository;
+
+@Service("implementasiService")
+public class ImplementasiService extends BaseService {
+	
+	@Autowired private EImplementasiRepository repo;
+	
+	@Autowired private ActionAuthorizationService actionAuthorizationService;
+	
+	public EImplementasi findByBk(String nama) {
+		return repo.findByBK(nama);
+	}
+	
+	public EImplementasi findById(final String id) {
+		return repo.getOne(id);
+	}
+
+	public SearchResult<EImplementasi> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+    
+	@Transactional
+    public EImplementasi add(EImplementasi entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EImplementasi addedEntity = repo.add(entity);
+		
+		throwBatchError();
+		return addedEntity;	
+		
+    }
+       
+	@Transactional
+	public EImplementasi edit(EImplementasi entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EImplementasi toBeSaved = repo.getOne(entity.getId());
+		EImplementasi oldEntity = (EImplementasi) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+		
+		throwBatchError();
+		return toBeSaved;
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EImplementasi.class.getSimpleName());
+		throwBatchError();
+		
+		EImplementasi toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		repo.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	private void valAuthAdd() {
+	  if(!actionAuthorizationService.valHakAdd()) {
+	    error("NoRightToAdd");
+	  }
+	}
+	
+	private void valAuthEdit() {
+      if(!actionAuthorizationService.valHakEdit()) {
+        error("NoRightToChange");
+      }
+    }
+	
+    private void valAuthDelete() {
+      if(!actionAuthorizationService.valHakDelete()) {
+        error("NoRightToDelete");
+      }
+    }
+
+    protected void defineDefaultValuesOnAdd(EImplementasi entity) {
+		if (entity.getFlakt() == null) entity.setFlakt(BaseConstants.YA);
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+    
+    protected void valRequiredValues(EImplementasi entity) {
+		valRequiredString(entity.getNama(), "implementasi.nama.required");
+		valRequiredString(entity.getKeterangan(), "implementasi.keterangan.required");
+		valRequiredString(entity.getTipe(), "implementasi.tipe.required");
+		valRequiredInteger(entity.getJumdur(), "implementasi.jumdur.required");
+		valRequiredString(entity.getSatdur(), "implementasi.satdur.required");
+		valRequiredDouble(entity.getHarga(), "implementasi.harga.required");
+	}
+    
+    protected void manageMinMaxValues(EImplementasi entity) {
+		valMaxString(entity.getNama(), 200, "implementasi.nama.max.length");
+		valMaxString(entity.getKeterangan(), 400, "implementasi.keterangan.max.length");
+		valMaxString(entity.getTipe(), 10, "implementasi.tipe.max.length");
+		valMinInteger(entity.getJumdur(), 1, "implementasi.jumdur.min.length");
+		valMaxInteger(entity.getJumdur(), 999, "implementasi.jumdur.max.length");
+		valMaxString(entity.getSatdur(), 10, "implementasi.satdur.max.length");
+		valMinDouble(entity.getHarga(), 0D, "implementasi.harga.min.length");
+		valMaxDouble(entity.getHarga(), 999999999D, "implementasi.harga.max.length");
+	}
+    
+    protected void manageReferences(EImplementasi entity) {
+		/*
+		if (entity.getFunctionAccess() != null) {
+			OptionalConsumerUtil.of(functionAccessService.find(entity.getFunctionAccess().getId()))
+			.ifPresent(functionAccess -> {
+				if (functionAccess.getActive()) {
+					entity.setFunctionAccess(functionAccess);
+				} else {
+					batchError("widget.functionAccess.not.active");
+				}
+			})
+			.ifNotPresent(() -> {
+				batchError("widget.functionAccess.not.found");
+			});
+		}
+		*/
+	}
+
+    protected void valUniquenessOnAdd(EImplementasi addedEntity) {
+    	EImplementasi entityFromDb = repo.findByBK(addedEntity.getNama());
+		if (entityFromDb != null) {
+			throw new BusinessException("implementasi.bk", addedEntity.getNama());
+		}
+	}
+    
+    private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EImplementasi dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+    
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void valUniquenessOnEdit(EImplementasi editedEntity) {
+		EImplementasi entityFromDb = repo.findByBK(editedEntity.getNama());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("implementasi.bk", editedEntity.getNama());
+			}
+		}
+	}
+	
+	protected void defineEditableValues(EImplementasi newValues, EImplementasi toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setNama(newValues.getNama());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+			toBeSaved.setJumdur(newValues.getJumdur());
+			toBeSaved.setSatdur(newValues.getSatdur());
+			toBeSaved.setTipe(newValues.getTipe());
+			toBeSaved.setHarga(newValues.getHarga());
+			toBeSaved.setFlakt(newValues.getFlakt());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valDelete(EImplementasi toBeDeleted) {	}
+    
+    
+	public EImplementasi get(String id) {
+		return repo.getOne(id);
+	}
+}

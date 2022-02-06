@@ -1,0 +1,227 @@
+package co.id.sofcograha.base.master.widget.entities;
+
+import java.util.Date;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.exceptions.DevException;
+
+//import id.co.sofcograha.gajiidapi.base.extendables.BaseEntity;
+//import id.co.sofcograha.gajiidapi.base.mst.functionaccess.entities.FunctionAccess;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(schema="public", name="std_widget", uniqueConstraints = @UniqueConstraint(columnNames = { "widget_name" }))
+@JsonIgnoreProperties(ignoreUnknown=true)
+public class EWidget implements Cloneable {
+
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@Version
+	@Column(name = "version")
+	private Long version;
+
+//	@Column(name = "widget_id")
+//	private String widgetId;
+
+	@Column(name = "widget_name")
+	private String widgetName;
+
+	@Column(name = "cols")
+	private Integer cols;
+
+	@Column(name = "rows")
+	private Integer rows;
+
+	@Column(name = "x")
+	private Integer x;
+
+	@Column(name = "y")
+	private Integer y;
+
+//	@OneToOne
+//	@JoinColumn(name = "hm_msy007_function_access_id")
+//	private FunctionAccess functionAccess;
+	
+	@Column(name = "icon_ext")
+	private String imageExtension;
+	
+	@Column(name = "icon", columnDefinition="BYTEA")
+	private Byte[] image;
+
+	@Column(name = "active")
+	private Boolean active;
+
+	@Column(name = "user_create")
+	private String userCreate;
+
+	@Column(name = "creation_time")
+	private Date creationTime;
+
+	@Column(name = "user_modify")
+	private String userModify;
+
+	@Column(name = "modification_time")
+	private Date modificationTime;
+
+//	public String getWidgetId() {
+//		return widgetId;
+//	}
+//
+//	public void setWidgetId(String widgetId) {
+//		this.widgetId = widgetId;
+//	}
+
+	public String getWidgetName() {
+		return widgetName;
+	}
+
+	public void setWidgetName(String widgetName) {
+		this.widgetName = widgetName;
+	}
+
+	public Integer getCols() {
+		return cols;
+	}
+
+	public void setCols(Integer cols) {
+		this.cols = cols;
+	}
+
+	public Integer getRows() {
+		return rows;
+	}
+
+	public void setRows(Integer rows) {
+		this.rows = rows;
+	}
+
+//	public FunctionAccess getFunctionAccess() {
+//		return functionAccess;
+//	}
+//
+//	public void setFunctionAccess(FunctionAccess functionAccess) {
+//		this.functionAccess = functionAccess;
+//	}
+	
+	public String getImageExtension() {
+		return imageExtension;
+	}
+
+	public void setImageExtension(String imageExtension) {
+		this.imageExtension = imageExtension;
+	}
+
+	public Byte[] getImage() {
+		return image;
+	}
+
+	public void setImage(Byte[] image) {
+		this.image = image;
+	}
+
+	public Boolean getActive() {
+		return active;
+	}
+
+	public void setActive(Boolean active) {
+		this.active = active;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Integer getX() {
+		return x;
+	}
+
+	public void setX(Integer x) {
+		this.x = x;
+	}
+
+	public Integer getY() {
+		return y;
+	}
+
+	public void setY(Integer y) {
+		this.y = y;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public String getUserCreate() {
+		return userCreate;
+	}
+
+	public void setUserCreate(String userCreate) {
+		this.userCreate = userCreate;
+	}
+
+	public Date getCreationTime() {
+		return creationTime;
+	}
+
+	public void setCreationTime(Date creationTime) {
+		this.creationTime = creationTime;
+	}
+
+	public String getUserModify() {
+		return userModify;
+	}
+
+	public void setUserModify(String userModify) {
+		this.userModify = userModify;
+	}
+
+	public Date getModificationTime() {
+		return modificationTime;
+	}
+
+	public void setModificationTime(Date modificationTime) {
+		this.modificationTime = modificationTime;
+	}
+	
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+	
+	@PrePersist
+	private void prePersist() {
+		Date currentDateTime = new Date();
+		
+		this.id = UUID.randomUUID().toString();
+		this.userCreate = CurrentUser.getUsername();
+		this.creationTime = currentDateTime;
+		this.userModify = CurrentUser.getUsername();
+		this.modificationTime = currentDateTime;
+	}
+}

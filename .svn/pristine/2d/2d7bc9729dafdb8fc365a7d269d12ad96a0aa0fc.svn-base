@@ -1,0 +1,162 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.menu.pojos.Menu;
+import co.id.sofcograha.base.master.user.pojos.User;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.entities.EUserHakAksesMenu;
+
+@JsonInclude(Include.ALWAYS)
+public class UserHakAksesMenu {
+
+    public String id;
+    public String idUser;
+    public String idMenu;
+    public Boolean fladd;
+    public Boolean fledit;
+    public Boolean fldel;
+    public Boolean flview;
+    public Integer version;
+    public String usrcrt;
+    public String tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public String tglupd;
+    public String jamupd;
+    public User user;
+    public Menu menu;
+  
+	public ArrayList<UserHakAksesMenu> subItems;
+    
+	public EUserHakAksesMenu toEntity() {
+		
+	  EUserHakAksesMenu entity = new EUserHakAksesMenu();
+		
+	    entity.setId(id);
+	    entity.setIdUser(idUser);
+	    entity.setIdMenu(idMenu);
+        entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        entity.setTglcrt(tglcrt);
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        entity.setTglupd(tglupd);
+        entity.setJamupd(jamupd);
+        
+        if (fladd == true) {
+          entity.setFladd("Y");
+        } else {
+          entity.setFladd("T");
+        }
+        
+        if (fledit == true) {
+          entity.setFledit("Y");
+        } else {
+          entity.setFledit("T");
+        }
+        
+        if (fldel == true) {
+          entity.setFldel("Y");
+        } else {
+          entity.setFldel("T");
+        }
+        
+        if (flview == true) {
+          entity.setFlview("Y");
+        } else {
+          entity.setFlview("T");
+        }
+        
+        entity.seteUser(user.toEntity());
+
+		return entity;
+	}
+	
+	public static UserHakAksesMenu fromEntity (EUserHakAksesMenu entity) {
+		return fromEntity(entity,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static UserHakAksesMenu fromEntity(EUserHakAksesMenu entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		
+		UserHakAksesMenu pojo = null;
+		pojo = new UserHakAksesMenu();
+		
+		pojo.id = entity.getId();
+		pojo.idUser = entity.getIdUser();
+		pojo.idMenu = entity.getIdMenu();
+        pojo.version = entity.getVersion();
+        pojo.usrcrt = entity.getUsrcrt();
+        pojo.tglcrt = entity.getTglcrt();
+        pojo.jamcrt = entity.getJamcrt();
+        pojo.usrupd = entity.getUsrupd();
+        pojo.tglupd = entity.getTglupd();
+        pojo.jamupd = entity.getJamupd();
+        
+        if (entity.getFladd().equals("Y")) {
+          pojo.fladd = true;
+        } else {
+          pojo.fladd = false;
+        }
+        
+        if (entity.getFledit().equals("Y")) {
+          pojo.fledit = true;
+        } else {
+          pojo.fledit = false;
+        }
+        
+        if (entity.getFldel().equals("Y")) {
+          pojo.fldel = true;
+        } else {
+          pojo.fldel = false;
+        }
+        
+        if (entity.getFlview().equals("Y")) {
+          pojo.flview = true;
+        } else {
+          pojo.flview = false;
+        }
+		
+		if (depthLevel > 0) {
+			depthLevel--;
+			// isi di sini bila ada field yang sifatnya referensi
+			 pojo.user = User.fromEntity(entity.geteUser(), depthLevel);
+			 pojo.menu = Menu.fromEntity(entity.geteMenu());
+			 
+			 pojo.subItems = new ArrayList<UserHakAksesMenu>();
+		}
+
+		return pojo;
+	}
+	
+	public static List<UserHakAksesMenu> fromEntities(List<EUserHakAksesMenu> entities){
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static List<UserHakAksesMenu> fromEntities(List<EUserHakAksesMenu> entities, int depthLevel){
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<UserHakAksesMenu> pojos = new ArrayList<>();
+		
+		for (EUserHakAksesMenu entity : entities) {
+			pojos.add(UserHakAksesMenu.fromEntity(entity, depthLevel));
+		}
+		return pojos;
+	}
+
+	public Menu getMenu() {
+	  return menu;
+	}
+	
+	public void setMenu(Menu menu) {
+	  this.menu = menu;
+	}
+	
+}

@@ -1,0 +1,481 @@
+package co.id.sofcograha.base.queue.processparam.services;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.queue.common.QueueConstants;
+import co.id.sofcograha.base.queue.processparam.entities.EProcessParam;
+import co.id.sofcograha.base.queue.processparam.repositories.ProcessParamRepository;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.queue.processstatus.services.ProcessStatusService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Service
+public class ProcessParamService extends BaseService {
+
+	@Autowired private ProcessParamRepository processParamRepository;
+	@Autowired private ProcessStatusService procesStatusService;
+	
+	@Transactional
+	public void setSingleValue(EProcessStatus processStatus, String paramKey, String value) {
+		EProcessParam processParam = new EProcessParam();
+		processParam.setProcessStatus(processStatus);
+		processParam.setParamKey(paramKey);
+		processParam.setParamType(QueueConstants.ProcessParamType.Single);
+		processParam.setParamValue(value);
+		// tambahan oom
+		processParam.setParamValue1("");
+		processParam.setParamValue2("");
+		processParam.setParamValue3("");
+		processParam.setParamValue4("");
+		processParam.setParamValue5("");
+		processParam.setParamValue6("");
+		processParam.setParamValue7("");
+		processParam.setParamValue8("");
+		processParam.setParamValue9("");
+		processParam.setParamValue10("");
+		processParam.setParamValue11("");
+		processParam.setParamValue12("");
+		processParam.setParamValue13("");
+		processParam.setParamValue14("");
+		processParam.setParamValue15("");
+		
+		add(processParam);
+	}
+	
+	public String getSingleValue(EProcessStatus processStatus, String paramKey) {
+		EProcessParam processParam = findByBk(processStatus, paramKey);
+		if (processParam != null && QueueConstants.ProcessParamType.Single.equals(processParam.getParamType())) {
+			return processParam.getParamValue();
+		} else {
+			return null;
+		}
+	}
+	
+	@Transactional
+	public void setMultiValue(EProcessStatus processStatus, String paramKey, List<String> values) {
+		int count = 0;
+		int loopDo = (values.size() <= 16) ? 1 : ((values.size() / 16) + 1);
+		do {
+			EProcessParam processParam = new EProcessParam();
+			processParam.setProcessStatus(processStatus);
+			processParam.setParamKey(paramKey);
+			processParam.setParamType(QueueConstants.ProcessParamType.Multi);
+			if (values.size() >= (1 + (count*16)))
+				processParam.setParamValue(values.get(0 + (count*16)));
+			if (values.size() >= (2  + (count*16)))
+				processParam.setParamValue1(values.get(1 + (count*16)));
+			if (values.size() >= (3 + (count*16)))
+				processParam.setParamValue2(values.get(2 + (count*16)));
+			if (values.size() >= (4 + (count*16)))
+				processParam.setParamValue3(values.get(3 + (count*16)));
+			if (values.size() >= (5 + (count*16)))
+				processParam.setParamValue4(values.get(4 + (count*16)));
+			if (values.size() >= (6 + (count*16)))
+				processParam.setParamValue5(values.get(5 + (count*16)));
+			if (values.size() >= (7 + (count*16)))
+				processParam.setParamValue6(values.get(6 + (count*16)));
+			if (values.size() >= (8 + (count*16)))
+				processParam.setParamValue7(values.get(7 + (count*16)));
+			if (values.size() >= (9 + (count*16)))
+				processParam.setParamValue8(values.get(8 + (count*16)));
+			if (values.size() >= (10 + (count*16)))
+				processParam.setParamValue9(values.get(9 + (count*16)));
+			if (values.size() >= (11 + (count*16)))
+				processParam.setParamValue10(values.get(10 + (count*16)));
+			if (values.size() >= (12 + (count*16)))
+				processParam.setParamValue11(values.get(11 + (count*16)));
+			if (values.size() >= (13 + (count*16)))
+				processParam.setParamValue12(values.get(12 + (count*16)));
+			if (values.size() >= (14 + (count*16)))
+				processParam.setParamValue13(values.get(13 + (count*16)));
+			if (values.size() >= (15 + (count*16)))
+				processParam.setParamValue14(values.get(14 + (count*16)));
+			if (values.size() >= (16 + (count*16)))
+				processParam.setParamValue15(values.get(15 + (count*16)));
+			
+			add(processParam);
+			paramKey = paramKey + "(" + count + ")";
+			count++;
+		} while (count < loopDo);
+	}
+	
+	public List<String> getMultiValue(EProcessStatus processStatus, String paramKey) {
+		EProcessParam processParam = findByBk(processStatus, paramKey);
+		if (processParam != null && QueueConstants.ProcessParamType.Multi.equals(processParam.getParamType())) {
+			
+			List<String> result = new ArrayList<String>();
+			int count = 0;
+			do {
+				result.add(processParam.getParamValue());
+				result.add(processParam.getParamValue1());
+				result.add(processParam.getParamValue2());
+				result.add(processParam.getParamValue3());
+				result.add(processParam.getParamValue4());
+				result.add(processParam.getParamValue5());
+				result.add(processParam.getParamValue6());
+				result.add(processParam.getParamValue7());
+				result.add(processParam.getParamValue8());
+				result.add(processParam.getParamValue9());
+				result.add(processParam.getParamValue10());
+				result.add(processParam.getParamValue11());
+				result.add(processParam.getParamValue12());
+				result.add(processParam.getParamValue13());
+				result.add(processParam.getParamValue14());
+				result.add(processParam.getParamValue15());
+				
+				processParam = findByBk(processStatus, paramKey + "(" + count + ")");
+				
+				count++;
+			} while (processParam != null);
+			
+			return result;
+		} else {
+			return null;
+		}
+	}
+	
+	public void setTableValue(EProcessStatus processStatus, String paramKey, List<String> headers, List<Map<String, String>> values) {
+		EProcessParam headerProcessParam = new EProcessParam();
+		headerProcessParam.setProcessStatus(processStatus);
+		headerProcessParam.setParamKey(paramKey);
+		headerProcessParam.setParamType(QueueConstants.ProcessParamType.Table);
+		if (headers.size() >= 1)
+			headerProcessParam.setParamValue(headers.get(0));
+		if (headers.size() >= 2)
+			headerProcessParam.setParamValue1(headers.get(1));
+		if (headers.size() >= 3)
+			headerProcessParam.setParamValue2(headers.get(2));
+		if (headers.size() >= 4)
+			headerProcessParam.setParamValue3(headers.get(3));
+		if (headers.size() >= 5)
+			headerProcessParam.setParamValue4(headers.get(4));
+		if (headers.size() >= 6)
+			headerProcessParam.setParamValue5(headers.get(5));
+		if (headers.size() >= 7)
+			headerProcessParam.setParamValue6(headers.get(6));
+		if (headers.size() >= 8)
+			headerProcessParam.setParamValue7(headers.get(7));
+		if (headers.size() >= 9)
+			headerProcessParam.setParamValue8(headers.get(8));
+		if (headers.size() >= 10)
+			headerProcessParam.setParamValue9(headers.get(9));
+		if (headers.size() >= 11)
+			headerProcessParam.setParamValue10(headers.get(10));
+		if (headers.size() >= 12)
+			headerProcessParam.setParamValue11(headers.get(11));
+		if (headers.size() >= 13)
+			headerProcessParam.setParamValue12(headers.get(12));
+		if (headers.size() >= 14)
+			headerProcessParam.setParamValue13(headers.get(13));
+		if (headers.size() >= 15)
+			headerProcessParam.setParamValue14(headers.get(14));
+		if (headers.size() >= 16)
+			headerProcessParam.setParamValue15(headers.get(15));
+		add(headerProcessParam);
+		
+		int count = 0;
+		String oriParamKey = paramKey;
+		do {
+			paramKey = oriParamKey + "[" + count + "]";
+			Map<String, String> data = values.get(count);
+			
+			EProcessParam processParam = new EProcessParam();
+			processParam.setProcessStatus(processStatus);
+			processParam.setParamKey(paramKey);
+			processParam.setParamType(QueueConstants.ProcessParamType.Table);
+			if (headers.size() >= 1)
+				processParam.setParamValue(data.get(headers.get(0)));
+			if (headers.size() >= 2)
+				processParam.setParamValue1(data.get(headers.get(1)));
+			if (headers.size() >= 3)
+				processParam.setParamValue2(data.get(headers.get(2)));
+			if (headers.size() >= 4)
+				processParam.setParamValue3(data.get(headers.get(3)));
+			if (headers.size() >= 5)
+				processParam.setParamValue4(data.get(headers.get(4)));
+			if (headers.size() >= 6)
+				processParam.setParamValue5(data.get(headers.get(5)));
+			if (headers.size() >= 7)
+				processParam.setParamValue6(data.get(headers.get(6)));
+			if (headers.size() >= 8)
+				processParam.setParamValue7(data.get(headers.get(7)));
+			if (headers.size() >= 9)
+				processParam.setParamValue8(data.get(headers.get(8)));
+			if (headers.size() >= 10)
+				processParam.setParamValue9(data.get(headers.get(9)));
+			if (headers.size() >= 11)
+				processParam.setParamValue10(data.get(headers.get(10)));
+			if (headers.size() >= 12)
+				processParam.setParamValue11(data.get(headers.get(11)));
+			if (headers.size() >= 13)
+				processParam.setParamValue12(data.get(headers.get(12)));
+			if (headers.size() >= 14)
+				processParam.setParamValue13(data.get(headers.get(13)));
+			if (headers.size() >= 15)
+				processParam.setParamValue14(data.get(headers.get(14)));
+			if (headers.size() >= 16)
+				processParam.setParamValue15(data.get(headers.get(15)));
+			
+			add(processParam);
+			count++;
+		} while (count < values.size());
+	}
+	
+	public List<Map<String, String>> getTableValue(EProcessStatus processStatus, String paramKey) {
+		EProcessParam processParam = findByBk(processStatus, paramKey);
+		if (processParam != null && QueueConstants.ProcessParamType.Table.equals(processParam.getParamType())) {
+			List<Map<String, String>> result = new ArrayList<Map<String, String>>();
+			
+			List<String> headerTable = new ArrayList<String>();
+			headerTable.add(processParam.getParamValue());
+			headerTable.add(processParam.getParamValue1());
+			headerTable.add(processParam.getParamValue2());
+			headerTable.add(processParam.getParamValue3());
+			headerTable.add(processParam.getParamValue4());
+			headerTable.add(processParam.getParamValue5());
+			headerTable.add(processParam.getParamValue6());
+			headerTable.add(processParam.getParamValue7());
+			headerTable.add(processParam.getParamValue8());
+			headerTable.add(processParam.getParamValue9());
+			headerTable.add(processParam.getParamValue10());
+			headerTable.add(processParam.getParamValue11());
+			headerTable.add(processParam.getParamValue12());
+			headerTable.add(processParam.getParamValue13());
+			headerTable.add(processParam.getParamValue14());
+			headerTable.add(processParam.getParamValue15());
+			
+			boolean fetchData = true;
+			int count = 0;
+			do {
+				EProcessParam processParamData = findByBk(processStatus, paramKey + "[" + count + "]");
+				if (processParamData != null) {
+					Map<String, String> data = new HashMap<String, String>();
+					if (headerTable.get(0) != null)
+						data.put(headerTable.get(0), processParamData.getParamValue());
+					if (headerTable.get(1) != null)
+						data.put(headerTable.get(1), processParamData.getParamValue1());
+					if (headerTable.get(2) != null)
+						data.put(headerTable.get(2), processParamData.getParamValue2());
+					if (headerTable.get(3) != null)
+						data.put(headerTable.get(3), processParamData.getParamValue3());
+					if (headerTable.get(4) != null)
+						data.put(headerTable.get(4), processParamData.getParamValue4());
+					if (headerTable.get(5) != null)
+						data.put(headerTable.get(5), processParamData.getParamValue5());
+					if (headerTable.get(6) != null)
+						data.put(headerTable.get(6), processParamData.getParamValue6());
+					if (headerTable.get(7) != null)
+						data.put(headerTable.get(7), processParamData.getParamValue7());
+					if (headerTable.get(8) != null)
+						data.put(headerTable.get(8), processParamData.getParamValue8());
+					if (headerTable.get(9) != null)
+						data.put(headerTable.get(9), processParamData.getParamValue9());
+					if (headerTable.get(10) != null)
+						data.put(headerTable.get(10), processParamData.getParamValue10());
+					if (headerTable.get(11) != null)
+						data.put(headerTable.get(11), processParamData.getParamValue11());
+					if (headerTable.get(12) != null)
+						data.put(headerTable.get(12), processParamData.getParamValue12());
+					if (headerTable.get(13) != null)
+						data.put(headerTable.get(13), processParamData.getParamValue13());
+					if (headerTable.get(14) != null)
+						data.put(headerTable.get(14), processParamData.getParamValue14());
+					if (headerTable.get(15) != null)
+						data.put(headerTable.get(15), processParamData.getParamValue15());
+					
+					result.add(data);
+					count++;
+				} else {
+					fetchData = false;
+				}
+				
+			} while (fetchData);
+			
+			return result;
+		} else {
+			return null;
+		}
+	}
+	
+	// ===
+	@Transactional
+	public EProcessParam add(EProcessParam entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EProcessParam addedEntity = processParamRepository.add(entity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+
+	@Transactional
+	public EProcessParam edit(EProcessParam entity) {
+		
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EProcessParam toBeSaved = processParamRepository.getOne(entity.getId());
+		//EProcessParam oldEntity = (EProcessParam) toBeSaved.clone();
+		
+		//TODO: this may cause org.hibernate.TransientPropertyValueException
+		// (set reference to non existing data, then before reaching manageReferences, another thread trigger hibernate flush)
+		defineEditableValues(entity, toBeSaved);
+		
+		toBeSaved = processParamRepository.edit(toBeSaved);
+
+		throwBatchError();
+		return toBeSaved;	
+	}
+	
+	@Transactional
+	public void delete(String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EProcessParam.class.getSimpleName());
+		throwBatchError();
+		
+		EProcessParam toBeDeleted = processParamRepository.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		processParamRepository.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EProcessParam dbEntity = processParamRepository.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (processParamRepository.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EProcessParam entity) {
+	}
+
+	protected void defineEditableValues(EProcessParam newValues, EProcessParam toBeSaved) {
+		toBeSaved.setProcessStatus(newValues.getProcessStatus());
+		toBeSaved.setParamKey(newValues.getParamKey());
+		toBeSaved.setParamType(newValues.getParamType());
+		toBeSaved.setParamValue(newValues.getParamValue());
+		toBeSaved.setParamValue1(newValues.getParamValue1());
+		toBeSaved.setParamValue2(newValues.getParamValue2());
+		toBeSaved.setParamValue3(newValues.getParamValue3());
+		toBeSaved.setParamValue4(newValues.getParamValue4());
+		toBeSaved.setParamValue5(newValues.getParamValue5());
+		toBeSaved.setParamValue6(newValues.getParamValue6());
+		toBeSaved.setParamValue7(newValues.getParamValue7());
+		toBeSaved.setParamValue8(newValues.getParamValue8());
+		toBeSaved.setParamValue9(newValues.getParamValue9());
+		toBeSaved.setParamValue10(newValues.getParamValue10());
+		toBeSaved.setParamValue11(newValues.getParamValue11());
+		toBeSaved.setParamValue12(newValues.getParamValue12());
+		toBeSaved.setParamValue13(newValues.getParamValue13());
+		toBeSaved.setParamValue14(newValues.getParamValue14());
+		toBeSaved.setParamValue15(newValues.getParamValue15());
+	}
+
+	protected void valRequiredValues(EProcessParam entity) {
+		valRequiredString(entity.getParamKey(), "processParam.paramKey.required");
+		valRequiredEnum(entity.getParamType(), QueueConstants.ProcessParamType.class, "processParam.paramType.required");
+	}
+
+	protected void manageMinMaxValues(EProcessParam entity) {
+		valMaxString(entity.getParamKey(), 100, "processParam.paramKey.max.length");
+	}
+
+	protected void manageReferences(EProcessParam entity) {
+		
+		EProcessStatus eProcessStatus = procesStatusService.find(entity.getProcessStatus().getId());
+		
+		if (eProcessStatus != null) {
+			entity.setProcessStatus(eProcessStatus);
+		} else {
+			batchError("processParam.procesStatus.not.found");
+		}
+	}
+
+	protected void valAdd(EProcessParam entity) {	}
+
+	protected void valEdit(EProcessParam entity, EProcessParam fromDb) { }
+
+	protected void valDelete(EProcessParam toBeDeleted) {	}
+	
+	protected void valValid(EProcessParam entity) {
+		// TODO Auto-generated method stub	
+	}
+
+	protected void valUniquenessOnAdd(EProcessParam addedEntity) {
+		EProcessParam eProcessParamFromDb = processParamRepository.findByBK(addedEntity.getProcessStatus(), addedEntity.getParamKey());
+		if (eProcessParamFromDb != null) {
+			throw new BusinessException("processParam.bk", addedEntity.getProcessStatus(), addedEntity.getParamKey());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EProcessParam editedEntity) {
+		EProcessParam eProcessParamFromDb = processParamRepository.findByBK(editedEntity.getProcessStatus(), editedEntity.getParamKey());
+		if (eProcessParamFromDb != null) {
+			if (!editedEntity.getId().equals(eProcessParamFromDb.getId())) {
+				throw new BusinessException("processParam.bk", editedEntity.getProcessStatus(), editedEntity.getParamKey());
+			}
+		}
+	}
+
+	public EProcessParam get(String id) {
+		return processParamRepository.getOne(id);
+	}
+
+	public EProcessParam findByBk(EProcessStatus procesStatus, String paramKey) {
+		return processParamRepository.findByBK(procesStatus, paramKey);
+	}
+
+	public SearchResult<EProcessParam>search(SearchParameter searchParameter) {
+		return processParamRepository.search(searchParameter);
+	}
+}

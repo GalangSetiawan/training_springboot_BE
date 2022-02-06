@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailTraining;
+
+@Repository
+public class EInvoiceDetailTrainingRepository extends SimpleJpaRepository<EInvoiceDetailTraining, String> {
+
+	protected final EntityManager em;
+
+	public EInvoiceDetailTrainingRepository(EntityManager em) {
+		super(EInvoiceDetailTraining.class, em);
+		this.em = em;
+	}
+	
+	public EInvoiceDetailTraining findByBK(String idTi001, Integer nourut) {
+		
+		String query = "SELECT e FROM EInvoiceDetailTraining e " + 
+                       "WHERE e.header.id = :idTi001 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EInvoiceDetailTraining.class)
+					 .setParameter("idTi001", idTi001)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EInvoiceDetailTraining getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EInvoiceDetailTraining> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EInvoiceDetailTraining> search = new HqlSimpleSearchBuilder<>(EInvoiceDetailTraining.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EInvoiceDetailTraining add(EInvoiceDetailTraining entity) {
+		return save(entity);
+	}
+
+	public EInvoiceDetailTraining edit(EInvoiceDetailTraining entity) {
+		return save(entity);
+	}
+}

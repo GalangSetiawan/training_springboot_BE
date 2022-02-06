@@ -1,0 +1,80 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.setting.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.entities.ECompanyLogo;
+import co.id.sofcograha.base.master.company.services.CompanyLogoService;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+import co.id.sofcograha.base.master.jenisTransaksi.services.JenisTransaksiService;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingComponent;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.pojos.AutomaticNumbering;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.services.AutomaticNumberingService;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.entities.ESetting;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.pojos.Setting;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.pojos.SettingComplete;
+
+@Service("settingCompleteService")
+public class SettingCompleteService extends BaseService {
+    
+	@Autowired private SettingService settingService;
+	@Autowired private CompanyService companyService;
+	@Autowired private CompanyLogoService companyLogoService;
+	@Autowired private JenisTransaksiService jenisTransaksiService;
+	@Autowired private AutomaticNumberingService automaticNumberingService;
+	
+	public Setting getSettingGL() {
+		return Setting.fromEntity(settingService.getData());
+	}
+	   
+	@Transactional
+    public ESetting saveComplete(SettingComplete pojo) {
+		
+		ESetting entity = pojo.getEntitySetting();
+
+		ESetting eSettingGL = settingService.edit(entity);
+		
+		// Add/Edit Company
+		ECompany eCompany = pojo.company.toEntity();
+		if (eCompany != null) {
+			eCompany.setName(eCompany.getName());
+			eSettingGL.seteCompany(companyService.edit(eCompany));
+		} else {
+			eSettingGL.seteCompany(companyService.add(pojo.company.toEntity()));
+		}
+	  
+		// Add/Edit Company Logo
+		ECompanyLogo eCompanyLogo = pojo.companyLogo.toEntity();
+		if (companyLogoService.findByCompanyId(eCompany.getId()) != null) {
+			companyLogoService.edit(pojo.companyLogo.toEntity());
+		} else {
+			companyLogoService.add(pojo.companyLogo.toEntity());
+		}
+	  
+		// Add/Edit setting default penomoran otomatis
+		// default nomor otomatis dari FE tidak mungkin kosong, karena di FE telah di set 
+		// isi defaultnya, jadi katakanlah di AM59 belum ada record, maka ia akan nambah di AM59
+		// jadi mekanismenya : 
+		// - hapus AM59 untuk id 10000
+		// - tambah AM59 untuk id 10000
+		
+		automaticNumberingService.deleteByTransactionId(BaseConstants.ID_DEFAULT_PENOMORAN_OTOMATIS);
+		for (AutomaticNumbering automaticNumbering : pojo.automaticNumberings) {
+			EAutomaticNumberingComponent eAutomaticNumberingComponent = automaticNumberingService.add(automaticNumbering.toEntity());
+		}
+	  
+      return eSettingGL;
+    }
+
+	public SearchResult<EJenisTransaksi> search(SearchParameter searchParameter) {
+	  return jenisTransaksiService.search(searchParameter);
+	}
+    
+}

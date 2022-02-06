@@ -1,0 +1,60 @@
+package co.id.sofcograha.base.master.jenisTransaksi.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Repository
+public class EJenisTransaksiRepository extends SimpleJpaRepository<EJenisTransaksi, String> {
+
+	protected final EntityManager em;
+
+	public EJenisTransaksiRepository(EntityManager em) {
+		super(EJenisTransaksi.class, em);
+		this.em = em;
+	}
+	
+	public EJenisTransaksi findByBK(String kode) {
+		
+		String query = "SELECT e FROM EJenisTransaksi e " + 
+                       "WHERE e.kode = :kode";
+	
+		try {
+			return em.createQuery(query, EJenisTransaksi.class)
+				 .setParameter("kode", kode)
+				 .getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public EJenisTransaksi getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EJenisTransaksi> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EJenisTransaksi> search = new HqlSimpleSearchBuilder<>(EJenisTransaksi.class, em);
+
+		String id = (String) searchParameter.getValueFromMappedParam("id");
+
+		if (!QueryUtil.isAll(id)) {
+			search.addWhere("AND LOWER(id) LIKE LOWER(:id) ");
+			search.addParameter("id", QueryUtil.formatStringForLikeFilter(id));
+		}
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+}

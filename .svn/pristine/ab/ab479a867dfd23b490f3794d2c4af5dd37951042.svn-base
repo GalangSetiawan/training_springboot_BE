@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.transaksi.tagihanTerjadwal.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.tagihanTerjadwal.entities.ETagihanTerjadwalDetailTraining;
+
+@Repository
+public class ETagihanTerjadwalDetailTrainingRepository extends SimpleJpaRepository<ETagihanTerjadwalDetailTraining, String> {
+
+	protected final EntityManager em;
+
+	public ETagihanTerjadwalDetailTrainingRepository(EntityManager em) {
+		super(ETagihanTerjadwalDetailTraining.class, em);
+		this.em = em;
+	}
+	
+	public ETagihanTerjadwalDetailTraining findByBK(String idTi050, Integer nourut) {
+		
+		String query = "SELECT e FROM ETagihanTerjadwalDetailTraining e " + 
+                       "WHERE e.header.id = :idTi050 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, ETagihanTerjadwalDetailTraining.class)
+					 .setParameter("idTi050", idTi050)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ETagihanTerjadwalDetailTraining getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<ETagihanTerjadwalDetailTraining> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ETagihanTerjadwalDetailTraining> search = new HqlSimpleSearchBuilder<>(ETagihanTerjadwalDetailTraining.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ETagihanTerjadwalDetailTraining add(ETagihanTerjadwalDetailTraining entity) {
+		return save(entity);
+	}
+
+	public ETagihanTerjadwalDetailTraining edit(ETagihanTerjadwalDetailTraining entity) {
+		return save(entity);
+	}
+}

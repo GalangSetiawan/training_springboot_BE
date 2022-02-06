@@ -1,0 +1,15 @@
+package co.id.sofcograha.base.exceptions.file;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.NOT_FOUND)
+public class PgFileNotFoundException extends RuntimeException {
+    public PgFileNotFoundException(String message) {
+        super(message);
+    }
+
+    public PgFileNotFoundException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}

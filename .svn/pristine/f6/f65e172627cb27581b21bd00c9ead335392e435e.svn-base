@@ -1,0 +1,92 @@
+package co.id.sofcograha.base.queue.process.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.queue.process.entities.EProcess;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Repository
+public class ProcessRepository extends SimpleJpaRepository<EProcess, String> {
+
+	protected final EntityManager em;
+	
+	public ProcessRepository(EntityManager em) {
+		super(EProcess.class, em);
+		this.em = em;
+	}
+	
+	public EProcess findByBK(String processCode) {
+		
+		String query = "SELECT e FROM EProcess e " + 
+                	   "WHERE e.processCode = :processCode";
+
+		try {
+			return em.createQuery(query, EProcess.class)
+					 .setParameter("processCode", processCode)
+					 .getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}		
+		
+	}
+
+	public EProcess findByProces_code(String processCode) {
+		return this.findByBK(processCode);
+	}
+
+	public SearchResult<EProcess> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EProcess> search = new HqlSimpleSearchBuilder<>(EProcess.class, em);
+
+		String processCode = (String) searchParameter.getValueFromMappedParam("processCode");
+		String processName = (String) searchParameter.getValueFromMappedParam("processName");
+		String description = (String) searchParameter.getValueFromMappedParam("description");
+		String processClass = (String) searchParameter.getValueFromMappedParam("processClass");
+		Boolean active = (Boolean) searchParameter.getValueFromMappedParam("active");
+
+		
+		if (!QueryUtil.isAll(processCode)) {
+			search.addWhere("AND LOWER(processCode) LIKE LOWER(:processCode) ");
+			search.addParameter("processCode", QueryUtil.formatStringForLikeFilter(processCode));
+		}
+		
+		if (!QueryUtil.isAll(processName)) {
+			search.addWhere("AND LOWER(processName) LIKE LOWER(:processName) ");
+			search.addParameter("processName", QueryUtil.formatStringForLikeFilter(processName));
+		}
+		
+		if (!QueryUtil.isAll(description)) {
+			search.addWhere("AND LOWER(description) LIKE LOWER(:description) ");
+			search.addParameter("description", QueryUtil.formatStringForLikeFilter(description));
+		}
+		
+		if (!QueryUtil.isAll(processClass)) {
+			search.addWhere("AND LOWER(processClass) LIKE LOWER(:processClass) ");
+			search.addParameter("processClass", QueryUtil.formatStringForLikeFilter(processClass));
+		}
+		
+		if (active != null) {
+			search.addWhere("AND active = :active ");
+			search.addParameter("active", active);
+		}
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EProcess add(EProcess entity) {
+		return save(entity);
+	}
+
+	public EProcess edit(EProcess entity) {
+		return save(entity);
+	}
+}

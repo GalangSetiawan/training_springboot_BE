@@ -1,0 +1,209 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.Query;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewal;
+
+@Repository
+public class EAdminRenewalRepository extends SimpleJpaRepository<EAdminRenewal, String> {
+
+	protected final EntityManager em;
+
+	public EAdminRenewalRepository(EntityManager em) {
+		super(EAdminRenewal.class, em);
+		this.em = em;
+	}
+	
+	public EAdminRenewal findByBK(String tahun, String bulan, String idMi010, String idMi001) {
+		
+		String query = "SELECT e FROM EAdminRenewal e " + 
+					   "WHERE e.tahun = :tahun And " +
+				             "e.bulan = :bulan And " +
+				             "e.customer.id = :idMi010 And " +
+      			             "e.produk.id = :idMi001";
+
+		try {
+			return em.createQuery(query, EAdminRenewal.class)
+					.setParameter("tahun", tahun)
+					.setParameter("bulan", bulan)
+					.setParameter("idMi010", idMi010)
+					.setParameter("idMi001", idMi001)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+
+	}
+
+    @SuppressWarnings("unchecked")
+	public EAdminRenewal getNearestRenewal(String idMi010, String idMi001, String tahunBulan) {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select a.* " + 
+        		                  "from ai003 a " + 
+        		                  "where a.id_mi010 = :idMi010 and " + 
+        		                  "      a.id_mi001 = :idMi001 and " + 
+        		                  "      a.tahun||a.bulan = (select min(x.tahun||x.bulan) " + 
+        		                  "                          from ai003 x " + 
+        		                  "                          where x.id_mi010 = :idMi010 and " + 
+        		                  "                                x.id_mi001 = :idMi001 and " + 
+        		                  "                                x.tahun||x.bulan >= :tahunBulan)"); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), EAdminRenewal.class);
+        
+        query.setParameter("idMi010", idMi010);
+        query.setParameter("idMi001", idMi001);
+        query.setParameter("tahunBulan", tahunBulan);
+        
+        List<Object> list = query.getResultList();
+
+        if (!list.isEmpty()) {
+        	return (EAdminRenewal) list.get(0);
+        } else {
+        	return null;
+        }
+    }
+	
+    @SuppressWarnings("unchecked")
+	public EAdminRenewal getPreviousRenewal(String idMi010, String idMi001, String tahunBulan) {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select a.* " + 
+        		                  "from ai003 a " + 
+        		                  "where a.id_mi010 = :idMi010 and " + 
+        		                  "      a.id_mi001 = :idMi001 and " + 
+        		                  "      a.tahun||a.bulan = (select max(x.tahun||x.bulan) " + 
+        		                  "                          from ai003 x " + 
+        		                  "                          where x.id_mi010 = :idMi010 and " + 
+        		                  "                                x.id_mi001 = :idMi001 and " + 
+        		                  "                                x.tahun||x.bulan < :tahunBulan)"); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), EAdminRenewal.class);
+        
+        query.setParameter("idMi010", idMi010);
+        query.setParameter("idMi001", idMi001);
+        query.setParameter("tahunBulan", tahunBulan);
+        
+        List<Object> list = query.getResultList();
+
+        if (!list.isEmpty()) {
+        	return (EAdminRenewal) list.get(0);
+        } else {
+        	return null;
+        }
+    }
+	
+    @SuppressWarnings("unchecked")
+	public List<EAdminRenewal> getUnprocessedRenewal(String tahun, String bulan) {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select a.* " + 
+        		                  "from ai003 a " + 
+        		                  "where a.tahun = :tahun and " + 
+        		                  "      a.bulan = :bulan and " + 
+        		                  "      a.flproi = 'T'"); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), EAdminRenewal.class);
+        
+        query.setParameter("tahun", tahun);
+        query.setParameter("bulan", bulan);
+        
+        List<EAdminRenewal> list = query.getResultList();
+
+        if (!list.isEmpty()) {
+        	return list;
+        } else {
+        	return null;
+        }
+    }
+    
+	public List<EAdminRenewal> getRenewalPerTahunBulanFlag(String tahun, String bulan, String flproi) {
+		
+		String query = "SELECT e FROM EAdminRenewal e " + 
+					   "WHERE e.tahun = :tahun And " +
+				             "e.bulan = :bulan And " +
+				             "e.flproi = :flproi " +
+				       "ORDER BY e.produk.nama, e.customer.nama ";
+
+		try {
+			return em.createQuery(query, EAdminRenewal.class)
+					.setParameter("tahun", tahun)
+					.setParameter("bulan", bulan)
+					.setParameter("flproi", flproi)
+					.getResultList();
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+
+	public EAdminRenewal getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EAdminRenewal> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EAdminRenewal> search = new HqlSimpleSearchBuilder<>(EAdminRenewal.class, em);
+
+		String tahun = (String) searchParameter.getValueFromMappedParam("tahun");
+		String bulan = (String) searchParameter.getValueFromMappedParam("bulan");
+		String customer = (String) searchParameter.getValueFromMappedParam("customer");
+		String produk = (String) searchParameter.getValueFromMappedParam("produk");
+		String flproi = (String) searchParameter.getValueFromMappedParam("flproi");
+
+		if (!QueryUtil.isAll(tahun)) {
+            search.addWhere("AND LOWER(tahun) LIKE LOWER(:tahun) ");
+            search.addParameter("tahun", QueryUtil.formatStringForLikeFilter(tahun));
+        }
+
+	    if (!QueryUtil.isAll(bulan)) {
+	      search.addWhere("AND LOWER(bulan) LIKE LOWER(:bulan) ");
+	      search.addParameter("bulan", QueryUtil.formatStringForLikeFilter(bulan));
+	    }
+
+		if (!QueryUtil.isAll(customer)) {
+            search.addWhere("AND LOWER(customer.nama) LIKE LOWER(:customer) ");
+            search.addParameter("customer", QueryUtil.formatStringForLikeFilter(customer));
+        }
+
+		if (!QueryUtil.isAll(produk)) {
+            search.addWhere("AND LOWER(produk.nama) LIKE LOWER(:produk) ");
+            search.addParameter("produk", QueryUtil.formatStringForLikeFilter(produk));
+        }
+
+		if (!QueryUtil.isAll(flproi)) {
+            search.addWhere("AND LOWER(flproi) LIKE LOWER(:flproi) ");
+            search.addParameter("flproi", QueryUtil.formatStringForLikeFilter(flproi));
+        }
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EAdminRenewal add(EAdminRenewal entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+
+	public EAdminRenewal edit(EAdminRenewal entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+}

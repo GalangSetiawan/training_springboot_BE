@@ -1,0 +1,92 @@
+package co.id.sofcograha.base.multitenancy;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.repositories.CompanyRepository;
+import co.id.sofcograha.base.utils.ProcedureExecutorUtil;
+
+@Service
+public class MultitenancyService {
+
+//	@Autowired private LocalErrors errorManager;
+//	@Autowired private LocalWarnings warningManager;
+//	@Autowired private LocalNotices noticeManager;
+
+	@Autowired 
+	private ProcedureExecutorUtil procedureExecutorUtil;
+	
+	@Autowired
+	private CompanyRepository companyRepository;
+	
+	private void setToCurrent() {
+		setCurrentTenancy(TenantContext.getCurrentTenant());
+	}
+	
+	private void setCurrentTenancy(String tenantIdentifier) {
+		EntityManager em = companyRepository.getLocalEm();
+		procedureExecutorUtil.executeVoidSQL("SET search_path TO " + tenantIdentifier, em);
+		em.flush();
+	}
+	
+	public void runServiceForTenant(String tenantIdentifier, MultitenancyExecutor multitenancyExecutor) {
+		try {
+			ECompany company = companyRepository.findByBK(tenantIdentifier);
+			if (company != null) {
+				setCurrentTenancy(tenantIdentifier);
+				
+				multitenancyExecutor.execute(company);
+				
+				companyRepository.getLocalEm().flush();
+			} else {
+				// TODO error tenantIdentifier not found or not active
+				error("multitenancyService.runServiceForTenant.tenantIdentifier.not.found");
+			}
+		} catch (Exception e) {
+			error("multitenancyService.runServiceForTenant.error");
+			e.printStackTrace();
+		} finally {
+			setToCurrent();
+		}
+	}
+	
+	public void runServiceForEveryTenancy(MultitenancyExecutor multitenancyExecutor) {
+		try {
+			List<ECompany> listActiveCompany = companyRepository.getActiveListCompany();
+			if (listActiveCompany != null) {
+				for (ECompany company : listActiveCompany) {
+					if (!MultiTenancyConstants.DEFAULT_TENANTID.equals(company.getCode()))
+					{
+						try {
+							setCurrentTenancy(company.getCode());
+							
+							multitenancyExecutor.execute(company);
+							
+							companyRepository.getLocalEm().flush();
+						} catch (Exception e) {
+							error("multitenancyService.runServiceForEveryTenancy.error");
+							e.printStackTrace();
+						}						
+					}
+				}
+			}
+		} finally {
+			setToCurrent();
+		}
+	}
+	
+	protected void error(String code, Object... args) {
+		throw getError(code, args);
+	}
+	
+	protected BusinessException getError(String code, Object... args) {
+		return new BusinessException(code, args);
+	}
+
+}

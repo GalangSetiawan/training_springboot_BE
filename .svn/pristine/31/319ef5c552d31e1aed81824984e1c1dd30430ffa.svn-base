@@ -1,0 +1,20 @@
+package co.id.sofcograha.base.queue.common;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jms.core.JmsTemplate;
+import org.springframework.stereotype.Service;
+
+@Service
+public class QueueDataFactory {
+
+	@Autowired
+	private QueueUtilService queueUtilService;
+	
+	@Autowired
+	private JmsTemplate jmsTemplate;
+	
+	public QueueData getQueueData(String procesCode) {
+		return new QueueData(jmsTemplate, queueUtilService, procesCode);
+	}
+	
+}

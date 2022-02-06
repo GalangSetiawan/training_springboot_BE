@@ -1,0 +1,181 @@
+package co.id.sofcograha.domain.invoicing.admin.bulanan.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.admin.bulanan.entities.EAdminBulanan;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.entities.EMappingCustomerProduk;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.pojos.MappingCustomerProduk;
+
+@JsonInclude(Include.ALWAYS)
+public class AdminBulanan {
+	
+	public String id;
+	public String tahun;
+	public String bulan;
+	public Boolean fluplo;
+	public Boolean flproi;
+	public Long version;  
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+	
+	public EAdminBulanan toEntity() {
+		
+		EAdminBulanan entity = new EAdminBulanan();
+		
+		entity.setId(id);
+		entity.setTahun(tahun);
+		entity.setBulan(bulan);
+		
+  		if (fluplo == true) {
+  			entity.setFluplo("Y");
+  		} else {
+  			entity.setFluplo("T");
+  		}
+		
+  		if (flproi == true) {
+  			entity.setFlproi("Y");
+  		} else {
+  			entity.setFlproi("T");
+  		}
+
+  		entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+		
+		return entity;
+	}
+	
+	public static List<EAdminBulanan> toEntities(List<AdminBulanan> pojos) {
+		if (pojos == null) return null;
+
+		List<EAdminBulanan> entities = new ArrayList<EAdminBulanan>();
+		for (AdminBulanan pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static AdminBulanan fromEntity (EAdminBulanan entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static AdminBulanan fromEntity (EAdminBulanan entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static AdminBulanan fromEntity(EAdminBulanan entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		AdminBulanan pojo = new AdminBulanan();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.tahun = entity.getTahun();
+			pojo.bulan = entity.getBulan();
+					    
+		    if (entity.getFluplo().equals("Y")) {
+		      pojo.fluplo = true;
+		    } else {
+		      pojo.fluplo = false;
+		    }
+
+		    if (entity.getFlproi().equals("Y")) {
+		    	pojo.flproi = true;
+		    } else {
+		    	pojo.flproi = false;
+		    }
+			
+			pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+	      
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+			}
+		}
+
+		return pojo;
+	}
+	
+	public static List<AdminBulanan> fromEntities(List<EAdminBulanan> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static List<AdminBulanan> fromEntities(List<EAdminBulanan> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<AdminBulanan> pojos = new ArrayList<>();
+		
+		for (EAdminBulanan entity : entities) {
+			pojos.add(AdminBulanan.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("tahun", "tahun"));
+		mappings.add(new SearchFieldMapping("bulan", "bulan"));
+		mappings.add(new SearchFieldMapping("fluplo", "fluplo"));
+		mappings.add(new SearchFieldMapping("flproi", "flproi"));
+//		mappings.add(new SearchFieldMapping("flakt", "flakt").searchOnly());
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}	

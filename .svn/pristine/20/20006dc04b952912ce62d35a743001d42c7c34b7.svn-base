@@ -1,0 +1,270 @@
+package co.id.sofcograha.domain.invoicing.masters.mappingExcludeCustomerProduk.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.mappingExcludeCustomerProduk.entities.EMappingExcludeCustomerProduk;
+import co.id.sofcograha.domain.invoicing.masters.mappingExcludeCustomerProduk.pojos.MappingExcludeCustomerProduk;
+import co.id.sofcograha.domain.invoicing.masters.mappingExcludeCustomerProduk.repositories.EMappingExcludeCustomerProdukRepository;
+
+@Service("mappingExcludeCustomerProdukService")
+public class MappingExcludeCustomerProdukService extends BaseService {
+	
+	@Autowired private EMappingExcludeCustomerProdukRepository repo;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public MappingExcludeCustomerProduk findByBk(String idMi011, String kodept, String npwp, String kodekp) {
+		return MappingExcludeCustomerProduk.fromEntity(repo.findByBK(idMi011, kodept, npwp, kodekp));
+	}
+
+	public EMappingExcludeCustomerProduk getByPTNpwpKp(String kodept, String npwp, String kodekp) {
+		return repo.getByPTNpwpKp(kodept, npwp, kodekp);
+	}
+
+	public List<EMappingExcludeCustomerProduk> getByPT(String kodept) {
+		return repo.getByPT(kodept);
+	}
+
+	public List<EMappingExcludeCustomerProduk> getByPTDistinctNpwpKodekp(String kodept) {
+		return repo.getByPTDistinctNpwpKodekp(kodept);
+	}
+	
+	public SearchResult<EMappingExcludeCustomerProduk> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	public List<MappingExcludeCustomerProduk> getMappingByCustomerProduk(String idMi010, String idMi001) {
+		return MappingExcludeCustomerProduk.fromEntities(repo.getMappingExcludeByCustomerProduk(idMi010, idMi001));
+	}
+
+	@Transactional
+	public EMappingExcludeCustomerProduk add(EMappingExcludeCustomerProduk entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		manageMinMaxValues(entity);
+		//throwBatchError();
+		
+		manageReferences(entity);
+		//throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		//throwBatchError();
+		
+		if (!isAnyBatchErrors()) {
+			preAdd(entity);
+			EMappingExcludeCustomerProduk addedEntity = repo.add(entity);
+			postAdd(addedEntity);
+			
+			return addedEntity;	
+		}
+			
+		//throwBatchError();
+		return entity;	
+
+	}
+	
+	@Transactional
+	public EMappingExcludeCustomerProduk edit(EMappingExcludeCustomerProduk entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		EMappingExcludeCustomerProduk toBeSaved = repo.getOne(entity.getId());
+		EMappingExcludeCustomerProduk oldEntity = (EMappingExcludeCustomerProduk) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EMappingExcludeCustomerProduk.class.getSimpleName());
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		EMappingExcludeCustomerProduk toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		//throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		//throwBatchError();
+		
+	}
+	
+	// terkait manipulasi data
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EMappingExcludeCustomerProduk dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EMappingExcludeCustomerProduk entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(EMappingExcludeCustomerProduk newValues, EMappingExcludeCustomerProduk toBeSaved) {
+
+		if (toBeSaved != null) {
+			toBeSaved.setKodept(newValues.getKodept());
+			toBeSaved.setNpwp(newValues.getNpwp());
+			toBeSaved.setKodekp(newValues.getKodekp());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(EMappingExcludeCustomerProduk entity) {
+//		valRequiredString(entity.getAccount(), "mapping.exclude.customer.produk.account.required");
+		//valRequiredString(entity.getKodept(), "mapping.exclude.customer.produk.kodept.required");
+		//valRequiredString(entity.getNamapt(), "mapping.exclude.customer.produk.namapt.required");
+		//valRequiredString(entity.getNpwp(), "mapping.exclude.customer.produk.npwp.required");
+		//valRequiredString(entity.getKodekp(), "mapping.exclude.customer.produk.kodekp.required");
+		//valRequiredString(entity.getNamakp(), "mapping.exclude.customer.produk.namakp.required");
+		if ((entity.getKodept() == null || entity.getKodept().equals("")) && 
+			(entity.getNpwp() == null || entity.getNpwp().equals("")) &&
+			(entity.getKodekp() == null || entity.getKodekp().equals(""))) {
+			
+			batchError("mapping.exclude.customer.kodept.npwp.kodkp.required");
+		}
+	}
+	
+	protected void manageMinMaxValues(EMappingExcludeCustomerProduk entity) {
+//		valMaxString(entity.getAccount(), 100, "mapping.exclude.customer.produk.account.max.length");
+		valMaxString(entity.getKodept(), 150, "mapping.exclude.customer.produk.kodept.max.length");
+		valMaxString(entity.getNpwp(), 100, "mapping.exclude.customer.npwp.account.max.length");
+		valMaxString(entity.getKodekp(), 150, "mapping.exclude.customer.produk.kodekp.max.length");
+	}
+
+	protected void manageReferences(EMappingExcludeCustomerProduk entity) {
+	}
+
+	protected void valDelete(EMappingExcludeCustomerProduk toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(EMappingExcludeCustomerProduk addedEntity) {
+		EMappingExcludeCustomerProduk entityFromDb = repo.findByBK(addedEntity.getHeader().getId(), addedEntity.getKodept(), addedEntity.getNpwp(), addedEntity.getKodekp());
+		if (entityFromDb != null) {
+			throw new BusinessException("mapping.exclude.customer.produk.bk", addedEntity.getHeader().getId(), addedEntity.getKodept(), addedEntity.getNpwp());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EMappingExcludeCustomerProduk editedEntity) {
+		EMappingExcludeCustomerProduk entityFromDb = repo.findByBK(editedEntity.getHeader().getId(), editedEntity.getKodept(), editedEntity.getNpwp(), editedEntity.getKodekp());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("mapping.exclude.customer.produk.bk", editedEntity.getHeader().getId(), editedEntity.getKodept(), editedEntity.getNpwp());
+			}
+		}
+	}
+
+	protected void preAdd(EMappingExcludeCustomerProduk entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(EMappingExcludeCustomerProduk entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(EMappingExcludeCustomerProduk toBeSaved, EMappingExcludeCustomerProduk oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(EMappingExcludeCustomerProduk toBeSaved, EMappingExcludeCustomerProduk oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(EMappingExcludeCustomerProduk entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(EMappingExcludeCustomerProduk entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	// ----
+	
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya	
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+	
+	public EMappingExcludeCustomerProduk get(String id) {
+		return repo.getOne(id);
+	}
+}

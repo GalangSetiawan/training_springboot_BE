@@ -1,0 +1,268 @@
+package co.id.sofcograha.domain.invoicing.admin.upload.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.EAdminUploadHeader;
+import co.id.sofcograha.domain.invoicing.admin.upload.repositories.EAdminUploadHeaderRepository;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.entities.EMappingCustomerProduk;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.pojos.MappingCustomerProduk;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.services.MappingCustomerProdukService;
+import co.id.sofcograha.domain.invoicing.transaksi.live.entities.ETrxLive;
+
+@Service("adminUploadHeaderService")
+public class AdminUploadHeaderService extends BaseService {
+	
+	@Autowired private MappingCustomerProdukService mappingCustomerProdukService;
+
+	@Autowired private EAdminUploadHeaderRepository repo;
+	
+	//@Autowired private ActionAuthorizationService actionAuthorizationService;
+	
+	public EAdminUploadHeader findByBk(String idMi013, String tahun, String bulan) {
+		return repo.findByBK(idMi013, tahun, bulan);
+	}
+	
+	public EAdminUploadHeader findById(final String id) {
+		return repo.getOne(id);
+	}
+
+	public SearchResult<EAdminUploadHeader> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+    
+	@Transactional
+    public void createAdmin(ETrxLive eTrxLive) {
+		
+		// ambil mapping customer + produk vs PT + npwp gaji.id
+		List<MappingCustomerProduk> mappingList = mappingCustomerProdukService.getMappingByCustomerProduk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId());
+		
+		// untuk masing-masing PT + npwp yang ditemukan ciptakan admin upload nya
+		for (MappingCustomerProduk mapping : mappingList) {
+			
+			mapping.toEntity();
+			
+			String tahun = eTrxLive.getTglive().substring(0,4);
+			String bulan = eTrxLive.getTglive().substring(4,6);
+			
+			EAdminUploadHeader eAdminUploadHeader = new EAdminUploadHeader();
+			eAdminUploadHeader.setMappingCustomerProduk(mapping.toEntity());
+			eAdminUploadHeader.setTahun(tahun);
+			eAdminUploadHeader.setBulan(bulan);
+			eAdminUploadHeader.setFlver1(BaseConstants.TIDAK);
+			eAdminUploadHeader.setTgver1(null);
+			eAdminUploadHeader.setFlver2(BaseConstants.TIDAK);
+			eAdminUploadHeader.setTgver2(null);
+			eAdminUploadHeader.setFlown(eTrxLive.getFldata());
+			eAdminUploadHeader.setFlproi(BaseConstants.TIDAK);
+			
+			add(eAdminUploadHeader);
+		}
+	}
+	
+	@Transactional
+    public void deleteAdmin(ETrxLive eTrxLive) {
+		
+		String tahun = eTrxLive.getTglive().substring(0,4);
+		String bulan = eTrxLive.getTglive().substring(4,6);
+		
+//		EAdminUploadHeader eAdminUploadHeader = findByBk(tahun, bulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId());
+//		
+		
+		// ambil mapping customer + produk vs PT + npwp gaji.id
+		List<MappingCustomerProduk> mappingList = mappingCustomerProdukService.getMappingByCustomerProduk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId());
+		
+		// untuk masing-masing PT + npwp yang ditemukan ciptakan admin upload nya
+		for (MappingCustomerProduk mapping : mappingList) {
+
+			EAdminUploadHeader eAdminUploadHeader = findByBk(mapping.id, tahun, bulan);
+
+			if (eAdminUploadHeader != null) {
+				delete(eAdminUploadHeader.getId(), eAdminUploadHeader.getVersion());
+			}
+			
+		}		
+	}
+
+	@Transactional
+    public EAdminUploadHeader add(EAdminUploadHeader entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EAdminUploadHeader addedEntity = repo.add(entity);
+		
+		throwBatchError();
+		return addedEntity;	
+		
+    }
+       
+    //private void valOnAdd(final EAdminUploadHeader valuta) {
+    //}
+
+	@Transactional
+	public EAdminUploadHeader edit(EAdminUploadHeader entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EAdminUploadHeader toBeSaved = repo.getOne(entity.getId());
+		//EAdminUploadHeader oldEntity = (EAdminUploadHeader) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+		
+		throwBatchError();
+		return toBeSaved;
+		
+	}
+
+	//private void valOnEdit(final EAdminUploadHeader valuta) {
+    //}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EAdminUploadHeader.class.getSimpleName());
+		throwBatchError();
+		
+		EAdminUploadHeader toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		repo.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	//private void valOnDelete(EAdminUploadHeader entity) {
+    //}
+	
+	//private void valAuthAdd() {
+	//  if(!actionAuthorizationService.valHakAdd()) {
+	//    error("NoRightToAdd");
+	//  }
+	//}
+	
+	//private void valAuthEdit() {
+    //  if(!actionAuthorizationService.valHakEdit()) {
+    //    error("NoRightToChange");
+    //  }
+    //}
+	
+    //private void valAuthDelete() {
+    //  if(!actionAuthorizationService.valHakDelete()) {
+    //    error("NoRightToDelete");
+    //  }
+    //}
+
+    protected void defineDefaultValuesOnAdd(EAdminUploadHeader entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+    
+    protected void valRequiredValues(EAdminUploadHeader entity) {
+	}
+    
+    protected void manageMinMaxValues(EAdminUploadHeader entity) {
+	}
+    
+    protected void manageReferences(EAdminUploadHeader entity) {
+		if (entity.getMappingCustomerProduk() != null) {
+			EMappingCustomerProduk eFromDb = mappingCustomerProdukService.get(entity.getMappingCustomerProduk().getId());
+			if (eFromDb != null) {
+				entity.setMappingCustomerProduk(eFromDb);
+			} else {
+				batchError("mapping.customer.produk.not.found");
+			}			
+		}		
+    }
+
+    protected void valUniquenessOnAdd(EAdminUploadHeader addedEntity) {
+		EAdminUploadHeader entityFromDb = repo.findByBK(addedEntity.getMappingCustomerProduk().getId(), addedEntity.getTahun(), addedEntity.getBulan());
+		if (entityFromDb != null) {
+			throw new BusinessException("admin.upload.header.bk");
+		}
+	}
+    
+    private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EAdminUploadHeader dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+    
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void valUniquenessOnEdit(EAdminUploadHeader editedEntity) {
+		EAdminUploadHeader entityFromDb = repo.findByBK(editedEntity.getMappingCustomerProduk().getId(), editedEntity.getTahun(), editedEntity.getBulan());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("admin.upload.header.bk");
+			}
+		}
+	}
+	
+	protected void defineEditableValues(EAdminUploadHeader newValues, EAdminUploadHeader toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setTahun(newValues.getTahun());
+			toBeSaved.setBulan(newValues.getBulan());
+			toBeSaved.setFlver1(newValues.getFlver1());
+			toBeSaved.setTgver1(newValues.getTgver1());
+			toBeSaved.setFlver2(newValues.getFlver2());
+			toBeSaved.setTgver2(newValues.getTgver2());
+			toBeSaved.setFlown(newValues.getFlown());
+			toBeSaved.setFlproi(newValues.getFlproi());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valDelete(EAdminUploadHeader toBeDeleted) {	}
+    
+    
+	public EAdminUploadHeader get(String id) {
+		return repo.getOne(id);
+	}
+}

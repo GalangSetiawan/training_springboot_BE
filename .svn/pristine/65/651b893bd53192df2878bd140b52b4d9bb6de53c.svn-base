@@ -1,0 +1,116 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.entities;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+@Entity
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class EUploadDataRpt {
+
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@Column(name = "id_mi010")
+	private String idMi010;
+
+	@Column(name = "nama")
+	private String nama;
+	
+	@Column(name = "id_mi013")
+    private String idMi013;
+	
+	@Column(name = "kodept")
+    private String kodept;
+	
+	@Column(name = "namapt")
+    private String namapt;
+	
+	@Column(name = "npwp")
+    private String npwp;
+	
+	@Column(name = "id_ai001")
+    private String idAi001;
+	
+	@Column(name = "fluplo")
+    private String fluplo;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getIdMi010() {
+		return idMi010;
+	}
+
+	public void setIdMi010(String idMi010) {
+		this.idMi010 = idMi010;
+	}
+
+	public String getNama() {
+		return nama;
+	}
+
+	public void setNama(String nama) {
+		this.nama = nama;
+	}
+
+	public String getIdMi013() {
+		return idMi013;
+	}
+
+	public void setIdMi013(String idMi013) {
+		this.idMi013 = idMi013;
+	}
+
+	public String getKodept() {
+		return kodept;
+	}
+
+	public void setKodept(String kodept) {
+		this.kodept = kodept;
+	}
+
+	public String getNamapt() {
+		return namapt;
+	}
+
+	public void setNamapt(String namapt) {
+		this.namapt = namapt;
+	}
+
+	public String getNpwp() {
+		return npwp;
+	}
+
+	public void setNpwp(String npwp) {
+		this.npwp = npwp;
+	}
+
+	public String getIdAi001() {
+		return idAi001;
+	}
+
+	public void setIdAi001(String idAi001) {
+		this.idAi001 = idAi001;
+	}
+
+	public String getFluplo() {
+		return fluplo;
+	}
+
+	public void setFluplo(String fluplo) {
+		this.fluplo = fluplo;
+	}
+	
+}

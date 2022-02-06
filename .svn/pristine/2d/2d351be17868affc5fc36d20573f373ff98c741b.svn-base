@@ -1,0 +1,52 @@
+package co.id.sofcograha.base.master.usercompany.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.repositories.CompanyRepository;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.repositories.EUserRepository;
+import co.id.sofcograha.base.master.usercompany.entities.EUserCompany;
+import co.id.sofcograha.base.master.usercompany.repositories.UserCompanyRepository;
+
+//import id.co.sofcograha.gajiidapi.base.authentication.CurrentUser;
+//import id.co.sofcograha.gajiidapi.base.extendables.FreeFormService;
+//import id.co.sofcograha.gajiidapi.base.mst.company.entities.Company;
+//import id.co.sofcograha.gajiidapi.base.mst.company.repositories.CompanyRepository;
+//import id.co.sofcograha.gajiidapi.base.mst.user.entities.User;
+//import id.co.sofcograha.gajiidapi.base.mst.user.repositories.UserRepository;
+//import id.co.sofcograha.gajiidapi.base.mst.usercompany.entities.UserCompany;
+//import id.co.sofcograha.gajiidapi.base.mst.usercompany.repositories.UserCompanyRepository;
+
+@Service
+public class UserCompanyLoginService extends BaseService {
+
+	@Autowired
+	private UserCompanyRepository userCompanyRepository;
+	
+	@Autowired
+	private EUserRepository userRepository;
+	
+	@Autowired
+	private CompanyRepository companyRepository;
+	
+	public List<EUserCompany> getActiveListUserCompanyByCurrentUser() {
+		EUser user = userRepository.getOne(CurrentUser.getUserId());
+		return getActiveListUserCompanyByUser(user);
+	}
+	
+	public List<EUserCompany> getActiveListUserCompanyByUser(EUser user) {
+		return userCompanyRepository.getActiveListUserCompanyByUser(user);
+	}
+	
+	public EUserCompany getCurrentUserCompany() {
+		EUser user = userRepository.getOne(CurrentUser.getUserId());
+		ECompany company = companyRepository.getOne(CurrentUser.getCompanyId());
+		return userCompanyRepository.findByUserAndCompany(user, company);
+	}
+}

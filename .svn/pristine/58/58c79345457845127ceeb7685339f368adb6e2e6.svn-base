@@ -1,0 +1,227 @@
+package co.id.sofcograha.base.queue.processstatus.services;
+
+import java.util.List;
+
+import javax.transaction.Transactional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.queue.common.QueueConstants;
+import co.id.sofcograha.base.queue.process.entities.EProcess;
+import co.id.sofcograha.base.queue.process.services.ProcessService;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.queue.processstatus.pojos.ProcessStatusPojo;
+import co.id.sofcograha.base.queue.processstatus.repositories.ProcessStatusRepository;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Service
+public class ProcessStatusService extends BaseService {
+
+	@Autowired
+	private ProcessStatusRepository processStatusRepository;
+	
+	@Autowired
+	private ProcessService procesService;
+	
+	@Autowired
+	private UserService userService;
+	
+	@Transactional
+	public EProcessStatus add(EProcessStatus entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EProcessStatus addedEntity = processStatusRepository.add(entity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+
+	@Transactional
+	public EProcessStatus edit(EProcessStatus entity) {
+		
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EProcessStatus toBeSaved = processStatusRepository.getOne(entity.getId());
+		//EProcessStatus oldEntity = (EProcessStatus) toBeSaved.clone();
+		
+		//TODO: this may cause org.hibernate.TransientPropertyValueException
+		// (set reference to non existing data, then before reaching manageReferences, another thread trigger hibernate flush)
+		defineEditableValues(entity, toBeSaved);
+		
+		toBeSaved = processStatusRepository.edit(toBeSaved);
+
+		throwBatchError();
+		return toBeSaved;	
+	}
+	
+	@Transactional
+	public void delete(String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EProcessStatus.class.getSimpleName());
+		throwBatchError();
+		
+		EProcessStatus toBeDeleted = processStatusRepository.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		processStatusRepository.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EProcessStatus dbEntity = processStatusRepository.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (processStatusRepository.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}	
+	
+	protected void defineDefaultValuesOnAdd(EProcessStatus entity) {}
+
+	protected void defineEditableValues(EProcessStatus newValues, EProcessStatus toBeSaved) {
+		toBeSaved.setProcessNumber(newValues.getProcessNumber());
+		toBeSaved.setProcess(newValues.getProcess());
+		toBeSaved.setStartDate(newValues.getStartDate());
+		toBeSaved.setProcessDate(newValues.getProcessDate());
+		toBeSaved.setEndDate(newValues.getEndDate());
+		toBeSaved.setUser(newValues.getUser());
+		toBeSaved.setStatus(newValues.getStatus());
+		toBeSaved.setDescription(newValues.getDescription());
+		toBeSaved.setSysDescription(newValues.getSysDescription());
+	}
+
+	protected void valRequiredValues(EProcessStatus entity) {
+		valRequiredString(entity.getProcessNumber(), "processStatus.processNumber.required");
+		valRequiredReference(entity.getProcess(), entity.getProcess().getId(), "processStatus.process.required");
+		valRequiredDate(entity.getStartDate(), "processStatus.startDate.required");
+		valRequiredReference(entity.getUser(), entity.getUser().getId(), "processStatus.user.required");
+		valRequiredEnum(entity.getStatus(), QueueConstants.Status.class, "processStatus.status.required");
+	}
+
+	protected void manageMinMaxValues(EProcessStatus entity) {
+		valMaxString(entity.getProcessNumber(), 50, "processStatus.processNumber.max.length");
+	}
+
+	protected void manageReferences(EProcessStatus entity) {
+		
+		EProcess eProcess = procesService.find(entity.getProcess().getId());
+		
+		if (eProcess != null) {
+			if (eProcess.getActive()) {
+				entity.setProcess(eProcess);
+			} else {
+				batchError("processStatus.process.not.active");
+			}
+		} else {
+			batchError("processStatus.process.not.found");
+		}
+		
+		EUser eUser = userService.find(entity.getUser().getId());
+		
+		if (eUser != null) {
+			if (eUser.getActive()) {
+				entity.setUser(eUser);
+			} else {
+				batchError("processStatus.user.not.active");
+			}
+		} else {
+			batchError("processStatus.user.not.found");
+		}
+	}
+
+	protected void valAdd(EProcessStatus entity) {	}
+
+	protected void valEdit(EProcessStatus entity, EProcessStatus fromDb) { }
+
+	protected void valDelete(EProcessStatus toBeDeleted) {	}
+	
+	protected void valValid(EProcessStatus entity) {
+	}
+
+	protected void valUniquenessOnAdd(EProcessStatus addedEntity) {
+		EProcessStatus eProcessStatusFromDb = processStatusRepository.findByBK(addedEntity.getProcessNumber(), addedEntity.getProcess());
+		if (eProcessStatusFromDb != null) {
+			throw new BusinessException("procesStatus.bk", addedEntity.getProcessNumber(), addedEntity.getProcess());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EProcessStatus editedEntity) {
+		EProcessStatus eProcessStatusFromDb = processStatusRepository.findByBK(editedEntity.getProcessNumber(), editedEntity.getProcess());
+		if (eProcessStatusFromDb != null) {
+			if (!editedEntity.getId().equals(eProcessStatusFromDb.getId())) {
+				throw new BusinessException("procesStatus.bk", editedEntity.getProcessNumber(), editedEntity.getProcess());
+			}
+		}
+	}
+
+	//public EProcessStatus findByBk(String processId, EProcess process) {
+	//	return processStatusRepository.findByBK(processId, process);
+	//}
+
+	public EProcessStatus get(String id) {
+		return processStatusRepository.getOne(id);
+	}
+	
+	public EProcessStatus find(String id) {
+		return processStatusRepository.getOne(id);
+	}
+	
+	public EProcessStatus findByBk(String processNumber, EProcess process) {
+		return processStatusRepository.findByBK(processNumber, process);
+	}
+	
+	public SearchResult<EProcessStatus>search(SearchParameter searchParameter) {
+		return processStatusRepository.search(searchParameter);
+	}
+	
+	public void deleteMulti(List<ProcessStatusPojo> pojoList) {
+	  List<EProcessStatus> processStatusList = ProcessStatusPojo.toEntities(pojoList);
+	  for(EProcessStatus processStatus : processStatusList) {
+		  delete(processStatus.getId(), processStatus.getVersion());
+	  }
+    }
+}

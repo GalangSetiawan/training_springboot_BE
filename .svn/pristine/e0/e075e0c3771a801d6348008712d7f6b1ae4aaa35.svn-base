@@ -1,0 +1,103 @@
+package co.id.sofcograha.domain.invoicing.transaksi.live.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.live.entities.ETrxLive;
+
+@Repository
+public class ETrxLiveRepository extends SimpleJpaRepository<ETrxLive, String> {
+
+	protected final EntityManager em;
+
+	public ETrxLiveRepository(EntityManager em) {
+		super(ETrxLive.class, em);
+		this.em = em;
+	}
+	
+	public ETrxLive findByBK(String nomor) {
+		
+		String query = "SELECT e FROM ETrxLive e " + 
+                       "WHERE e.nomor = :nomor";
+		
+		try {
+			return em.createQuery(query, ETrxLive.class)
+					 .setParameter("nomor", nomor)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ETrxLive getOne(String id) {
+
+		String query = "SELECT e FROM ETrxLive e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, ETrxLive.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public SearchResult<ETrxLive> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ETrxLive> search = new HqlSimpleSearchBuilder<>(ETrxLive.class, em);
+		
+		String nomor = (String) searchParameter.getValueFromMappedParam("nomor");
+		String fldata = (String) searchParameter.getValueFromMappedParam("fldata");
+		String tglive = (String) searchParameter.getValueFromMappedParam("tglive");		
+		String customer = (String) searchParameter.getValueFromMappedParam("customer");
+		String produk = (String) searchParameter.getValueFromMappedParam("produk");
+
+		if (!QueryUtil.isAll(nomor)) {
+            search.addWhere("AND LOWER(nomor) LIKE LOWER(:nomor) ");
+            search.addParameter("nomor", QueryUtil.formatStringForLikeFilter(nomor));
+        }
+
+		if (!QueryUtil.isAll(fldata)) {
+            search.addWhere("AND LOWER(fldata) LIKE LOWER(:fldata) ");
+            search.addParameter("fldata", QueryUtil.formatStringForLikeFilter(fldata));
+        }
+
+		if (!QueryUtil.isAll(tglive)) {
+            search.addWhere("AND LOWER(tglive) LIKE LOWER(:tglive) ");
+            search.addParameter("tglive", QueryUtil.formatStringForLikeFilter(tglive));
+        }
+
+		if (!QueryUtil.isAll(customer)) {
+            search.addWhere("AND LOWER(customer.nama) LIKE LOWER(:customer) ");
+            search.addParameter("customer", QueryUtil.formatStringForLikeFilter(customer));
+        }
+
+		if (!QueryUtil.isAll(produk)) {
+            search.addWhere("AND LOWER(produk.nama) LIKE LOWER(:produk) ");
+            search.addParameter("produk", QueryUtil.formatStringForLikeFilter(produk));
+        }
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ETrxLive add(ETrxLive entity) {
+		return save(entity);
+	}
+
+	public ETrxLive edit(ETrxLive entity) {
+		return save(entity);
+	}
+}

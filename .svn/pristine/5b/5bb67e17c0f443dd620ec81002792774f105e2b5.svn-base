@@ -1,0 +1,93 @@
+package co.id.sofcograha.domain.invoicing.masters.training.controllers;
+
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.training.entities.ETraining;
+import co.id.sofcograha.domain.invoicing.masters.training.pojos.Training;
+import co.id.sofcograha.domain.invoicing.masters.training.services.TrainingService;
+
+@RestController
+@RequestMapping("/api/training")
+public class TrainingController {
+
+	public static final Logger logger = LoggerFactory.getLogger(TrainingController.class);
+
+	@Autowired
+	UserService userService; //Service which will do all data retrieval/manipulation work
+	
+	@Autowired
+	private TrainingService trainingService;
+	
+
+	// -------------------Retrieve Some ---------------------------------------------
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<ETraining> searchResult = trainingService.search(SearchParameter.generate(searchParameter, Training.getFieldMappings()));
+	    
+		return ApiResponse.dataWithPaging("items", Training.fromEntities(searchResult.getResult()),
+				searchResult.getPaging());
+	}
+
+	// -------------------Retrieve Single Data ------------------------------------------
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String nama) throws JsonProcessingException {
+
+		ETraining entity = trainingService.findByBk(nama);
+		
+		return ApiResponse.data("item", Training.fromEntity(entity));
+		
+	}
+
+	@NoAuth
+    @PostMapping
+    public ApiResponse add(@RequestBody Training pojo) {
+		
+		ETraining result = trainingService.add(pojo.toEntity());
+		return ApiResponse.data("item", Training.fromEntity(result));
+    }
+    
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody Training pojo) {
+		
+		ETraining result = trainingService.edit(pojo.toEntity());
+		return ApiResponse.data("item", Training.fromEntity(result));
+		
+	}
+
+	@NoAuth
+	@DeleteMapping
+	public ApiResponse delete(@RequestParam String id, @RequestParam(required = false) Long version) {
+		trainingService.delete(id, version);
+		return ApiResponse.ok();
+	}
+
+	@NoAuth
+	@GetMapping(value = "/get-by-nama")
+	public ApiResponse getByNama(@RequestParam String nama) throws JsonProcessingException {
+		Training data = trainingService.findByNama(nama);
+		return ApiResponse.data("item", data);
+	}
+}

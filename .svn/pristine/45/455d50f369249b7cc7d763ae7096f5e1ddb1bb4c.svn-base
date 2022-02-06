@@ -1,0 +1,16 @@
+package co.id.sofcograha.base.exceptions;
+
+import org.springframework.security.core.AuthenticationException;
+
+public class AuthorizationException extends AuthenticationException {
+
+	private static final long serialVersionUID = 410400932612155499L;
+
+	public AuthorizationException(String msg, Throwable t) {
+		super(msg, t);
+	}
+
+	public AuthorizationException(String msg) {
+		super(msg);
+	}
+}

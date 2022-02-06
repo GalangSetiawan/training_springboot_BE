@@ -1,0 +1,250 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.entities;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.OrderBy;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.exceptions.DevException;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(name = "ai322", uniqueConstraints = @UniqueConstraint(columnNames = { "id_ai320", "nourut" }))
+public class EAdminRenewalDetTghSubDetDiskon implements Cloneable {
+	
+	@Id
+	@Column(name = "id_ai322")
+	private String id;
+	
+	@Column(name = "nourut")
+	private Integer nourut;
+
+	@Column(name = "keterangan")
+	private String keterangan;
+
+	@Column(name = "jenis")
+	private String jenis;
+
+	@Column(name = "nildasar")
+	private Double nildasar;
+	
+	@Column(name = "pctdisc")
+	private Double pctdisc;
+	
+	@Column(name = "nildisc")
+	private Double nildisc;
+	
+	@Column(name = "netto")
+	private Double netto;
+	
+	@Column(name = "nouds")
+	private Integer nouds;
+
+	@Version
+	@Column(name = "version")
+	private Long version;
+  
+	@Column(name = "usrcrt")
+	private String usrcrt;
+  
+	@Column(name = "tglcrt")
+	private String tglcrt;
+
+	@Column(name = "jamcrt")
+	private String jamcrt;
+  
+	@Column(name = "usrupd")
+	private String usrupd;
+  
+	@Column(name = "tglupd")
+	private String tglupd;
+
+	@Column(name = "jamupd")
+	private String jamupd;
+  
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "id_ai320")
+	@OrderBy(value = "nourut")
+	private EAdminRenewalDetTgh detailTagih;  
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Integer getNourut() {
+		return nourut;
+	}
+
+	public void setNourut(Integer nourut) {
+		this.nourut = nourut;
+	}
+
+	public String getKeterangan() {
+		return keterangan;
+	}
+
+	public void setKeterangan(String keterangan) {
+		this.keterangan = keterangan;
+	}
+
+	public String getJenis() {
+		return jenis;
+	}
+
+	public void setJenis(String jenis) {
+		this.jenis = jenis;
+	}
+
+	public Double getNildasar() {
+		return nildasar;
+	}
+
+	public void setNildasar(Double nildasar) {
+		this.nildasar = nildasar;
+	}
+
+	public Double getPctdisc() {
+		return pctdisc;
+	}
+
+	public void setPctdisc(Double pctdisc) {
+		this.pctdisc = pctdisc;
+	}
+
+	public Double getNildisc() {
+		return nildisc;
+	}
+
+	public void setNildisc(Double nildisc) {
+		this.nildisc = nildisc;
+	}
+
+	public Double getNetto() {
+		return netto;
+	}
+
+	public void setNetto(Double netto) {
+		this.netto = netto;
+	}
+
+	public Integer getNouds() {
+		return nouds;
+	}
+
+	public void setNouds(Integer nouds) {
+		this.nouds = nouds;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public String getUsrcrt() {
+		return usrcrt;
+	}
+
+	public void setUsrcrt(String usrcrt) {
+		this.usrcrt = usrcrt;
+	}
+
+	public String getTglcrt() {
+		return tglcrt;
+	}
+
+	public void setTglcrt(String tglcrt) {
+		this.tglcrt = tglcrt;
+	}
+
+	public String getJamcrt() {
+		return jamcrt;
+	}
+
+	public void setJamcrt(String jamcrt) {
+		this.jamcrt = jamcrt;
+	}
+
+	public String getUsrupd() {
+		return usrupd;
+	}
+
+	public void setUsrupd(String usrupd) {
+		this.usrupd = usrupd;
+	}
+
+	public String getTglupd() {
+		return tglupd;
+	}
+
+	public void setTglupd(String tglupd) {
+		this.tglupd = tglupd;
+	}
+
+	public String getJamupd() {
+		return jamupd;
+	}
+
+	public void setJamupd(String jamupd) {
+		this.jamupd = jamupd;
+	}
+
+	public EAdminRenewalDetTgh getDetailTagih() {
+		return detailTagih;
+	}
+
+	public void setDetailTagih(EAdminRenewalDetTgh detailTagih) {
+		this.detailTagih = detailTagih;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+
+	@PrePersist
+	private void prePersist() {
+
+		Date currentDate = new Date();
+	  
+		this.id = UUID.randomUUID().toString();
+    
+		this.usrcrt = CurrentUser.getUsername();
+		this.tglcrt = new SimpleDateFormat("yyyyMMdd").format(currentDate);
+		this.jamcrt = new SimpleDateFormat("HHmmss").format(currentDate);
+	
+	}
+
+	@PreUpdate
+	private void preUpdate() {
+		Date currentDate = new Date();
+		
+		this.usrupd = CurrentUser.getUsername();
+		this.tglupd = new SimpleDateFormat("yyyyMMdd").format(currentDate);
+		this.jamupd = new SimpleDateFormat("HHmmss").format(currentDate);
+	}
+}

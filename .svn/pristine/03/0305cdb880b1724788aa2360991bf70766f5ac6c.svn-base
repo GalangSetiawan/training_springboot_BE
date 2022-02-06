@@ -1,0 +1,30 @@
+package co.id.sofcograha.domain.invoicing.proses.hitung.pojos;
+
+import java.util.ArrayList;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.utils.Message;
+
+@JsonInclude(Include.ALWAYS)
+public class HitungTarifDetailDiskon {
+	
+	public Integer nourut;  
+	public String keterangan;
+	public String jenis; // PRODIS, NILDISC, GRPDIS, SPCDIS, 
+	public Double nildasar;  
+	public Double pctdisc;  
+	public Double nildisc;
+	public Double netto;
+ 
+	// untuk keperluan matching error message di front end (bila input di grid)
+	public String keyIn;
+
+	// untuk penanda apakah detail ini tertandai delete (dari front end)
+	public boolean isSelect;
+	
+	// Untuk menampung message error di grid
+	public ArrayList<Message> errorMsg;
+	
+}

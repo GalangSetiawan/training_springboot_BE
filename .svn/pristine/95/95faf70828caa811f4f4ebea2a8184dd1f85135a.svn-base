@@ -1,0 +1,250 @@
+package co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.Query;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifDetail;
+
+@Repository
+public class ECustomerProdukTarifDetailRepository extends SimpleJpaRepository<ECustomerProdukTarifDetail, String> {
+
+	protected final EntityManager em;
+
+	public ECustomerProdukTarifDetailRepository(EntityManager em) {
+		super(ECustomerProdukTarifDetail.class, em);
+		this.em = em;
+	}
+	
+	public ECustomerProdukTarifDetail findByBK(String idMi011, String jnstrf, Integer nourut) {
+		
+		String query = "SELECT e FROM ECustomerProdukTarifDetail e " + 
+                       "WHERE e.header.id = :idMi011 And " +
+				             "e.jnstrf = :jnstrf And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, ECustomerProdukTarifDetail.class)
+					 .setParameter("idMi011", idMi011)
+					 .setParameter("jnstrf", jnstrf)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+    @SuppressWarnings("unchecked")
+	public ECustomerProdukTarifDetail getByCustProdukForDiskonGrup(String idMi010, String idMi001) {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select a.* " + 
+        		                  "from MI012 a " + 
+        		                  "left join MI011 b on b.id_mi011 = a.id_mi011 " + 
+        		                  "where b.id_mi010 = :idMi010 and b.id_mi001 = :idMi001 and " + 
+        		                  "      trim(a.jnstrf) = :jnstrf and " + 
+        		                  "      (a.tglstart is null and a.tglstop is null) and " + 
+        		                  "      a.nourut = (select min(nourut) " + 
+                           		  "                  from MI012 x " + 
+        		                  "                  left join MI011 y on y.id_mi011 = x.id_mi011 " + 
+        		                  "                  where y.id_mi010 = :idMi010 and y.id_mi001 = :idMi001 and " + 
+        		                  "                  trim(x.jnstrf) = :jnstrf and " + 
+        		                  "                  (x.tglstart is null and x.tglstop is null))"); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), ECustomerProdukTarifDetail.class);
+        
+        query.setParameter("idMi010", idMi010);
+        query.setParameter("idMi001", idMi001);
+        query.setParameter("jnstrf", "GRPDIS");
+        
+        List<Object> list = query.getResultList();
+        if (!list.isEmpty()) {
+        	return (ECustomerProdukTarifDetail) list.get(0);
+        } else {
+        	return null;
+        }
+    }
+	
+    @SuppressWarnings("unchecked")
+	public ECustomerProdukTarifDetail getByCustProdukNoUrut(String idMi010, String idMi001, String jnstrf, Integer nourut) {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select a.* " + 
+        		                  "from MI012 a " + 
+        		                  "left join MI011 b on b.id_mi011 = a.id_mi011 " + 
+        		                  "where b.id_mi010 = :idMi010 and b.id_mi001 = :idMi001 and " + 
+        		                  "      trim(a.jnstrf) = :jnstrf and a.nourut = :nourut"); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), ECustomerProdukTarifDetail.class);
+        
+        query.setParameter("idMi010", idMi010);
+        query.setParameter("idMi001", idMi001);
+        query.setParameter("jnstrf", jnstrf);
+        query.setParameter("nourut", nourut);
+        
+        List<Object> list = query.getResultList();
+        if (!list.isEmpty()) {
+        	return (ECustomerProdukTarifDetail) list.get(0);
+        } else {
+        	return null;
+        }
+    }
+	
+    @SuppressWarnings("unchecked")
+	public ECustomerProdukTarifDetail getByCustProdukAndJenisTarifTanpaRange2(String idMi010, String idMi001, String jnstrf) {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select a.* " + 
+        		                  "from MI012 a " + 
+        		                  "left join MI011 b on b.id_mi011 = a.id_mi011 " + 
+        		                  "where b.id_mi010 = :idMi010 and b.id_mi001 = :idMi001 and " + 
+        		                  "      trim(a.jnstrf) = :jnstrf and " + 
+        		                  "      (b.tglstart is null and b.tglstop is null) and " + 
+        		                  "      (a.tglstart is null and a.tglstop is null) and " + 
+        		                  "      a.nourut = (select min(nourut) " + 
+                           		  "                  from MI012 x " + 
+        		                  "                  left join MI011 y on y.id_mi011 = x.id_mi011 " + 
+        		                  "                  where y.id_mi010 = :idMi010 and y.id_mi001 = :idMi001 and " + 
+        		                  "                  trim(x.jnstrf) = :jnstrf and " + 
+        		                  "                  (y.tglstart is null and y.tglstop is null) and " + 
+        		                  "                  (x.tglstart is null and x.tglstop is null))"); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), ECustomerProdukTarifDetail.class);
+        
+        query.setParameter("idMi010", idMi010);
+        query.setParameter("idMi001", idMi001);
+        query.setParameter("jnstrf", jnstrf);
+        
+        List<Object> list = query.getResultList();
+    	System.out.println(" idMi010 " + idMi010 + " idMi001 " + idMi001 + " jnstrf " + jnstrf +  "    list.isEmpty() " + list.isEmpty());
+        if (!list.isEmpty()) {
+        	System.out.println("ada");
+        	return (ECustomerProdukTarifDetail) list.get(0);
+        } else {
+        	return null;
+        }
+    }
+	
+	public ECustomerProdukTarifDetail getByCustProdukAndJenisTarifTanpaRange(String idMi010, String idMi001, String jnstrf) {
+		
+		String query = "SELECT e FROM ECustomerProdukTarifDetail e " + 
+                       "WHERE e.header.customer.id = :idMi010 And " +
+				             "e.header.produk.id = :idMi001 And " + 
+				             "TRIM(e.jnstrf) = :jnstrf And " +
+                             "(e.header.tglstart is null And e.header.tglstop is null) And " +
+                             "(e.tglstart is null And e.tglstop is null) And " +				             
+  				             "e.nourut = (SELECT min(f.nourut) " + 
+  	                                     "FROM ECustomerProdukTarifDetail f " +
+  				                         "WHERE f.header.customer.id = :idMi010 And " +
+  	                                           "f.header.produk.id = :idMi001 And " +
+  				                               "TRIM(f.jnstrf) = :jnstrf) And " +
+  				                               "(f.header.tglstart is null And f.header.tglstop is null) And " +
+  				                               "(f.tglstart is null And f.tglstop is null))";
+		
+		try {
+			return em.createQuery(query, ECustomerProdukTarifDetail.class)
+					 .setParameter("idMi010", idMi010)
+					 .setParameter("idMi001", idMi001)
+					 .setParameter("jnstrf", jnstrf)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ECustomerProdukTarifDetail getByCustProdukAndJenisTarifDgnRange(String idMi010, String idMi001, String jnstrf, String tanggal) {
+		
+		String query = "SELECT e FROM ECustomerProdukTarifDetail e " + 
+                       "WHERE e.header.customer.id = :idMi010 And " +
+                             "e.header.produk.id = :idMi001 And " +
+  	                         "TRIM(e.jnstrf) = :jnstrf And " +
+                             "((:tanggal between e.header.tglstart And e.header.tglstop) Or (:tanggal >= e.header.tglstart and e.header.tglstop is null)) And " +
+                             "((:tanggal between e.tglstart And e.tglstop) Or (:tanggal >= e.tglstart and e.tglstop is null))";
+		
+		try {
+			return em.createQuery(query, ECustomerProdukTarifDetail.class)
+					 .setParameter("idMi010", idMi010)
+					 .setParameter("idMi001", idMi001)
+					 .setParameter("jnstrf", jnstrf)
+					 .setParameter("tanggal", tanggal)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	public ECustomerProdukTarifDetail getDetailBelumAdaDiAdminDiskon(String idMi010, String idMi001, String jnstrf, Integer nourut, String tahun, String bulan) {
+		
+        Query query;
+        
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select a.* " + 
+        		                  "from MI012 a " + 
+        		                  "left join MI011 b on b.id_mi011 = a.id_mi011 " + 
+        		                  "where b.id_mi010 = :idMi010 and b.id_mi001 = :idMi001 and " + 
+        		                  "      a.jnstrf = :jnstrf and " + 
+        		                  "      a.nourut = (select min(x.nourut) " + 
+        		                  "                  from MI012 x " + 
+        		                  "                  left join MI011 y on y.id_mi011 = x.id_mi011 " + 
+        		                  "                  where y.id_mi010 = :idMi010 and y.id_mi001 = :idMi001 and " + 
+        		                  "                        x.jnstrf = :jnstrf and " + 
+                                  "                        ((:tanggal between x.tglstart and x.tglstop) or (:tanggal >= x.tglstart and x.tglstop is null)) and " + 
+        		                  "                        (x.nourut > :nourut or (x.nourut >= :nourut and x.tglstop is null)))"); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), ECustomerProdukTarifDetail.class);
+        
+        query.setParameter("idMi010", idMi010);
+        query.setParameter("idMi001", idMi001);
+        query.setParameter("jnstrf", jnstrf);
+        query.setParameter("nourut", nourut);
+        query.setParameter("tanggal", tahun + bulan + "01");
+        
+        List<Object> list = query.getResultList();
+    	System.out.println(" idMi010 " + idMi010 + " idMi001 " + idMi001 + " jnstrf " + jnstrf +  "    list.isEmpty() " + list.isEmpty());
+        if (!list.isEmpty()) {
+        	System.out.println("ada");
+        	return (ECustomerProdukTarifDetail) list.get(0);
+        } else {
+        	return null;
+        }
+	}
+	
+	public ECustomerProdukTarifDetail getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<ECustomerProdukTarifDetail> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ECustomerProdukTarifDetail> search = new HqlSimpleSearchBuilder<>(ECustomerProdukTarifDetail.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ECustomerProdukTarifDetail add(ECustomerProdukTarifDetail entity) {
+		return save(entity);
+	}
+
+	public ECustomerProdukTarifDetail edit(ECustomerProdukTarifDetail entity) {
+		return save(entity);
+	}
+}

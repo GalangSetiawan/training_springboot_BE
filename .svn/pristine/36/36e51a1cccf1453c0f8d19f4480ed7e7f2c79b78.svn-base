@@ -1,0 +1,392 @@
+package co.id.sofcograha.domain.invoicing.proses.hitung.services;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifComplete;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifDetail;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifCompleteService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifDetailService;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.pojos.DiskonKhususHeader;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.services.DiskonKhususHeaderService;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.pojos.GrupDiskonDetail;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.services.GrupDiskonDetailService;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.pojos.SkemaHargaDetail;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.services.SkemaHargaDetailService;
+import co.id.sofcograha.domain.invoicing.proses.hitung.pojos.HitungTarifModel;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceSubDetailPerhitunganDiskon;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceSubDetailPerhitunganSkemaTarif;
+
+@Service
+public class HitungService extends BaseService {
+  
+	@Autowired private CustomerProdukTarifCompleteService customerProdukTarifCompleteService;
+	@Autowired private CustomerProdukTarifDetailService customerProdukTarifDetailService;
+	@Autowired private SkemaHargaDetailService skemaHargaDetailService;
+	@Autowired private GrupDiskonDetailService grupDiskonDetailService;
+	@Autowired private DiskonKhususHeaderService diskonKhususHeaderService;
+	
+	public HitungTarifModel hitungTarifInitialPerCustomerProduk(String idMi010, String idMi001, Integer jumkar, String tanggal, Integer unitPengali) {
+		
+		HitungTarifModel result = new HitungTarifModel();
+		result.jumkar = jumkar;
+	
+		CustomerProdukTarifComplete tarif = customerProdukTarifCompleteService.findByBk(idMi010, idMi001);
+		
+		// SKEMA HARGA
+		// prioritas pertama ambil untuk yang belum ada tanggal start dan end nya
+		// (karena logikanya invoice initial dilakukan sebelum tanggal live diisi, sedangkan tanggal live = tanggal start)
+		// 9 Juni 2021
+		// pencarian skema tarif menggunakan cara ambil nomor urut terkecil,
+		// karena skema tarif ini sudah disusun dari awal (di quotation sudah tertera)
+		System.out.println(tarif.header.customer.id);
+		System.out.println(tarif.header.produk.id);
+		CustomerProdukTarifDetail detailTarifSkemaHarga = customerProdukTarifDetailService.getByCustProdukAndJenisTarifTanpaRange(tarif.header.customer.id, tarif.header.produk.id, "SKEMA");
+		
+		// prioritas kedua ambil untuk yang tanggal berada di range
+		if (detailTarifSkemaHarga == null) {
+			detailTarifSkemaHarga = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(tarif.header.customer.id, tarif.header.produk.id, "SKEMA", tanggal);
+		}
+		
+//		List<HitungTarifDetailPerhitungan> detailPerhitungan = new ArrayList<HitungTarifDetailPerhitungan>();
+//		List<HitungTarifDetailDiskon> detailDiskon = new ArrayList<HitungTarifDetailDiskon>();
+		List<InvoiceSubDetailPerhitunganSkemaTarif> detailPerhitungan = new ArrayList<InvoiceSubDetailPerhitunganSkemaTarif>();
+		List<InvoiceSubDetailPerhitunganDiskon> detailDiskon = new ArrayList<InvoiceSubDetailPerhitunganDiskon>();
+		
+		Integer nouskm = null;
+		if (detailTarifSkemaHarga != null) {
+			// Ada detail tarif skema harga di master customer tarif produk, jadi lanjutkan prosesnya
+			
+			nouskm = detailTarifSkemaHarga.nourut;
+			String tipeSkemaHarga = detailTarifSkemaHarga.skemaHarga.tipe;
+			
+			// ambil data detail overhead master customer tarif produk, urutkan berdasarkan nilai Max
+			List<SkemaHargaDetail> overheads = skemaHargaDetailService.getByIdAndKelTarifSortByMax(detailTarifSkemaHarga.skemaHarga.id, "OVERH");
+			  
+			// ambil data detail tarif utama master customer tarif produk, urutkan berdasarkan nilai Max
+			List<SkemaHargaDetail> utamas = skemaHargaDetailService.getByIdAndKelTarifSortByMax(detailTarifSkemaHarga.skemaHarga.id, "UTAMA");
+
+			// ambil tarif overhead				
+            Double hargaOverhead = 0.0;
+            Integer jumlah = 1;
+            for (SkemaHargaDetail overhead : overheads) {
+            	if (jumkar >= overhead.min && jumkar <= overhead.max) {
+            		jumlah = overhead.max - overhead.min + 1;
+            		hargaOverhead = overhead.harga;
+            		break;
+            	} else {
+            		if (jumkar >= overhead.max) {
+                		jumlah = overhead.max - overhead.min + 1;
+            			hargaOverhead = overhead.harga;
+            		}
+            	}
+            }
+
+            int nourut = 1;
+//            HitungTarifDetailPerhitungan perhitungan = new HitungTarifDetailPerhitungan();
+            InvoiceSubDetailPerhitunganSkemaTarif perhitungan = new InvoiceSubDetailPerhitunganSkemaTarif();
+            perhitungan.nourut = nourut;
+            perhitungan.jnstrf = "OVERH";
+            perhitungan.keterangan = "Overhead";
+            perhitungan.jumlah = jumlah;
+            perhitungan.harga = hargaOverhead;
+            perhitungan.bruto = hargaOverhead;
+            perhitungan.netto = hargaOverhead;
+            detailPerhitungan.add(perhitungan);
+            nourut = nourut + 1;
+			
+            result.harga = hargaOverhead;
+            
+			if (tipeSkemaHarga.equals("PRG")) {
+				// PROGRESIF
+
+				// ambil tarif utama				
+	            for (SkemaHargaDetail utama : utamas) {
+	            	if (jumkar >= utama.min && jumkar >= utama.max) {
+	            		
+//	    	            perhitungan = new HitungTarifDetailPerhitungan();
+	                    perhitungan = new InvoiceSubDetailPerhitunganSkemaTarif();
+	    	            perhitungan.nourut = nourut;
+	    	            perhitungan.jnstrf = "UTAMA";
+	    	            perhitungan.keterangan = utama.min + " - " + utama.max;
+	    	            perhitungan.jumlah = (utama.max - utama.min + 1);
+	    	            perhitungan.harga = utama.harga;
+	    	            perhitungan.bruto = perhitungan.jumlah * utama.harga;
+	    	            perhitungan.netto = perhitungan.jumlah * utama.harga;	    	            
+	    	            detailPerhitungan.add(perhitungan);
+	    	            nourut = nourut + 1;
+	    	            
+	    	            result.harga = result.harga + (perhitungan.jumlah * utama.harga);
+
+	            	} else {
+	            		if (jumkar >= utama.min && jumkar < utama.max) {
+
+//		    	            perhitungan = new HitungTarifDetailPerhitungan();
+		                    perhitungan = new InvoiceSubDetailPerhitunganSkemaTarif();
+		    	            perhitungan.nourut = nourut;
+		    	            perhitungan.jnstrf = "UTAMA";
+		    	            perhitungan.keterangan = utama.min + " - " + utama.max;
+		    	            perhitungan.jumlah = (jumkar - utama.min + 1);
+		    	            perhitungan.harga = utama.harga;
+		    	            perhitungan.bruto = perhitungan.jumlah * utama.harga;
+		    	            perhitungan.netto = perhitungan.jumlah * utama.harga;	    	            
+		    	            detailPerhitungan.add(perhitungan);
+		    	            nourut = nourut + 1;
+		    	            
+		    	            result.harga = result.harga + (perhitungan.jumlah * utama.harga);
+	            		}
+	            	}
+	            }
+			}
+		  
+			if (tipeSkemaHarga.equals("NONPRG")) {
+				// NON PROGRESIF
+				
+				// ambil tarif utama				
+	            for (SkemaHargaDetail utama : utamas) {
+	            	if (jumkar >= utama.min && jumkar >= utama.max) {
+	            		
+//	    	            perhitungan = new HitungTarifDetailPerhitungan();
+	                    perhitungan = new InvoiceSubDetailPerhitunganSkemaTarif();
+	    	            perhitungan.nourut = nourut;
+	    	            perhitungan.jnstrf = "UTAMA";
+	    	            perhitungan.keterangan = utama.min + " - " + utama.max;
+	    	            perhitungan.jumlah = (jumkar - utama.min + 1);
+	    	            perhitungan.harga = utama.harga;
+	    	            perhitungan.bruto = perhitungan.jumlah * utama.harga;
+	    	            perhitungan.netto = perhitungan.jumlah * utama.harga;	    	            
+	    	            detailPerhitungan.add(perhitungan);
+	    	            nourut = nourut + 1;
+
+	    	            result.harga = result.harga + (perhitungan.jumlah * utama.harga);
+	    	            break;
+
+	            	}
+	            }
+			}
+			
+			overheads.addAll(utamas);
+			
+            result.detailSkema = detailPerhitungan;
+			//result.detailSkemaHarga = overheads;
+		} else {
+			// tidak ada data tarif yang ditemukan
+			nouskm = 0;
+			result.harga = 0.0;
+		}
+		
+		result.nouskm = nouskm;
+		// hitung bruto untuk satu tahun -> ini tergantung tipe tarifnya to, kalo 1 tahun ya 12 bulan kalo 2 tahun ya 24
+		// kalo 6 bulan ya 6
+		int jumlahPengali = 0;
+		if (tarif.header.satsiklus.equals("TAHUN")) {
+			jumlahPengali = 12 * tarif.header.jumsiklus;
+		}
+		
+		if (tarif.header.satsiklus.equals("BULAN")) {
+			jumlahPengali = 1 * tarif.header.jumsiklus;
+		}
+		
+		result.pengali = jumlahPengali;
+		//result.bruto = jumlahPengali * result.harga;
+		result.bruto = unitPengali * jumlahPengali * result.harga;
+		
+		result.jumsiklus = tarif.header.jumsiklus;
+		result.satsiklus = tarif.header.satsiklus;
+		
+		int nourutDiskon = 1;
+		Double nilai = result.bruto;
+		Double totalDiskon = 0.0;
+		
+		// DISKON (%)
+		// prioritas pertama ambil untuk yang belum ada tanggal start dan end nya
+		// (karena logikanya invoice initial dilakukan sebelum tanggal live diisi, sedangkan tanggal live = tanggal start)
+		CustomerProdukTarifDetail diskonProsen = customerProdukTarifDetailService.getByCustProdukAndJenisTarifTanpaRange(tarif.header.customer.id, tarif.header.produk.id, "PCTDIS");
+		
+		// prioritas kedua ambil untuk yang tanggal berada di range
+		if (diskonProsen == null) {
+			diskonProsen = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(tarif.header.customer.id, tarif.header.produk.id, "PCTDIS", tanggal);
+
+			if (diskonProsen != null) {
+				if (diskonProsen.pctdisc > 0.0) {
+					Double nildasar = nilai;
+					Double diskon = (diskonProsen.pctdisc * nilai) / 100.0;
+					totalDiskon = totalDiskon + diskon;
+					nilai = nilai - diskon;
+					
+					InvoiceSubDetailPerhitunganDiskon dataDiskon = new InvoiceSubDetailPerhitunganDiskon();
+					
+		            dataDiskon.nourut = nourutDiskon;
+		            dataDiskon.jenis = "PRODIS";
+		            dataDiskon.nouds = diskonProsen.nourut;
+		            dataDiskon.keterangan = "Discount (%)";
+		            dataDiskon.nildasar = nildasar;
+		            dataDiskon.pctdisc = diskonProsen.pctdisc;
+		            dataDiskon.nildisc = diskon;
+		            dataDiskon.netto = nilai;
+		            detailDiskon.add(dataDiskon);
+		            
+		            nourutDiskon = nourutDiskon + 1;
+				}
+			}
+		}
+	  
+		// DISKON (NILAI)
+		// prioritas pertama ambil untuk yang belum ada tanggal start dan end nya
+		// (karena logikanya invoice initial dilakukan sebelum tanggal live diisi, sedangkan tanggal live = tanggal start)
+		CustomerProdukTarifDetail diskonNilai = customerProdukTarifDetailService.getByCustProdukAndJenisTarifTanpaRange(tarif.header.customer.id, tarif.header.produk.id, "NILDIS");
+		
+		// prioritas kedua ambil untuk yang tanggal berada di range
+		if (diskonNilai == null) {
+			diskonNilai = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(tarif.header.customer.id, tarif.header.produk.id, "NILDIS", tanggal);
+
+			if (diskonNilai != null) {
+				if (diskonNilai.nildisc > 0.0) {
+					Double nildasar = nilai;
+					totalDiskon = totalDiskon + diskonNilai.nildisc;
+					nilai = nilai - diskonNilai.nildisc;
+					
+					InvoiceSubDetailPerhitunganDiskon dataDiskon = new InvoiceSubDetailPerhitunganDiskon();
+					
+		            dataDiskon.nourut = nourutDiskon;
+		            dataDiskon.jenis = "NILDIS";
+		            dataDiskon.nouds = diskonNilai.nourut;
+		            dataDiskon.keterangan = "Discount (nilai)";
+		            dataDiskon.pctdisc = 0.0;
+		            dataDiskon.nildisc = diskonNilai.nildisc;
+		            dataDiskon.nildasar = nildasar;
+		            dataDiskon.netto = nilai;
+		            detailDiskon.add(dataDiskon);
+		            
+		            nourutDiskon = nourutDiskon + 1;
+				}				
+			}
+		}
+
+		// GRUP DISKON
+		// di master tarif, grup diskon hanya ada satu record dan tidak punya periode start stop
+		// kenapa ? karena :
+		// 1. durasi ada di master grup diskon sedangkan periode ada di master tarif, hal ini membuat rumit cara update
+		//    tgl start stop di master tarif
+		// 2. 1 customer pada dasarnya ya punya satu grup diskon, masak 1 customer dia menjadi grup dari 2 PT besar ?
+		//CustomerProdukTarifDetail detailGrupDiscount = customerProdukTarifDetailService.getByCustProdukAndJenisTarifTanpaRange(tarif.header.customer.id, tarif.header.produk.id, "GRPDIS");
+		CustomerProdukTarifDetail detailGrupDiscount = customerProdukTarifDetailService.getByCustProdukForDiskonGrup(tarif.header.customer.id, tarif.header.produk.id);
+		
+		// prioritas kedua ambil untuk yang tanggal berada di range
+		//if (detailGrupDiscount == null) {
+		//	detailGrupDiscount = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(tarif.header.customer.id, tarif.header.produk.id, "GRPDIS", tanggal);
+		//}
+	  
+		if (detailGrupDiscount != null) {
+			
+			// ambil data detail overhead master customer tarif produk, urutkan berdasarkan nilai Max
+			GrupDiskonDetail grupDiskon = grupDiskonDetailService.getFirstDetail(detailGrupDiscount.grupDiskon.id);
+			
+			if (grupDiskon.pctdisc > 0.0) {
+				Double nildasar = nilai;
+				Double diskon = (grupDiskon.pctdisc * nilai) / 100.0;
+				totalDiskon = totalDiskon + diskon;
+				nilai = nilai - diskon;
+				
+//	            HitungTarifDetailDiskon dataDiskon = new HitungTarifDetailDiskon();
+				InvoiceSubDetailPerhitunganDiskon dataDiskon = new InvoiceSubDetailPerhitunganDiskon();
+				
+	            dataDiskon.nourut = nourutDiskon;
+	            dataDiskon.jenis = "GRPPRODIS";
+	            dataDiskon.nouds = grupDiskon.nourut;
+	            dataDiskon.keterangan = "Discount Grup (%)";
+	            dataDiskon.pctdisc = grupDiskon.pctdisc;
+	            dataDiskon.nildisc = diskon;
+	            dataDiskon.nildasar = nildasar;
+	            dataDiskon.netto = nilai;
+	            detailDiskon.add(dataDiskon);
+				
+	            nourutDiskon = nourutDiskon + 1;
+			}
+
+			if (grupDiskon.nildisc > 0.0) {
+				Double nildasar = nilai;
+				totalDiskon = totalDiskon + grupDiskon.nildisc;
+				nilai = nilai - grupDiskon.nildisc;
+				
+//	            HitungTarifDetailDiskon dataDiskon = new HitungTarifDetailDiskon();
+				InvoiceSubDetailPerhitunganDiskon dataDiskon = new InvoiceSubDetailPerhitunganDiskon();
+				
+	            dataDiskon.nourut = nourutDiskon;
+	            dataDiskon.jenis = "GRPNILDIS";
+	            dataDiskon.nouds = grupDiskon.nourut;
+	            dataDiskon.keterangan = "Discount Grup (nilai)";
+	            dataDiskon.pctdisc = 0.0;
+	            dataDiskon.nildisc = grupDiskon.nildisc;
+	            dataDiskon.nildasar = nildasar;
+	            dataDiskon.netto = nilai;
+	            detailDiskon.add(dataDiskon);
+				
+	            nourutDiskon = nourutDiskon + 1;
+			}
+		}
+		
+//		
+		// DISKON KHUSUS
+		DiskonKhususHeader diskonKhusus = diskonKhususHeaderService.getFindByCustomerAndTanggal(tarif.header.customer.id, tanggal);
+		
+		if (diskonKhusus != null) {
+			if (diskonKhusus.pctdisc > 0.0) {
+				Double nildasar = nilai;
+				Double diskon = (diskonKhusus.pctdisc * nilai) / 100.0;
+				totalDiskon = totalDiskon + diskon;
+				nilai = nilai - diskon;
+				
+//	            HitungTarifDetailDiskon dataDiskon = new HitungTarifDetailDiskon();
+				InvoiceSubDetailPerhitunganDiskon dataDiskon = new InvoiceSubDetailPerhitunganDiskon();
+				
+	            dataDiskon.nourut = nourutDiskon;
+	            dataDiskon.jenis = "SPCPRODIS";
+	            dataDiskon.keterangan = "Discount Khusus (%)";
+	            dataDiskon.nouds = 0;
+	            dataDiskon.pctdisc = diskonKhusus.pctdisc;
+	            dataDiskon.nildisc = diskon;
+	            dataDiskon.nildasar = nildasar;
+	            dataDiskon.netto = nilai;
+	            detailDiskon.add(dataDiskon);
+				
+	            nourutDiskon = nourutDiskon + 1;
+			}
+			
+			if (diskonKhusus.nildisc > 0.0) {
+				Double nildasar = nilai;
+				totalDiskon = totalDiskon + diskonKhusus.nildisc;
+				nilai = nilai - diskonKhusus.nildisc;
+				
+//	            HitungTarifDetailDiskon dataDiskon = new HitungTarifDetailDiskon();
+				InvoiceSubDetailPerhitunganDiskon dataDiskon = new InvoiceSubDetailPerhitunganDiskon();
+				
+	            dataDiskon.nourut = nourutDiskon;
+	            dataDiskon.jenis = "SPCNILDIS";
+	            dataDiskon.keterangan = "Discount Khusus (nilai)";
+	            dataDiskon.nouds = 0;
+	            dataDiskon.pctdisc = 0.0;
+	            dataDiskon.nildisc = diskonKhusus.nildisc;
+	            dataDiskon.nildasar = nildasar;
+	            dataDiskon.netto = nilai;
+	            detailDiskon.add(dataDiskon);
+				
+	            nourutDiskon = nourutDiskon + 1;
+			}			
+		}
+		
+		//result.diskonKhusus = diskonKhusus;
+
+		// update terkait diskon ke result
+		result.detailDiskon = detailDiskon;
+		result.diskon = totalDiskon;
+		result.netto = nilai;
+	  
+		return result;
+	}
+  
+}

@@ -1,0 +1,144 @@
+package co.id.sofcograha.base.excel;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Base64;
+
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.util.IOUtils;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+
+public class ExcelUtil {
+	
+	private static final String ERR_CODE_XLSX_TEMPLATE_NOT_FOUND = "excelUtil.xlsx.template.not.found";
+	private static final String ERR_CODE_UNKNOWN_XLSX_FILE = "excelUtil.unknown.xlsx.file";
+	private static final String ERR_CODE_CREATE_FILE_ERROR = "excelUtil.create.file.error";
+	private static final String ERR_CODE_IO_ERROR = "excelUtil.io.error";
+
+	private static final String XLSX_TEMPLATE_FILE_LOCATION = "/excelTemplates/";
+	private static final String XLSX_CONTENT_TYPE = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,";
+
+	public static XSSFWorkbook init(String sheetName) {
+		XSSFWorkbook workbook = new XSSFWorkbook();
+		workbook.createSheet(sheetName);
+		
+		return workbook;
+	}
+	
+	public static XSSFWorkbook initFromTemplate(String xlsxTemplateFileNameWithExtension) {
+		return getXSSFWorkBookFromFile(xlsxTemplateFileNameWithExtension);
+	}
+
+	public static Base64StringEncodedPojo generateXlsxFileAsBase64String(XSSFWorkbook workbook) {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+		try {
+			workbook.write(baos);
+		} catch (IOException e) {
+			fileCreationError();
+		} finally {
+			closeBaos(baos);
+		}
+
+		byte[] contents = baos.toByteArray();
+
+		return new Base64StringEncodedPojo(XLSX_CONTENT_TYPE, byteArrayToBase64String(contents));
+	}
+	
+	public static Row createNewRow(Sheet sheet,int rowIndex) {
+		return sheet.createRow(rowIndex);
+	}
+	
+	public static Sheet getSheetByIndex(XSSFWorkbook workbook, int sheetIndex) {
+		return workbook.getSheetAt(sheetIndex);
+	}
+	
+	public static Cell createCell(Row row, int columnIndex) {
+		return row.createCell(columnIndex);
+	}
+	
+	public static Cell createCellWithStyle(Row row, int columnIndex, CellStyle style) {
+		Cell cell = createCell(row, columnIndex);
+		cell.setCellStyle(style);
+		return cell;
+	}
+	
+	public static Cell createCellWithBorder(XSSFWorkbook workbook, Row row, int columnIndex) {
+		XSSFCellStyle style = workbook.createCellStyle();
+		style.setBorderTop(BorderStyle.THIN);
+		style.setBorderBottom(BorderStyle.THIN);
+		style.setBorderLeft(BorderStyle.THIN);
+		style.setBorderRight(BorderStyle.THIN);
+		
+		return createCellWithStyle(row, columnIndex, style);
+	}
+
+	private static String byteArrayToBase64String(byte[] val) {
+		return Base64.getEncoder().encodeToString(val);
+	}
+
+	private static void ioError() {
+		throw new BusinessException(ERR_CODE_IO_ERROR);
+	}
+
+	private static void closeBaos(ByteArrayOutputStream baos) {
+		try {
+			baos.close();
+		} catch (IOException e) {
+			ioError();
+		}
+	}
+
+	private static void fileCreationError() {
+		throw new BusinessException(ERR_CODE_CREATE_FILE_ERROR);
+	}
+
+	private static XSSFWorkbook getXSSFWorkBookFromFile(String xlsxTemplateFileNameWithExtension) {
+
+		XSSFWorkbook xWorkbook = null;
+		try {
+			xWorkbook = new XSSFWorkbook(new ByteArrayInputStream(getFromTemplateFile(xlsxTemplateFileNameWithExtension)));
+		} catch (IOException e) {
+			throw new BusinessException(ERR_CODE_UNKNOWN_XLSX_FILE);
+		}
+
+		return xWorkbook;
+	}
+
+	private static byte[] getFromTemplateFile(String xlsxTemplateFileNameWithExtension) {
+		try {
+			InputStream is = ExcelUtil.class.getResourceAsStream(XLSX_TEMPLATE_FILE_LOCATION + xlsxTemplateFileNameWithExtension);
+			return IOUtils.toByteArray(is);
+		} catch (IOException|NullPointerException e) {
+			throw new BusinessException(ERR_CODE_XLSX_TEMPLATE_NOT_FOUND, xlsxTemplateFileNameWithExtension, XLSX_TEMPLATE_FILE_LOCATION);
+		}
+	}
+	
+	public static Row createNewRow(XSSFWorkbook workbook) {
+		return workbook.getSheetAt(workbook.getActiveSheetIndex()).createRow(workbook.getSheetAt(workbook.getActiveSheetIndex()).getLastRowNum() + 1);
+	}
+	
+	public static Row createNewRow(Sheet sheet) {
+		return sheet.createRow(sheet.getLastRowNum() + 1);
+	}
+	
+	public static void autoSizeColumn(Sheet sheet, int startColIdx, int endColIdx) {
+		for (int i = startColIdx; i <= endColIdx; i++) {
+			sheet.autoSizeColumn(i);
+		}
+	}
+	
+	public static void autoSizeColumn(XSSFWorkbook workbook, int startColIdx, int endColIdx) {
+		autoSizeColumn(workbook.getSheetAt(workbook.getActiveSheetIndex()), startColIdx, endColIdx);
+	}
+}

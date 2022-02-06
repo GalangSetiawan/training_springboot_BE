@@ -1,0 +1,247 @@
+package co.id.sofcograha.base.queue.queuenotification.services;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.transaction.Transactional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.constants.enums.NotificationType;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.queue.notification.NotificationMainService;
+import co.id.sofcograha.base.queue.queuenotification.entities.ESysNotification;
+import co.id.sofcograha.base.queue.queuenotification.pojos.SysNotificationPojo;
+import co.id.sofcograha.base.queue.queuenotification.repositories.SysNotificationRepository;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Service
+public class SysNotificationService extends BaseService {
+
+	@Autowired
+	private SysNotificationRepository sysNotificationRepository;
+	
+	@Autowired
+	private UserService userService;
+
+	@Autowired
+	private CompanyService companyService;
+
+	@Autowired
+	private NotificationMainService notificationMainService;
+	
+    @Transactional
+	public List<ESysNotification> editMany(List<ESysNotification> entities) {
+		List<ESysNotification> results = new ArrayList<>();
+		for (ESysNotification sysNotification : entities) {
+			results.add(edit(sysNotification));
+		}
+		
+		return results;
+	}
+
+	@Transactional
+	public ESysNotification add(ESysNotification entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		ESysNotification addedEntity = sysNotificationRepository.add(entity);
+		postAdd(addedEntity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+
+	@Transactional
+	public ESysNotification edit(ESysNotification entity) {
+		
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		ESysNotification toBeSaved = sysNotificationRepository.getOne(entity.getId());
+		ESysNotification oldEntity = (ESysNotification) toBeSaved.clone();
+		
+		//TODO: this may cause org.hibernate.TransientPropertyValueException
+		// (set reference to non existing data, then before reaching manageReferences, another thread trigger hibernate flush)
+		defineEditableValues(entity, toBeSaved);
+		
+		toBeSaved = sysNotificationRepository.edit(toBeSaved);
+
+		throwBatchError();
+		return toBeSaved;	
+	}
+	
+	@Transactional
+	public void delete(String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, ESysNotification.class.getSimpleName());
+		throwBatchError();
+		
+		ESysNotification toBeDeleted = sysNotificationRepository.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		sysNotificationRepository.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ESysNotification dbEntity = sysNotificationRepository.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (sysNotificationRepository.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	    
+	protected void defineDefaultValuesOnAdd(ESysNotification entity) {
+		EUser user = userService.get(CurrentUser.getUserId());
+		ECompany company = companyService.get(CurrentUser.getCompanyId());
+		// sementara masih belum ada dibedakan admin atau tidak
+		//if(user.getAdmin()) {
+		//	entity.setCompany(null);
+		//} else {
+		//	entity.setCompany(company);						
+		//}
+		entity.setCompany(company);						
+	
+		if (entity.getIssueDate() == null)
+			entity.setIssueDate(TimeUtil.getSystemDateTime());
+		if (entity.getEndIssueDate() == null)
+			entity.setEndIssueDate(TimeUtil.getMaxDate());
+		if (entity.getReadFlag() == null)
+			entity.setReadFlag(false);
+		if (entity.getPinFlag() == null)
+			entity.setPinFlag(false);
+		if (entity.getActive() == null)
+			entity.setActive(true);
+	}
+
+	protected void defineEditableValues(ESysNotification newValues, ESysNotification toBeSaved) {
+		toBeSaved.setUser(newValues.getUser());
+		toBeSaved.setCompany(newValues.getCompany());
+		toBeSaved.setIssueDate(newValues.getIssueDate());
+		toBeSaved.setEndIssueDate(newValues.getEndIssueDate());
+		toBeSaved.setReadFlag(newValues.getReadFlag());
+		toBeSaved.setPinFlag(newValues.getPinFlag());
+		toBeSaved.setNotificationType(newValues.getNotificationType());
+		toBeSaved.setNotificationMsg(newValues.getNotificationMsg());
+		toBeSaved.setParam1(newValues.getParam1());
+		toBeSaved.setParam2(newValues.getParam2());
+		toBeSaved.setActive(newValues.getActive());
+	}
+
+	protected void valRequiredValues(ESysNotification entity) {
+		valRequiredDate(entity.getIssueDate(), "sysNotification.issueDate.required");
+		valRequiredDate(entity.getEndIssueDate(), "sysNotification.endIssueDate.required");
+		valRequiredBoolean(entity.getReadFlag(), "sysNotification.readFlag.required");
+		valRequiredBoolean(entity.getPinFlag(), "sysNotification.pinFlag.required");
+		valRequiredEnum(entity.getNotificationType(), NotificationType.class,
+				"sysNotification.notificationType.required");
+		valRequiredString(entity.getNotificationMsg(), "sysNotification.notificationMsg.required");
+		valRequiredBoolean(entity.getActive(), "sysNotification.active.required");
+	}
+
+	protected void manageMinMaxValues(ESysNotification entity) { }
+
+	protected void manageReferences(ESysNotification entity) {
+		
+		EUser eUser = userService.find(entity.getUser().getId());
+		
+		if (eUser != null) {
+			if (eUser.getActive()) {
+				entity.setUser(eUser);
+			} else {
+				batchError("sysNotification.user.not.active");
+			}
+		} else {
+			batchError("sysNotification.user.not.found");
+		}
+		
+		ECompany eCompany = companyService.find(entity.getCompany().getId());
+		
+		if (eCompany != null) {
+			if (eCompany.getActive()) {
+				entity.setCompany(eCompany);
+			} else {
+				batchError("sysNotification.company.not.active");
+			}
+		} else {
+			batchError("sysNotification.company.not.found");
+		}
+	}
+
+	protected void valAdd(ESysNotification entity) { }
+
+	protected void valEdit(ESysNotification entity, ESysNotification fromDb) { }
+
+	protected void valDelete(ESysNotification toBeDeleted) { }
+
+	protected void valUniquenessOnAdd(ESysNotification addedEntity) { }
+
+	protected void valUniquenessOnEdit(ESysNotification editedEntity) { }
+
+	public SearchResult<ESysNotification> search(SearchParameter searchParameter) {
+		return sysNotificationRepository.search(searchParameter);
+	}
+
+	public List<ESysNotification> getCurrentNotification() {
+		EUser user = userService.get(CurrentUser.getUserId());
+		ECompany company = companyService.get(CurrentUser.getCompanyId());
+		return sysNotificationRepository.getCurrentNotification(user, company);
+	}
+
+	protected void postAdd(ESysNotification entity) {
+		notificationMainService.sendNotification(SysNotificationPojo.fromEntity(entity));
+	}
+
+	protected void valValid(ESysNotification entity) { }
+	
+	public ESysNotification get(String id) {
+		return sysNotificationRepository.getOne(id);
+	}
+}

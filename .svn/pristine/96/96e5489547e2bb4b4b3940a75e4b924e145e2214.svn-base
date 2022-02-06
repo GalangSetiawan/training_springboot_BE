@@ -1,0 +1,94 @@
+package co.id.sofcograha.domain.invoicing.admin.upload.entities;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+@Entity
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class ESumDetailUpload {
+
+	@Id
+	@Column(name = "id")
+	private String id;
+
+	@Column(name = "jkbulini")
+	private Integer jkbulini;
+
+	@Column(name = "revjkbullalu")
+	private Integer revjkbullalu;
+
+	@Column(name = "seljkbullalu")
+	private Integer seljkbullalu;
+
+	@Column(name = "jnkbulini")
+	private Integer jnkbulini;
+
+	@Column(name = "revjnkbullalu")
+	private Integer revjnkbullalu;
+
+	@Column(name = "seljnkbullalu")
+	private Integer seljnkbullalu;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Integer getJkbulini() {
+		return jkbulini;
+	}
+
+	public void setJkbulini(Integer jkbulini) {
+		this.jkbulini = jkbulini;
+	}
+
+	public Integer getRevjkbullalu() {
+		return revjkbullalu;
+	}
+
+	public void setRevjkbullalu(Integer revjkbullalu) {
+		this.revjkbullalu = revjkbullalu;
+	}
+
+	public Integer getSeljkbullalu() {
+		return seljkbullalu;
+	}
+
+	public void setSeljkbullalu(Integer seljkbullalu) {
+		this.seljkbullalu = seljkbullalu;
+	}
+
+	public Integer getJnkbulini() {
+		return jnkbulini;
+	}
+
+	public void setJnkbulini(Integer jnkbulini) {
+		this.jnkbulini = jnkbulini;
+	}
+
+	public Integer getRevjnkbullalu() {
+		return revjnkbullalu;
+	}
+
+	public void setRevjnkbullalu(Integer revjnkbullalu) {
+		this.revjnkbullalu = revjnkbullalu;
+	}
+
+	public Integer getSeljnkbullalu() {
+		return seljnkbullalu;
+	}
+
+	public void setSeljnkbullalu(Integer seljnkbullalu) {
+		this.seljnkbullalu = seljnkbullalu;
+	}
+
+}

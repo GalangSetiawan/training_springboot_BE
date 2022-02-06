@@ -1,0 +1,13 @@
+package co.id.sofcograha.base.utils.pojos;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+@JsonInclude(Include.ALWAYS)
+public class UploadDownloadTemplate {
+
+	public String fileExtension;
+	public String fileName;
+	public String file;
+
+}

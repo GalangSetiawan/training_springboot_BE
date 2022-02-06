@@ -1,0 +1,16 @@
+package co.id.sofcograha.base.utils;
+
+import org.springframework.security.crypto.bcrypt.BCrypt;
+
+public class PasswordUtil {
+
+	private static final int SALT_LEVEL = 13;
+
+	public static String hashPassword(String raw) {
+		return BCrypt.hashpw(raw, BCrypt.gensalt(SALT_LEVEL));
+	}
+
+	public static boolean isValidPassword(String raw, String hashed) {
+		return BCrypt.checkpw(raw, hashed);
+	}
+}

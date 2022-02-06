@@ -1,0 +1,226 @@
+package co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.entities.EPenggunaanMaster;
+import co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.repositories.EPenggunaanMasterRepository;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifDetail;
+
+@Service("penggunaanMasterService")
+public class PenggunaanMasterService extends BaseService {
+	
+	@Autowired private EPenggunaanMasterRepository repo;
+	
+	//@Autowired private ActionAuthorizationService actionAuthorizationService;
+	
+	public EPenggunaanMaster findByBk(String idMi010, String idMi001, String jnstrf, Integer nourut, String idPgg) {
+		return repo.findByBK(idMi010, idMi001, jnstrf, nourut, idPgg);
+	}
+	
+	public EPenggunaanMaster findById(final String id) {
+		return repo.getOne(id);
+	}
+
+	public boolean isUsed(CustomerProdukTarifDetail data) {
+		
+		List<EPenggunaanMaster> list = repo.findSatuPenggunaanByMasterUc(data.header.customer.id, data.header.produk.id, data.jnstrf, data.nourut);
+		
+		if (!list.isEmpty()) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	public SearchResult<EPenggunaanMaster> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+    
+	@Transactional
+    public EPenggunaanMaster add(EPenggunaanMaster entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EPenggunaanMaster addedEntity = repo.add(entity);
+		
+		throwBatchError();
+		return addedEntity;	
+		
+    }
+       
+    //private void valOnAdd(final EPenggunaanMaster valuta) {
+    //}
+
+	@Transactional
+	public EPenggunaanMaster edit(EPenggunaanMaster entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EPenggunaanMaster toBeSaved = repo.getOne(entity.getId());
+		//EPenggunaanMaster oldEntity = (EPenggunaanMaster) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+		
+		throwBatchError();
+		return toBeSaved;
+		
+	}
+
+	//private void valOnEdit(final EPenggunaanMaster valuta) {
+    //}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EPenggunaanMaster.class.getSimpleName());
+		throwBatchError();
+		
+		EPenggunaanMaster toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		repo.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	//private void valOnDelete(EPenggunaanMaster entity) {
+    //}
+	
+	//private void valAuthAdd() {
+	//  if(!actionAuthorizationService.valHakAdd()) {
+	//    error("NoRightToAdd");
+	//  }
+	//}
+	
+	//private void valAuthEdit() {
+    //  if(!actionAuthorizationService.valHakEdit()) {
+    //    error("NoRightToChange");
+    //  }
+    //}
+	
+    //private void valAuthDelete() {
+    //  if(!actionAuthorizationService.valHakDelete()) {
+    //    error("NoRightToDelete");
+    //  }
+    //}
+
+    protected void defineDefaultValuesOnAdd(EPenggunaanMaster entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+    
+    protected void valRequiredValues(EPenggunaanMaster entity) {
+	}
+    
+    protected void manageMinMaxValues(EPenggunaanMaster entity) {
+	}
+    
+    protected void manageReferences(EPenggunaanMaster entity) {
+		/*
+		if (entity.getFunctionAccess() != null) {
+			OptionalConsumerUtil.of(functionAccessService.find(entity.getFunctionAccess().getId()))
+			.ifPresent(functionAccess -> {
+				if (functionAccess.getActive()) {
+					entity.setFunctionAccess(functionAccess);
+				} else {
+					batchError("widget.functionAccess.not.active");
+				}
+			})
+			.ifNotPresent(() -> {
+				batchError("widget.functionAccess.not.found");
+			});
+		}
+		*/
+	}
+
+    protected void valUniquenessOnAdd(EPenggunaanMaster addedEntity) {
+		EPenggunaanMaster entityFromDb = repo.findByBK(addedEntity.getIdMi010(), addedEntity.getIdMi001(), addedEntity.getJnstrf(), addedEntity.getNourut(), addedEntity.getIdPgg());
+		if (entityFromDb != null) {
+			throw new BusinessException("admin.penggunaan.master.bk");
+		}
+	}
+    
+    private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EPenggunaanMaster dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+    
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void valUniquenessOnEdit(EPenggunaanMaster editedEntity) {
+		EPenggunaanMaster entityFromDb = repo.findByBK(editedEntity.getIdMi010(), editedEntity.getIdMi001(), editedEntity.getJnstrf(), editedEntity.getNourut(), editedEntity.getIdPgg());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("admin.penggunaan.master.bk");
+			}
+		}
+	}
+	
+	protected void defineEditableValues(EPenggunaanMaster newValues, EPenggunaanMaster toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setJnsmst(newValues.getJnsmst());
+			toBeSaved.setIdMi010(newValues.getIdMi010());
+			toBeSaved.setIdMi001(newValues.getIdMi001());
+			toBeSaved.setJnstrf(newValues.getJnstrf());
+			toBeSaved.setNourut(newValues.getNourut());
+			toBeSaved.setJnspgg(newValues.getJnspgg());
+			toBeSaved.setIdPgg(newValues.getIdPgg());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valDelete(EPenggunaanMaster toBeDeleted) {	}
+    
+    
+	public EPenggunaanMaster get(String id) {
+		return repo.getOne(id);
+	}
+}

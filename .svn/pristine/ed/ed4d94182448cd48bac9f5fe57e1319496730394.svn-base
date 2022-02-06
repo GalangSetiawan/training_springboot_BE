@@ -1,0 +1,62 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailHslPro;
+
+@Repository
+public class EInvoiceDetailHslProRepository extends SimpleJpaRepository<EInvoiceDetailHslPro, String> {
+
+	protected final EntityManager em;
+
+	public EInvoiceDetailHslProRepository(EntityManager em) {
+		super(EInvoiceDetailHslPro.class, em);
+		this.em = em;
+	}
+	
+	public EInvoiceDetailHslPro findByBK(String idTi001, Integer nourut) {
+		
+		String query = "SELECT e FROM EInvoiceDetailHslPro e " + 
+                       "WHERE e.header.id = :idTi001 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EInvoiceDetailHslPro.class)
+					 .setParameter("idTi001", idTi001)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EInvoiceDetailHslPro getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EInvoiceDetailHslPro> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EInvoiceDetailHslPro> search = new HqlSimpleSearchBuilder<>(EInvoiceDetailHslPro.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EInvoiceDetailHslPro add(EInvoiceDetailHslPro entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+
+	public EInvoiceDetailHslPro edit(EInvoiceDetailHslPro entity) {
+		return save(entity);
+	}
+}

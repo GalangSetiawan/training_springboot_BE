@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubDetailPerhitunganSkemaTarif;
+
+@Repository
+public class EInvoiceSubDetailPerhitunganSkemaTarifRepository extends SimpleJpaRepository<EInvoiceSubDetailPerhitunganSkemaTarif, String> {
+
+	protected final EntityManager em;
+
+	public EInvoiceSubDetailPerhitunganSkemaTarifRepository(EntityManager em) {
+		super(EInvoiceSubDetailPerhitunganSkemaTarif.class, em);
+		this.em = em;
+	}
+	
+	public EInvoiceSubDetailPerhitunganSkemaTarif findByBK(String idTi007, Integer nourut) {
+		
+		String query = "SELECT e FROM EInvoiceSubDetailPerhitunganSkemaTarif e " + 
+                       "WHERE e.detailInitial.id = :idTi007 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EInvoiceSubDetailPerhitunganSkemaTarif.class)
+					 .setParameter("idTi007", idTi007)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EInvoiceSubDetailPerhitunganSkemaTarif getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EInvoiceSubDetailPerhitunganSkemaTarif> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EInvoiceSubDetailPerhitunganSkemaTarif> search = new HqlSimpleSearchBuilder<>(EInvoiceSubDetailPerhitunganSkemaTarif.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EInvoiceSubDetailPerhitunganSkemaTarif add(EInvoiceSubDetailPerhitunganSkemaTarif entity) {
+		return save(entity);
+	}
+
+	public EInvoiceSubDetailPerhitunganSkemaTarif edit(EInvoiceSubDetailPerhitunganSkemaTarif entity) {
+		return save(entity);
+	}
+}

@@ -1,0 +1,144 @@
+package co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.entities.EPenggunaanMaster;
+
+@JsonInclude(Include.ALWAYS)
+public class PenggunaanMaster {
+
+    public String id;
+	public String jnsmst;
+	public String idMi010;
+	public String idMi001;
+	public String jnstrf;
+	public Integer nourut;
+	public String jnspgg;
+	public String idPgg;
+	public String tahun;
+	public String bulan;
+    public Long version;
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+    
+    public EPenggunaanMaster toEntity() {
+		
+  	  EPenggunaanMaster entity = new EPenggunaanMaster();
+  		
+  	    entity.setId(id);
+  		entity.setJnsmst(jnsmst);
+  		entity.setIdMi010(idMi010);
+  		entity.setIdMi001(idMi001);
+  		entity.setJnstrf(jnstrf);
+  		entity.setNourut(nourut);
+  		entity.setJnspgg(jnspgg);
+  		entity.setIdPgg(idPgg);
+  		entity.setTahun(tahun);
+  		entity.setBulan(bulan);
+  		
+        entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+          
+  		return entity;
+  	}
+    
+	public static PenggunaanMaster fromEntity (EPenggunaanMaster entity) {
+		return fromEntity(entity,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static PenggunaanMaster fromEntity(EPenggunaanMaster entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		
+		PenggunaanMaster pojo = new PenggunaanMaster();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.jnsmst = entity.getJnsmst();
+			pojo.idMi010 = entity.getIdMi010();
+			pojo.idMi001 = entity.getIdMi001();
+			pojo.jnstrf = entity.getJnstrf();
+			pojo.nourut = entity.getNourut();
+			pojo.jnspgg = entity.getJnspgg();
+			pojo.idPgg = entity.getIdPgg();
+			pojo.tahun = entity.getTahun();
+			pojo.bulan = entity.getBulan();
+		    
+	        pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+		}
+
+		return pojo;
+	}
+	
+	public static List<PenggunaanMaster> fromEntities(List<EPenggunaanMaster> entities){
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static List<PenggunaanMaster> fromEntities(List<EPenggunaanMaster> entities, int depthLevel){
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<PenggunaanMaster> pojos = new ArrayList<>();
+		
+		for (EPenggunaanMaster entity : entities) {
+			pojos.add(PenggunaanMaster.fromEntity(entity, depthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+	
+		mappings.add(new SearchFieldMapping("jnsmst", "jnsmst"));
+		mappings.add(new SearchFieldMapping("jnspgg", "jnspgg"));
+//		mappings.add(new SearchFieldMapping("urutan", "urutan", Integer.class).sortOnly());
+	
+		return mappings;
+	} 
+	
+}

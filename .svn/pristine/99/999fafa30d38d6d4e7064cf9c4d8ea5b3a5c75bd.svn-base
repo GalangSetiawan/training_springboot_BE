@@ -1,0 +1,56 @@
+package co.id.sofcograha.domain.invoicing.transaksi.implementasiTraining.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.domain.invoicing.transaksi.implementasiTraining.entities.EImplementasiTrainingHeader;
+
+@JsonInclude(Include.ALWAYS)
+public class ImplementasiTrainingComplete {
+
+	public ImplementasiTrainingHeader header;
+	public List<ImplementasiTrainingDetailImplementasi> detailImplementasi;
+	public List<ImplementasiTrainingDetailTraining> detailTraining;
+	
+	// untuk penanda apakah data ini tertandai dipilih untuk grid yang punya checkbox select
+	// dipakai di proses bulanan (grid jurnal rutin)
+	public boolean isSelect;
+
+	@JsonIgnore
+	public EImplementasiTrainingHeader getEntityHeader() {
+		return header.toEntity();
+	}
+
+	public static ImplementasiTrainingComplete setFromEntity(EImplementasiTrainingHeader entity) {
+		
+		ImplementasiTrainingComplete pojo = new ImplementasiTrainingComplete();
+		pojo.header = ImplementasiTrainingHeader.fromEntity(entity);
+
+		// detail depth level diisi = 1, supaya sub detail ikutan diambil (karena detail punya sub detail0
+		pojo.detailImplementasi = ImplementasiTrainingDetailImplementasi.fromEntities(entity.getDetailImplementasi(), BaseConstants.DEFAULT_QUERY_DEPTH, 1);
+		pojo.detailTraining = ImplementasiTrainingDetailTraining.fromEntities(entity.getDetailTraining(), BaseConstants.DEFAULT_QUERY_DEPTH, 1);
+		
+		pojo.isSelect = false;
+		
+		return pojo;
+	}
+	
+	public static List<ImplementasiTrainingComplete> fromEntities(List<EImplementasiTrainingHeader> entities){
+	
+		if (entities == null) return new ArrayList<>();
+		
+		List<ImplementasiTrainingComplete> pojos = new ArrayList<>();
+		
+		for (EImplementasiTrainingHeader entity : entities) {
+			pojos.add(setFromEntity(entity));
+		}
+		return pojos;
+		
+	}
+	
+}

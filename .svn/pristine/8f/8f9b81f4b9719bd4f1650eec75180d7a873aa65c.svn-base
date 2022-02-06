@@ -1,0 +1,182 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.NativeSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.proses.upload.entities.EUploadData;
+import co.id.sofcograha.domain.invoicing.proses.upload.entities.EUploadDataNotExistsRpt;
+
+@Repository
+public class EUploadDataRepository extends SimpleJpaRepository<EUploadData, String> {
+
+	protected final EntityManager em;
+
+	public EUploadDataRepository(EntityManager em) {
+		super(EUploadData.class, em);
+		this.em = em;
+	}
+	
+	public EUploadData findByBK(String tahunbulan, String kodept, String npwp, String kodekp) {
+		
+		String query = "SELECT e FROM EUploadData e " + 
+                       "WHERE e.tahunbulan = :tahunbulan And " +
+                             "e.kodept = :kodept And " +
+				             "e.npwp = :npwp And " +
+                             "e.kodekp = :kodekp";
+		
+		try {
+			return em.createQuery(query, EUploadData.class)
+					 .setParameter("tahunbulan", tahunbulan)
+					 .setParameter("kodept", kodept)
+					 .setParameter("npwp", npwp)
+					 .setParameter("kodekp", kodekp)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public SearchResult<EUploadData> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EUploadData> search = new HqlSimpleSearchBuilder<>(EUploadData.class, em);
+		
+		String tahunbulan = (String) searchParameter.getValueFromMappedParam("tahunbulan");
+		String kodept = (String) searchParameter.getValueFromMappedParam("kodept");
+		String namapt = (String) searchParameter.getValueFromMappedParam("namapt");
+		String npwp = (String) searchParameter.getValueFromMappedParam("npwp");
+		String kodekp = (String) searchParameter.getValueFromMappedParam("kodekp");
+		String namakp = (String) searchParameter.getValueFromMappedParam("namakp");
+		String flexist = (String) searchParameter.getValueFromMappedParam("flexist");
+
+		if (!QueryUtil.isAll(tahunbulan)) {
+            search.addWhere("AND LOWER(tahunbulan) LIKE LOWER(:tahunbulan) ");
+            search.addParameter("tahunbulan", QueryUtil.formatStringForLikeFilter(tahunbulan));
+        }
+
+		if (!QueryUtil.isAll(kodept)) {
+            search.addWhere("AND LOWER(kodept) LIKE LOWER(:kodept) ");
+            search.addParameter("kodept", QueryUtil.formatStringForLikeFilter(kodept));
+        }
+
+		if (!QueryUtil.isAll(namapt)) {
+            search.addWhere("AND LOWER(namapt) LIKE LOWER(:namapt) ");
+            search.addParameter("namapt", QueryUtil.formatStringForLikeFilter(namapt));
+        }
+
+		if (!QueryUtil.isAll(npwp)) {
+            search.addWhere("AND LOWER(npwp) LIKE LOWER(:npwp) ");
+            search.addParameter("npwp", QueryUtil.formatStringForLikeFilter(npwp));
+        }
+
+		if (!QueryUtil.isAll(kodekp)) {
+            search.addWhere("AND LOWER(kodekp) LIKE LOWER(:kodekp) ");
+            search.addParameter("kodekp", QueryUtil.formatStringForLikeFilter(kodekp));
+        }
+
+		if (!QueryUtil.isAll(namakp)) {
+            search.addWhere("AND LOWER(namakp) LIKE LOWER(:namakp) ");
+            search.addParameter("namakp", QueryUtil.formatStringForLikeFilter(namakp));
+        }
+
+	    if (!QueryUtil.isAll(flexist)) {
+	    	search.addWhere("AND LOWER(flexist) LIKE LOWER(:flexist) ");
+	    	search.addParameter("flexist", QueryUtil.formatStringForLikeFilter(flexist));
+	    }
+	    
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+
+	/*
+	public SearchResult<EUploadDataNotExistsRpt> searchDataValid(SearchParameter searchParameter) {
+		
+		String tahunbulan = (String) searchParameter.getValueFromMappedParam("tahunbulan");
+		
+		StringBuilder queryStringBuilder = new StringBuilder();
+		
+		// data bulan renewal di tahun bulan dipilih
+		queryStringBuilder.append("select a.id_ui001 as id, a.tahunbulan as tahunbulan, a.kodept as kodept, "); 
+		queryStringBuilder.append("       a.namapt as namapt, a.npwp as npwp, a.namanpwp as namanpwp, a.kodekp as kodekp, "); 
+		queryStringBuilder.append("       a.namakp as namakp, "); 
+		queryStringBuilder.append("       case "); 
+		queryStringBuilder.append("          when c.id_mi011 is null then 'Y' "); 
+		queryStringBuilder.append("          when c.id_mi011 is not null then 'T' "); 
+		queryStringBuilder.append("       end as flmst, "); 
+		queryStringBuilder.append("       case "); 
+		queryStringBuilder.append("          when d.id_si004 is null then 'Y' "); 
+		queryStringBuilder.append("          when d.id_si004 is not null then 'T' "); 
+		queryStringBuilder.append("       end as fllive "); 
+		queryStringBuilder.append("from ui001 a "); 
+		queryStringBuilder.append("left join mi013 b on b.kodept = a.kodept and b.npwp = a.npwp "); 
+		queryStringBuilder.append("left join mi011 c on c.id_mi011 = b.id_mi011 "); 
+		queryStringBuilder.append("left join si004 d on d.id_mi010 = c.id_mi010 and d.id_mi001 = c.id_mi001 "); 
+		queryStringBuilder.append("where 1 = 1 "); 
+
+	    if (tahunbulan != null) {
+	    	queryStringBuilder.append("and a.tahunbulan = :tahunbulan ");
+	    }
+
+		queryStringBuilder.append("order by a.kodept, a.namapt");
+				
+		NativeSearchBuilder<EUploadDataNotExistsRpt> search = new NativeSearchBuilder<>(EUploadDataNotExistsRpt.class, em);
+
+		search.addParameter("tahunbulan", tahunbulan);
+
+		search.setQueryString(queryStringBuilder);
+		search.setPagination(searchParameter.getPagination());
+		search.setSort(searchParameter.getSort());
+
+		return search.getSearchResult();
+	}
+	*/
+	public SearchResult<EUploadDataNotExistsRpt> searchDataValid(SearchParameter searchParameter) {
+		
+		String tahunbulan = (String) searchParameter.getValueFromMappedParam("tahunbulan");
+		
+		StringBuilder queryStringBuilder = new StringBuilder();
+		
+		// data bulan renewal di tahun bulan dipilih
+		queryStringBuilder.append("select a.id_ui001 as id, a.tahunbulan as tahunbulan, a.kodept as kodept, "); 
+		queryStringBuilder.append("       a.namapt as namapt, a.npwp as npwp, a.namanpwp as namanpwp, a.kodekp as kodekp, "); 
+		queryStringBuilder.append("       a.namakp as namakp, 'T' as flmst, 'T' as fllive "); 
+		queryStringBuilder.append("from ui001 a "); 
+		queryStringBuilder.append("left join mi013 b on b.kodept = a.kodept and b.npwp = a.npwp "); 
+		queryStringBuilder.append("left join mi011 c on c.id_mi011 = b.id_mi011 "); 
+		queryStringBuilder.append("left join si004 d on d.id_mi010 = c.id_mi010 and d.id_mi001 = c.id_mi001 "); 
+		queryStringBuilder.append("where a.flexist = 'T' "); 
+
+	    if (tahunbulan != null) {
+	    	queryStringBuilder.append("and a.tahunbulan = :tahunbulan ");
+	    }
+
+		queryStringBuilder.append("order by a.kodept, a.namapt");
+				
+		NativeSearchBuilder<EUploadDataNotExistsRpt> search = new NativeSearchBuilder<>(EUploadDataNotExistsRpt.class, em);
+
+		search.addParameter("tahunbulan", tahunbulan);
+
+		search.setQueryString(queryStringBuilder);
+		search.setPagination(searchParameter.getPagination());
+		search.setSort(searchParameter.getSort());
+
+		return search.getSearchResult();
+	}
+	
+	public EUploadData add(EUploadData entity) {
+		return save(entity);
+	}
+
+	public EUploadData edit(EUploadData entity) {
+		return save(entity);
+	}
+}

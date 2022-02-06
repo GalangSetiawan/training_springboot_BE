@@ -1,0 +1,43 @@
+package co.id.sofcograha.base.authentication.token;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+//import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.multitenancy.MultiTenancyConstants;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.TokenUtil;
+
+@RestController
+public class TokenAuthenticationController {
+	
+  @Autowired
+  private TokenAuthenticationService authService;
+
+  @NoAuth
+  @RequestMapping(method = RequestMethod.POST, path = BaseConstants.AUTHENTICATION_TOKEN_REQUEST)
+  public ApiResponse tokenRequest(@RequestBody TokenAuthenticationPojo pojo) {
+    
+    String token = authService.authenticate(pojo.username, pojo.password);
+    return ApiResponse.data(BaseConstants.KEY_TOKEN, token);
+  }
+  
+  @NoAuth
+  @RequestMapping(method = RequestMethod.POST, path = BaseConstants.AUTHENTICATION_TOKEN_SWITCH)
+  public ApiResponse switchCompany(@RequestHeader(MultiTenancyConstants.KEY_TENANTID_SESSION) String companyCode) {
+    return ApiResponse.data(TokenUtil.KEY_TOKEN, authService.switchTenant(companyCode));
+  }
+  
+  @NoAuth
+  @RequestMapping(method = RequestMethod.POST, path = BaseConstants.AUTHENTICATION_LOGOUT)
+  public ApiResponse logout() {
+    authService.logout();
+    return ApiResponse.ok();
+  }
+}

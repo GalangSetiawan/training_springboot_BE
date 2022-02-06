@@ -1,0 +1,295 @@
+package co.id.sofcograha.domain.invoicing.transaksi.tagihanTerjadwal.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.services.CustomerGajiIdService;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.services.ProdukService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+import co.id.sofcograha.domain.invoicing.transaksi.tagihanTerjadwal.entities.ETagihanTerjadwalHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.tagihanTerjadwal.pojos.TagihanTerjadwalHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.tagihanTerjadwal.repositories.ETagihanTerjadwalHeaderRepository;
+
+@Service("tagihanTerjadwalHeaderService")
+public class TagihanTerjadwalHeaderService extends BaseService {
+	
+	@Autowired private ETagihanTerjadwalHeaderRepository repo;
+	@Autowired private CustomerGajiIdService customerGajiIdService;
+	@Autowired private ProdukService produkService;
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public TagihanTerjadwalHeader findByBk(String nomor) {
+		return TagihanTerjadwalHeader.fromEntity(repo.findByBK(nomor));
+	}
+	
+	public SearchResult<ETagihanTerjadwalHeader> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	public List<ETagihanTerjadwalHeader> getTahunBulanFlag(String idMi010, String idMi001, String tahuntgh, String bulantgh, String flproi) {
+		return repo.getTahunBulanFlag(idMi010, idMi001, tahuntgh, bulantgh, flproi);
+	}
+	
+	@Transactional
+	public void emptyReferensiInvoice(String idTi001) {
+		repo.emptyReferensiInvoice(idTi001);
+	}
+
+	@Transactional
+	public ETagihanTerjadwalHeader add(ETagihanTerjadwalHeader entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		ETagihanTerjadwalHeader addedEntity = repo.add(entity);
+		postAdd(addedEntity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+	
+	@Transactional
+	public ETagihanTerjadwalHeader edit(ETagihanTerjadwalHeader entity) {
+				
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		ETagihanTerjadwalHeader toBeSaved = repo.getOne(entity.getId());
+		ETagihanTerjadwalHeader oldEntity = (ETagihanTerjadwalHeader) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, ETagihanTerjadwalHeader.class.getSimpleName());
+		throwBatchError();
+		
+		ETagihanTerjadwalHeader toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		throwBatchError();
+		
+	}
+	
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ETagihanTerjadwalHeader dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(ETagihanTerjadwalHeader entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(ETagihanTerjadwalHeader newValues, ETagihanTerjadwalHeader toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setNomor(newValues.getNomor());
+			toBeSaved.setTgtrn(newValues.getTgtrn());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+			toBeSaved.setFlproi(newValues.getFlproi());
+			toBeSaved.setTahuntgh(newValues.getTahuntgh());
+			toBeSaved.setBulantgh(newValues.getBulantgh());
+			toBeSaved.setCustomer(newValues.getCustomer());
+			toBeSaved.setProduk(newValues.getProduk());
+			toBeSaved.setInvoice(newValues.getInvoice());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(ETagihanTerjadwalHeader entity) {
+		valRequiredString(entity.getNomor(), "tagihanterjadwal.header.nomor.required");
+		valRequiredString(entity.getTgtrn(), "tagihanterjadwal.header.tgtrn.required");
+		valRequiredString(entity.getTahuntgh(), "tagihanterjadwal.header.tahuntgh.required");
+		valRequiredString(entity.getBulantgh(), "tagihanterjadwal.header.bulantgh.required");
+	}
+	
+	protected void manageMinMaxValues(ETagihanTerjadwalHeader entity) {
+		valMaxString(entity.getNomor(), 50, "tagihanterjadwal.header.nomor.max.length");
+		valMaxString(entity.getTgtrn(), 8, "tagihanterjadwal.header.tgtrn.max.length");
+		valMaxString(entity.getKeterangan(), 400, "tagihanterjadwal.header.keterangan.max.length");
+		valMaxString(entity.getTahuntgh(), 4, "tagihanterjadwal.header.tahuntgh.max.length");
+		valMaxString(entity.getBulantgh(), 4, "tagihanterjadwal.header.bulantgh.max.length");
+		valMaxString(entity.getFlproi(), 1, "tagihanterjadwal.header.flproi.max.length");
+	}
+
+	protected void manageReferences(ETagihanTerjadwalHeader entity) {
+		if (entity.getCustomer() != null) {
+			ECustomerGajiId eFromDb = customerGajiIdService.get(entity.getCustomer().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setCustomer(eFromDb);
+				} else {
+					batchError("customerGajiId.not.active");
+				}
+			} else {
+				batchError("customerGajiId.not.found");
+			}			
+		}		
+
+		if (entity.getProduk() != null) {
+			EProduk eFromDb = produkService.get(entity.getProduk().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setProduk(eFromDb);
+				} else {
+					batchError("produk.not.active");
+				}
+			} else {
+				batchError("produk.not.found");
+			}			
+		}
+		
+		if (entity.getInvoice() != null) {
+			EInvoiceHeader eFromDb = invoiceHeaderService.get(entity.getId());
+			if (eFromDb == null) {
+				batchError("invoice.not.found");
+			}			
+		}		
+	}
+
+	protected void valDelete(ETagihanTerjadwalHeader toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(ETagihanTerjadwalHeader addedEntity) {
+		ETagihanTerjadwalHeader entityFromDb = repo.findByBK(addedEntity.getNomor());
+		if (entityFromDb != null) {
+			throw new BusinessException("tagihanterjadwal.header.bk");
+		}
+	}
+
+	protected void valUniquenessOnEdit(ETagihanTerjadwalHeader editedEntity) {
+		ETagihanTerjadwalHeader entityFromDb = repo.findByBK(editedEntity.getNomor());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("tagihanterjadwal.header.bk");
+			}
+		}
+	}
+	
+	protected void preAdd(ETagihanTerjadwalHeader entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(ETagihanTerjadwalHeader entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(ETagihanTerjadwalHeader toBeSaved, ETagihanTerjadwalHeader oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(ETagihanTerjadwalHeader toBeSaved, ETagihanTerjadwalHeader oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(ETagihanTerjadwalHeader entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(ETagihanTerjadwalHeader entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+	
+	public ETagihanTerjadwalHeader get(String id) {
+		return repo.getOne(id);
+	}
+	
+}

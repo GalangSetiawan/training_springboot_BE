@@ -1,0 +1,156 @@
+package co.id.sofcograha.base.master.user.entities;
+
+import java.util.List;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.entities.EUserHakAksesMenu;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(schema="public", name = "std_user", uniqueConstraints = @UniqueConstraint(columnNames = { "loginname" }))
+public class EUser {
+
+  @Id
+  @Column(name = "id")
+  private String id;
+  
+  @Column(name = "loginname")
+  private String loginName;
+
+  @Column(name = "username")
+  private String userName;
+
+  @Column(name = "passwd")
+  private String password;
+
+  @Column(name = "fotoext")
+  private String fotoExt;
+
+  @Column(name = "foto", columnDefinition="BYTEA")
+  private Byte[] foto;
+
+  @Column(name = "locked")
+  private Boolean locked;
+
+  @Column(name = "active")
+  private Boolean active;
+  
+  @Column(name = "email")
+  private String email;
+
+  @OneToOne
+  @JoinColumn(name = "std_company_id")
+  private ECompany eCompany;
+  
+  @OneToMany(fetch = FetchType.LAZY, mappedBy = "eUser", cascade = CascadeType.REMOVE)
+  private List<EUserHakAksesMenu> eUserHakAksesMenu;
+
+  public String getId() {
+    return id;
+  }
+
+  public void setId(String id) {
+    this.id = id;
+  }
+
+  public String getLoginName() {
+    return loginName;
+  }
+
+  public void setLoginName(String loginName) {
+    this.loginName = loginName;
+  }
+
+  public String getUserName() {
+    return userName;
+  }
+
+  public void setUserName(String userName) {
+    this.userName = userName;
+  }
+
+  public String getPassword() {
+    return password;
+  }
+
+  public void setPassword(String password) {
+    this.password = password;
+  }
+
+  public String getFotoExt() {
+    return fotoExt;
+  }
+
+  public void setFotoExt(String fotoExt) {
+    this.fotoExt = fotoExt;
+  }
+
+  public Byte[] getFoto() {
+    return foto;
+  }
+
+  public void setFoto(Byte[] foto) {
+    this.foto = foto;
+  }
+
+  public Boolean getLocked() {
+    return locked;
+  }
+
+  public void setLocked(Boolean locked) {
+    this.locked = locked;
+  }
+
+  public Boolean getActive() {
+    return active;
+  }
+
+  public void setActive(Boolean active) {
+    this.active = active;
+  }
+
+  public ECompany geteCompany() {
+    return eCompany;
+  }
+
+  public void seteCompany(ECompany company) {
+    this.eCompany = company;
+  }
+
+  public String getEmail() {
+	return email;
+  }
+
+  public void setEmail(String email) {
+	this.email = email;
+  }
+
+  public List<EUserHakAksesMenu> geteUserHakAksesMenu() {
+    return eUserHakAksesMenu;
+  }
+
+  public void seteUserHakAksesMenu(List<EUserHakAksesMenu> eUserHakAksesMenu) {
+    this.eUserHakAksesMenu = eUserHakAksesMenu;
+  }
+
+  @PrePersist
+  private void prePersist() {
+    
+    this.id = UUID.randomUUID().toString();
+  }
+}

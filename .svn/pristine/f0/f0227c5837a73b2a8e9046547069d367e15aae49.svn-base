@@ -1,0 +1,26 @@
+package co.id.sofcograha.base.master.helpInfo.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.helpInfo.entities.EStdInfoHeader;
+import co.id.sofcograha.base.master.helpInfo.pojos.StdInfoComplete;
+import co.id.sofcograha.base.master.helpInfo.repositories.EStdInfoHeaderRepository;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Service("stdInfoCompleteService")
+public class StdInfoCompleteService extends BaseService {
+	
+	@Autowired private EStdInfoHeaderRepository eStdInfoHeaderRepository;
+	
+	public StdInfoComplete findByBk(String urlLayar, Integer nourut) {
+		return StdInfoComplete.setFromEntity(eStdInfoHeaderRepository.findByBK(urlLayar, nourut));
+	}
+
+	public SearchResult<EStdInfoHeader> search(SearchParameter searchParameter) {
+		return eStdInfoHeaderRepository.search(searchParameter);
+	}
+		
+}

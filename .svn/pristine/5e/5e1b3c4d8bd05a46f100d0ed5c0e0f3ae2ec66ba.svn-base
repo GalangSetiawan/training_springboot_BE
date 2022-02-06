@@ -1,0 +1,205 @@
+package co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.entities.EPenerimaanBayarDetailCustomer;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.entities.EPenerimaanBayarHeader;
+
+@JsonInclude(Include.ALWAYS)
+public class PenerimaanBayarDetailCustomer {
+	
+	public String id;
+	public Integer nourut;  
+	public String nobukti;
+    public Double nilai;
+	public String keterangan;
+    
+	public Long version;  
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+	
+	// untuk keperluan matching error message di front end (bila input di grid)
+	public String keyIn;
+
+	// untuk penanda apakah detail ini tertandai delete (dari front end)
+	public boolean isSelect;
+	
+	public CustomerGajiId customer;
+
+	public PenerimaanBayarHeader header;
+	public List<PenerimaanBayarSubDetailAlokasi> subDetailAlokasi;
+
+	// Untuk menampung message error di grid
+	public ArrayList<Message> errorMsg;
+	
+	public EPenerimaanBayarDetailCustomer toEntity() {
+		
+		EPenerimaanBayarDetailCustomer entity = new EPenerimaanBayarDetailCustomer();
+		
+	    entity.setId(id);
+		entity.setNourut(nourut);
+		entity.setNobukti(nobukti);
+		entity.setNilai(nilai);
+		entity.setKeterangan(keterangan);
+
+		entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+		
+		if (customer != null && !StringUtils.isEmpty(customer.id)) {
+			ECustomerGajiId entityRef = new ECustomerGajiId();
+		
+			entityRef.setId(customer.id);
+			entityRef.setVersion(customer.version);
+		
+			entity.setCustomer(entityRef);
+		
+		} else {
+			entity.setCustomer(null);
+		}
+
+		if (header != null && !StringUtils.isEmpty(header.id)) {
+			EPenerimaanBayarHeader entityRef = new EPenerimaanBayarHeader();
+		
+			entityRef.setId(header.id);
+			entityRef.setVersion(header.version);
+		
+			entity.setHeader(entityRef);
+		
+		} else {
+			entity.setHeader(null);
+		}
+
+		return entity;
+	}
+		
+	public static List<EPenerimaanBayarDetailCustomer> toEntities(final List<PenerimaanBayarDetailCustomer> pojos) {
+		List<EPenerimaanBayarDetailCustomer> entities = new ArrayList<EPenerimaanBayarDetailCustomer>();
+		for (PenerimaanBayarDetailCustomer pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static PenerimaanBayarDetailCustomer fromEntity(EPenerimaanBayarDetailCustomer entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static PenerimaanBayarDetailCustomer fromEntity(EPenerimaanBayarDetailCustomer entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static PenerimaanBayarDetailCustomer fromEntity(EPenerimaanBayarDetailCustomer entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		PenerimaanBayarDetailCustomer pojo = new PenerimaanBayarDetailCustomer();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.nourut = entity.getNourut();
+			pojo.nobukti = entity.getNobukti();
+			pojo.nilai = entity.getNilai();
+			pojo.keterangan = entity.getKeterangan();
+
+			pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+			
+			pojo.header = PenerimaanBayarHeader.fromEntity(entity.getHeader(), depthLevel);
+			pojo.customer = CustomerGajiId.fromEntity(entity.getCustomer());
+	        
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+				pojo.subDetailAlokasi = PenerimaanBayarSubDetailAlokasi.fromEntities(entity.getSubDetailAlokasi(), depthLevel + 1, detailDepthLevel);
+			}
+			
+			pojo.isSelect = false;
+		}
+				
+		return pojo;
+	}
+	
+	public static List<PenerimaanBayarDetailCustomer> fromEntities(List<EPenerimaanBayarDetailCustomer> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<PenerimaanBayarDetailCustomer> fromEntities(final List<EPenerimaanBayarDetailCustomer> entities, int depthLevel) {
+		return fromEntities(entities, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<PenerimaanBayarDetailCustomer> fromEntities(List<EPenerimaanBayarDetailCustomer> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<PenerimaanBayarDetailCustomer> pojos = new ArrayList<>();
+		
+		for (EPenerimaanBayarDetailCustomer entity : entities) {
+			pojos.add(PenerimaanBayarDetailCustomer.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}

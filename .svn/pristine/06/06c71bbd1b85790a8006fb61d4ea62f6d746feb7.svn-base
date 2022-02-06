@@ -1,0 +1,201 @@
+package co.id.sofcograha.domain.invoicing.masters.diskonkhusus.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.entities.EDiskonKhususHeader;
+
+@JsonInclude(Include.ALWAYS)
+public class DiskonKhususHeader {
+	
+	public String id;
+	public String nama;
+	public String keterangan;
+	public Double pctdisc;
+	public Double nildisc;
+    public Date tglstart;
+    public Date tglstop;
+	public Integer jumdur;
+    public String satdur;
+	public Boolean flakt;
+	public Long version;  
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+	
+	public List<DiskonKhususDetail> detail;
+
+	public EDiskonKhususHeader toEntity() {
+		
+		EDiskonKhususHeader entity = new EDiskonKhususHeader();
+		
+		entity.setId(id);
+		entity.setNama(nama);
+		entity.setKeterangan(keterangan);
+		entity.setPctdisc(pctdisc);
+		entity.setNildisc(nildisc);
+
+		if (tglstart != null) {
+			entity.setTglstart(TimeUtil.convertDateToYyyyMmDd(tglstart)); 
+		}
+		
+		if (tglstop != null) {
+			entity.setTglstop(TimeUtil.convertDateToYyyyMmDd(tglstop)); 
+		}
+		
+		entity.setJumdur(jumdur);
+		entity.setSatdur(satdur);
+		
+  		if (flakt == true) {
+  			entity.setFlakt("Y");
+  		} else {
+  			entity.setFlakt("T");
+  		}
+		
+		entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+		
+		return entity;
+	}
+	
+	public static List<EDiskonKhususHeader> toEntities(List<DiskonKhususHeader> pojos) {
+		if (pojos == null) return null;
+
+		List<EDiskonKhususHeader> entities = new ArrayList<EDiskonKhususHeader>();
+		for (DiskonKhususHeader pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static DiskonKhususHeader fromEntity (EDiskonKhususHeader entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static DiskonKhususHeader fromEntity (EDiskonKhususHeader entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static DiskonKhususHeader fromEntity(EDiskonKhususHeader entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		DiskonKhususHeader pojo = new DiskonKhususHeader();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.nama = entity.getNama();
+			pojo.keterangan = entity.getKeterangan();
+			pojo.pctdisc = entity.getPctdisc();
+			pojo.nildisc = entity.getNildisc();
+
+			if (entity.getTglstart() != null && !entity.getTglstart().trim().equals("")) {
+				pojo.tglstart = TimeUtil.getDate(entity.getTglstart());				
+			} else {
+				pojo.tglstart = null;
+			}
+			
+			if (entity.getTglstop() != null && !entity.getTglstop().trim().equals("")) {
+				pojo.tglstop = TimeUtil.getDate(entity.getTglstop());				
+			} else {
+				pojo.tglstop = null;
+			}
+			
+			pojo.jumdur = entity.getJumdur();
+			pojo.satdur = entity.getSatdur();
+					    
+		    if (entity.getFlakt().equals("Y")) {
+		      pojo.flakt = true;
+		    } else {
+		      pojo.flakt = false;
+		    }
+			
+			pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+	      
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+				pojo.detail = DiskonKhususDetail.fromEntities(entity.getDetail(), depthLevel + 1, detailDepthLevel);
+			}
+		}
+
+		return pojo;
+	}
+	
+	public static List<DiskonKhususHeader> fromEntities(List<EDiskonKhususHeader> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static List<DiskonKhususHeader> fromEntities(List<EDiskonKhususHeader> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<DiskonKhususHeader> pojos = new ArrayList<>();
+		
+		for (EDiskonKhususHeader entity : entities) {
+			pojos.add(DiskonKhususHeader.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("nama", "nama"));
+		mappings.add(new SearchFieldMapping("keterangan", "keterangan"));
+		mappings.add(new SearchFieldMapping("flakt", "flakt").searchOnly());
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}	

@@ -1,0 +1,95 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.proses.upload.entities.EUploadDataNotExistsRpt;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class UploadDataNotExistsRpt {
+	
+	public String id;
+	public String tahunbulan;
+	public String tahun;
+	public String bulan;
+	public String kodept;
+	public String namapt;
+	public String npwp;
+	public String namanpwp;
+	public String kodekp;
+	public String namakp;
+	public boolean flmst;
+	public boolean fllive;
+	
+	public ArrayList<Message> errorMsg;
+	
+	public static UploadDataNotExistsRpt fromEntity (EUploadDataNotExistsRpt entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static UploadDataNotExistsRpt fromEntity(EUploadDataNotExistsRpt entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		
+		UploadDataNotExistsRpt pojo = new UploadDataNotExistsRpt();
+		
+		pojo.id = entity.getId();
+		
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.tahunbulan = entity.getTahunbulan();
+			pojo.tahun = pojo.tahunbulan.substring(0, 4);
+			pojo.bulan = pojo.tahunbulan.substring(4, 6);
+			pojo.kodept = entity.getKodept();
+			pojo.namapt = entity.getNamapt();
+			pojo.npwp = entity.getNpwp();
+			pojo.namanpwp = entity.getNamanpwp();
+			pojo.kodekp = entity.getKodekp();
+			pojo.namakp = entity.getNamakp();
+			pojo.flmst = entity.getFlmst() == null ? false : entity.getFlmst().trim().equals(BaseConstants.YA) ? true : false;
+			pojo.fllive = entity.getFllive() == null ? false : entity.getFllive().trim().equals(BaseConstants.YA) ? true : false;
+
+		}
+
+		return pojo;
+	}
+	
+	public static List<UploadDataNotExistsRpt> fromEntities(List<EUploadDataNotExistsRpt> entities) {
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static List<UploadDataNotExistsRpt> fromEntities(List<EUploadDataNotExistsRpt> entities, int depthLevel) {
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<UploadDataNotExistsRpt> pojos = new ArrayList<>();
+		
+		for (EUploadDataNotExistsRpt entity : entities) {
+			pojos.add(UploadDataNotExistsRpt.fromEntity(entity, depthLevel));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("tahunbulan", "tahunbulan"));
+//		mappings.add(new SearchFieldMapping("bulan", "bulan"));
+//		mappings.add(new SearchFieldMapping("idMi001", "idMi001"));
+//		mappings.add(new SearchFieldMapping("flproi", "flproi"));
+//		mappings.add(new SearchFieldMapping("nama", "nama", String.class).sortOnly());
+//		mappings.add(new SearchFieldMapping("kodept", "kodept", String.class).sortOnly());
+		
+		return mappings;
+	}
+
+}

@@ -1,0 +1,36 @@
+package co.id.sofcograha.domain.invoicing.saldo.deposit.screen.controllers;
+
+import java.text.ParseException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.pojos.SaldoDepositHeader;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.services.SaldoDepositCompleteService;
+
+@RestController
+@RequestMapping("/api/saldo-deposit")
+public class SaldoDepositController {
+	
+	public static final Logger logger = LoggerFactory.getLogger(SaldoDepositController.class);
+	
+	@Autowired private SaldoDepositCompleteService saldoDepositCompleteService;
+	
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String idMi010) throws JsonProcessingException, ParseException {
+		SaldoDepositHeader data = saldoDepositCompleteService.findByBk(idMi010);
+	    
+	    return ApiResponse.data("item", data);
+	}
+	
+}

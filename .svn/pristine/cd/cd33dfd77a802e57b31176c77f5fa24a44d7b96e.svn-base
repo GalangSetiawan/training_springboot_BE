@@ -1,0 +1,284 @@
+package co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.services.CustomerGajiIdService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.repositories.ECustomerProdukTarifHeaderRepository;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.services.ProdukService;
+
+@Service("customerProdukTarifHeaderService")
+public class CustomerProdukTarifHeaderService extends BaseService {
+	
+	@Autowired private ECustomerProdukTarifHeaderRepository repo;
+	@Autowired private CustomerGajiIdService customerGajiIdService;
+	@Autowired private ProdukService produkService;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public CustomerProdukTarifHeader findByBk(String idMi010, String idMi001) {
+		return CustomerProdukTarifHeader.fromEntity(repo.findByBK(idMi010, idMi001));
+	}
+	
+	public SearchResult<ECustomerProdukTarifHeader> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	public SearchResult<ECustomerProdukTarifHeader> searchTdkAdaDiLive(SearchParameter searchParameter) {
+		return repo.searchTdkAdaDiLive(searchParameter);
+	}
+
+	@Transactional
+	public ECustomerProdukTarifHeader add(ECustomerProdukTarifHeader entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		ECustomerProdukTarifHeader addedEntity = repo.add(entity);
+		postAdd(addedEntity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+	
+	@Transactional
+	public ECustomerProdukTarifHeader edit(ECustomerProdukTarifHeader entity) {
+				
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		ECustomerProdukTarifHeader toBeSaved = repo.getOne(entity.getId());
+		ECustomerProdukTarifHeader oldEntity = (ECustomerProdukTarifHeader) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, ECustomerProdukTarifHeader.class.getSimpleName());
+		throwBatchError();
+		
+		ECustomerProdukTarifHeader toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		throwBatchError();
+		
+	}
+	
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ECustomerProdukTarifHeader dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(ECustomerProdukTarifHeader entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(ECustomerProdukTarifHeader newValues, ECustomerProdukTarifHeader toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setTipe(newValues.getTipe());
+			toBeSaved.setJnstgh(newValues.getJnstgh());
+			toBeSaved.setJumsiklus(newValues.getJumsiklus());
+			toBeSaved.setSatsiklus(newValues.getSatsiklus());
+			toBeSaved.setTglstart(newValues.getTglstart());
+			toBeSaved.setTglstop(newValues.getTglstop());
+			toBeSaved.setJthtemp(newValues.getJthtemp());
+			toBeSaved.setAdjkary(newValues.getAdjkary());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(ECustomerProdukTarifHeader entity) {
+		valRequiredString(entity.getTipe(), "customerProdukTarif.header.tipe.required");
+		valRequiredString(entity.getJnstgh(), "customerProdukTarif.header.jnstgh.required");
+		valRequiredInteger(entity.getJumsiklus(), "customerProdukTarif.header.jumsiklus.required");
+		valRequiredString(entity.getSatsiklus(), "customerProdukTarif.header.satsiklus.required");
+		valRequiredInteger(entity.getJthtemp(), "customerProdukTarif.header.jthtemp.required");
+		//valRequiredString(entity.getTglstart(), "customerProdukTarif.header.tglstart.required");
+		//valRequiredString(entity.getTglstop(), "customerProdukTarif.header.tglstop.required");
+	}
+	
+	protected void manageMinMaxValues(ECustomerProdukTarifHeader entity) {
+		valMaxString(entity.getTipe(), 10, "customerProdukTarif.header.tipe.max.length");
+		valMaxString(entity.getJnstgh(), 10, "customerProdukTarif.header.jnstgh.max.length");
+		valMinInteger(entity.getJumsiklus(), 0, "customerProdukTarif.header.jumsiklus.min.length");
+		valMaxInteger(entity.getJumsiklus(), 99999, "customerProdukTarif.header.jumsiklus.max.length");
+		valMaxString(entity.getSatsiklus(), 50, "customerProdukTarif.header.satsiklus.max.length");
+		valMaxString(entity.getTglstart(), 8, "customerProdukTarif.header.tglstart.max.length");
+		valMaxString(entity.getTglstop(), 8, "customerProdukTarif.header.tglstop.max.length");
+		valMinInteger(entity.getJthtemp(), 0, "customerProdukTarif.header.jthtemp.min.length");
+		valMaxInteger(entity.getJthtemp(), 999, "customerProdukTarif.header.jthtemp.max.length");
+	}
+
+	protected void manageReferences(ECustomerProdukTarifHeader entity) {
+		if (entity.getCustomer() != null) {
+			ECustomerGajiId eFromDb = customerGajiIdService.get(entity.getCustomer().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setCustomer(eFromDb);
+				} else {
+					batchError("customerGajiId.not.active");
+				}
+			} else {
+				batchError("customerGajiId.not.found");
+			}			
+		}		
+
+		if (entity.getProduk() != null) {
+			EProduk eFromDb = produkService.get(entity.getProduk().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setProduk(eFromDb);
+				} else {
+					batchError("produk.not.active");
+				}
+			} else {
+				batchError("produk.not.found");
+			}			
+		}		
+	}
+
+	protected void valDelete(ECustomerProdukTarifHeader toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(ECustomerProdukTarifHeader addedEntity) {
+		ECustomerProdukTarifHeader entityFromDb = repo.findByBK(addedEntity.getCustomer().getId(), addedEntity.getProduk().getId());
+		if (entityFromDb != null) {
+			throw new BusinessException("customerProdukTarif.header.bk");
+		}
+	}
+
+	protected void valUniquenessOnEdit(ECustomerProdukTarifHeader editedEntity) {
+		ECustomerProdukTarifHeader entityFromDb = repo.findByBK(editedEntity.getCustomer().getId(), editedEntity.getProduk().getId());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("customerProdukTarif.header.bk");
+			}
+		}
+	}
+	
+	protected void preAdd(ECustomerProdukTarifHeader entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(ECustomerProdukTarifHeader entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(ECustomerProdukTarifHeader toBeSaved, ECustomerProdukTarifHeader oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(ECustomerProdukTarifHeader toBeSaved, ECustomerProdukTarifHeader oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(ECustomerProdukTarifHeader entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(ECustomerProdukTarifHeader entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+	
+	public ECustomerProdukTarifHeader get(String id) {
+		return repo.getOne(id);
+	}
+	
+}

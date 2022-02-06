@@ -1,0 +1,200 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.proses.upload.entities.EUploadData;
+import co.id.sofcograha.domain.invoicing.proses.upload.entities.EUploadDataNotExistsRpt;
+import co.id.sofcograha.domain.invoicing.proses.upload.pojos.UploadData;
+import co.id.sofcograha.domain.invoicing.proses.upload.repositories.EUploadDataRepository;
+
+@Service("uploadDataService")
+public class UploadDataService extends BaseService {
+	
+	@Autowired private EUploadDataRepository repo;
+	
+	public UploadData findByBk(String tahunbulan, String kodept, String npwp, String kodekp) {
+		return UploadData.fromEntity(repo.findByBK(tahunbulan, kodept, npwp, kodekp));
+	}
+	
+	public SearchResult<EUploadData> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	public SearchResult<EUploadDataNotExistsRpt> searchDataValid(SearchParameter searchParameter) {
+		return repo.searchDataValid(searchParameter);
+	}
+	
+	@Transactional
+    public EUploadData add(EUploadData entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EUploadData addedEntity = repo.add(entity);
+		
+		throwBatchError();
+		return addedEntity;	
+		
+    }
+       
+	@Transactional
+	public EUploadData edit(EUploadData entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EUploadData toBeSaved = repo.getOne(entity.getId());
+		
+		defineEditableValues(entity, toBeSaved);
+		
+		throwBatchError();
+		return toBeSaved;
+		
+	}
+
+	//private void valOnEdit(final EUploadData valuta) {
+    //}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EUploadData.class.getSimpleName());
+		throwBatchError();
+		
+		EUploadData toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		repo.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	//private void valOnDelete(EUploadData entity) {
+    //}
+	
+	//private void valAuthAdd() {
+	//  if(!actionAuthorizationService.valHakAdd()) {
+	//    error("NoRightToAdd");
+	//  }
+	//}
+	
+	//private void valAuthEdit() {
+    //  if(!actionAuthorizationService.valHakEdit()) {
+    //    error("NoRightToChange");
+    //  }
+    //}
+	
+    //private void valAuthDelete() {
+    //  if(!actionAuthorizationService.valHakDelete()) {
+    //    error("NoRightToDelete");
+    //  }
+    //}
+
+    protected void defineDefaultValuesOnAdd(EUploadData entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+    
+    protected void valRequiredValues(EUploadData entity) {
+	}
+    
+    protected void manageMinMaxValues(EUploadData entity) {
+	}
+    
+    protected void manageReferences(EUploadData entity) {
+    }
+
+    protected void valUniquenessOnAdd(EUploadData addedEntity) {
+    	EUploadData entityFromDb = repo.findByBK(addedEntity.getTahunbulan(), addedEntity.getKodept(), addedEntity.getNpwp(), addedEntity.getKodekp());
+		if (entityFromDb != null) {
+			throw new BusinessException("uploaddata.bk");
+		}
+	}
+    
+    private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EUploadData dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+    
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void valUniquenessOnEdit(EUploadData editedEntity) {
+		EUploadData entityFromDb = repo.findByBK(editedEntity.getTahunbulan(), editedEntity.getKodept(), editedEntity.getNpwp(), editedEntity.getKodekp());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("invoicemanual.header.bk");
+			}
+		}
+	}
+	
+	protected void defineEditableValues(EUploadData newValues, EUploadData toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setTahunbulan(newValues.getTahunbulan());
+			toBeSaved.setKodept(newValues.getKodept());
+			toBeSaved.setNamapt(newValues.getNamapt());
+			toBeSaved.setNpwp(newValues.getNpwp());
+			toBeSaved.setNamanpwp(newValues.getNamanpwp());
+			toBeSaved.setKodekp(newValues.getKodekp());
+			toBeSaved.setNamakp(newValues.getNamakp());
+			toBeSaved.setJkbulini(newValues.getJkbulini());
+			toBeSaved.setRevjkbullalu(newValues.getRevjkbullalu());
+			toBeSaved.setSeljkbullalu(newValues.getSeljkbullalu());
+			toBeSaved.setJnkbulini(newValues.getJnkbulini());
+			toBeSaved.setRevjnkbullalu(newValues.getRevjnkbullalu());
+			toBeSaved.setSeljnkbullalu(newValues.getSeljnkbullalu());
+			toBeSaved.setFlexist(newValues.getFlexist());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valDelete(EUploadData toBeDeleted) {	}
+    
+    
+	public EUploadData get(String id) {
+		return repo.getOne(id);
+	}
+}

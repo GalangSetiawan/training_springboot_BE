@@ -1,0 +1,115 @@
+package co.id.sofcograha.domain.invoicing.admin.bulanan.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.bulanan.entities.EAdminBulanan;
+
+@Repository
+public class EAdminBulananRepository extends SimpleJpaRepository<EAdminBulanan, String> {
+
+	protected final EntityManager em;
+
+	public EAdminBulananRepository(EntityManager em) {
+		super(EAdminBulanan.class, em);
+		this.em = em;
+	}
+	
+	public EAdminBulanan findByBK(String tahun, String bulan) {
+		
+		String query = "SELECT e FROM EAdminBulanan e " + 
+                       "WHERE e.tahun = :tahun And " +
+                             "e.bulan = :bulan";
+		
+		try {
+			return em.createQuery(query, EAdminBulanan.class)
+					 .setParameter("tahun", tahun)
+					 .setParameter("bulan", bulan)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EAdminBulanan getNextProcessed(String tahun, String bulan) {
+		
+		String query = "SELECT e FROM EAdminBulanan e " + 
+                       "WHERE e.tahun||e.bulan > :tahunBulan And " +
+                             "e.flproi = 'Y'";
+		
+		try {
+			return em.createQuery(query, EAdminBulanan.class)
+					 .setParameter("tahunBulan", tahun+bulan)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EAdminBulanan getOne(String id) {
+
+		String query = "SELECT e FROM EAdminBulanan e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, EAdminBulanan.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public SearchResult<EAdminBulanan> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EAdminBulanan> search = new HqlSimpleSearchBuilder<>(EAdminBulanan.class, em);
+		
+		String tahun = (String) searchParameter.getValueFromMappedParam("tahun");
+		String bulan = (String) searchParameter.getValueFromMappedParam("bulan");
+		String fluplo = (String) searchParameter.getValueFromMappedParam("fluplo");
+		String flproi = (String) searchParameter.getValueFromMappedParam("flproi");
+
+		if (!QueryUtil.isAll(tahun)) {
+            search.addWhere("AND LOWER(nama) LIKE LOWER(:tahun) ");
+            search.addParameter("tahun", QueryUtil.formatStringForLikeFilter(tahun));
+        }
+
+		if (!QueryUtil.isAll(bulan)) {
+            search.addWhere("AND LOWER(bulan) LIKE LOWER(:bulan) ");
+            search.addParameter("bulan", QueryUtil.formatStringForLikeFilter(bulan));
+        }
+
+	    if (!QueryUtil.isAll(fluplo)) {
+	      search.addWhere("AND LOWER(fluplo) LIKE LOWER(:fluplo) ");
+	      search.addParameter("fluplo", QueryUtil.formatStringForLikeFilter(fluplo));
+	    }
+		
+	    if (!QueryUtil.isAll(flproi)) {
+	    	search.addWhere("AND LOWER(flproi) LIKE LOWER(:flproi) ");
+	    	search.addParameter("flproi", QueryUtil.formatStringForLikeFilter(flproi));
+	    }
+			
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EAdminBulanan add(EAdminBulanan entity) {
+		return save(entity);
+	}
+
+	public EAdminBulanan edit(EAdminBulanan entity) {
+		return save(entity);
+	}
+}

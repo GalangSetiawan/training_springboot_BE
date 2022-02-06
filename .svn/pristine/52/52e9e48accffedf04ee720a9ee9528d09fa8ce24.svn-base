@@ -1,0 +1,113 @@
+package co.id.sofcograha.domain.invoicing.admin.upload.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.EAdminUploadHeader;
+
+@Repository
+public class EAdminUploadHeaderRepository extends SimpleJpaRepository<EAdminUploadHeader, String> {
+
+	protected final EntityManager em;
+
+	public EAdminUploadHeaderRepository(EntityManager em) {
+		super(EAdminUploadHeader.class, em);
+		this.em = em;
+	}
+	
+	public EAdminUploadHeader findByBK(String idMi013, String tahun, String bulan) {
+		
+		String query = "SELECT e FROM EAdminUploadHeader e " + 
+                       "WHERE e.mappingCustomerProduk.id = :idMi013 And " +
+				             "e.tahun = :tahun And " +
+                             "e.bulan = :bulan";
+		
+		try {
+			return em.createQuery(query, EAdminUploadHeader.class)
+					 .setParameter("idMi013", idMi013)
+					 .setParameter("tahun", tahun)
+					 .setParameter("bulan", bulan)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EAdminUploadHeader getOne(String id) {
+
+		String query = "SELECT e FROM EAdminUploadHeader e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, EAdminUploadHeader.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public SearchResult<EAdminUploadHeader> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EAdminUploadHeader> search = new HqlSimpleSearchBuilder<>(EAdminUploadHeader.class, em);
+		
+		String tahun = (String) searchParameter.getValueFromMappedParam("tahun");
+		String bulan = (String) searchParameter.getValueFromMappedParam("bulan");
+		String flver1 = (String) searchParameter.getValueFromMappedParam("flver1");
+		String flver2 = (String) searchParameter.getValueFromMappedParam("flver2");
+		String flown = (String) searchParameter.getValueFromMappedParam("flown");
+		String flproi = (String) searchParameter.getValueFromMappedParam("flproi");
+
+		if (!QueryUtil.isAll(tahun)) {
+            search.addWhere("AND LOWER(nama) LIKE LOWER(:tahun) ");
+            search.addParameter("tahun", QueryUtil.formatStringForLikeFilter(tahun));
+        }
+
+		if (!QueryUtil.isAll(bulan)) {
+            search.addWhere("AND LOWER(bulan) LIKE LOWER(:bulan) ");
+            search.addParameter("bulan", QueryUtil.formatStringForLikeFilter(bulan));
+        }
+
+	    if (!QueryUtil.isAll(flver1)) {
+	      search.addWhere("AND LOWER(flver1) LIKE LOWER(:flver1) ");
+	      search.addParameter("flver1", QueryUtil.formatStringForLikeFilter(flver1));
+	    }
+		
+	    if (!QueryUtil.isAll(flver2)) {
+	    	search.addWhere("AND LOWER(flver2) LIKE LOWER(:flver2) ");
+	    	search.addParameter("flver2", QueryUtil.formatStringForLikeFilter(flver2));
+	    }
+			
+	    if (!QueryUtil.isAll(flown)) {
+	    	search.addWhere("AND LOWER(flown) LIKE LOWER(:flown) ");
+	    	search.addParameter("flown", QueryUtil.formatStringForLikeFilter(flown));
+	    }
+			
+	    if (!QueryUtil.isAll(flproi)) {
+	    	search.addWhere("AND LOWER(flproi) LIKE LOWER(:flproi) ");
+	    	search.addParameter("flproi", QueryUtil.formatStringForLikeFilter(flproi));
+	    }
+			
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EAdminUploadHeader add(EAdminUploadHeader entity) {
+		return save(entity);
+	}
+
+	public EAdminUploadHeader edit(EAdminUploadHeader entity) {
+		return save(entity);
+	}
+}

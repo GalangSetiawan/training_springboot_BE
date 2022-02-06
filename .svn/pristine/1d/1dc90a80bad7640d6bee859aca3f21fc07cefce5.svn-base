@@ -1,0 +1,105 @@
+package co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.entities.EPenggunaanMaster;
+
+@Repository
+public class EPenggunaanMasterRepository extends SimpleJpaRepository<EPenggunaanMaster, String> {
+
+	protected final EntityManager em;
+
+	public EPenggunaanMasterRepository(EntityManager em) {
+		super(EPenggunaanMaster.class, em);
+		this.em = em;
+	}
+	
+	public EPenggunaanMaster findByBK(String idMi010, String idMi001, String jnstrf, Integer nourut, String idPgg) {
+		
+		String query = "SELECT e FROM EPenggunaanMaster e " + 
+					   "WHERE e.idMi010 = :idMi010 And " +
+      			             "e.idMi001 = :idMi001 And " +
+      			             "e.jnstrf = :jnstrf And " +
+      			             "e.nourut = :nourut And " +
+			                 "e.idPgg = :idPgg";
+
+		try {
+			return em.createQuery(query, EPenggunaanMaster.class)
+					.setParameter("idMi010", idMi010)
+					.setParameter("idMi001", idMi001)
+					.setParameter("jnstrf", jnstrf)
+					.setParameter("nourut", nourut)
+					.setParameter("idPgg", idPgg)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+
+	}
+	
+	public List<EPenggunaanMaster> findSatuPenggunaanByMasterUc(String idMi010, String idMi001, String jnstrf, Integer nourut) {
+		
+		String query = "SELECT e FROM EPenggunaanMaster e " + 
+  				       "WHERE e.idMi010 = :idMi010 And " +
+		                     "e.idMi001 = :idMi001 And " +
+		                     "e.jnstrf = :jnstrf And " +
+		                     "e.nourut = :nourut";
+
+		try {
+			return em.createQuery(query, EPenggunaanMaster.class)
+					.setParameter("idMi010", idMi010)
+					.setParameter("idMi001", idMi001)
+					.setParameter("jnstrf", jnstrf)
+					.setParameter("nourut", nourut)
+					.setMaxResults(1)
+					.getResultList();
+		} catch (NoResultException e) {
+			return null;
+		}
+
+	}
+	
+	public EPenggunaanMaster getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EPenggunaanMaster> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EPenggunaanMaster> search = new HqlSimpleSearchBuilder<>(EPenggunaanMaster.class, em);
+
+		String jnsmst = (String) searchParameter.getValueFromMappedParam("jnsmst");
+		String jnspgg = (String) searchParameter.getValueFromMappedParam("jnspgg");
+
+		if (!QueryUtil.isAll(jnsmst)) {
+            search.addWhere("AND LOWER(jnsmst) LIKE LOWER(:jnsmst) ");
+            search.addParameter("jnsmst", QueryUtil.formatStringForLikeFilter(jnsmst));
+        }
+
+	    if (!QueryUtil.isAll(jnspgg)) {
+	      search.addWhere("AND LOWER(flakt) LIKE LOWER(:jnspgg) ");
+	      search.addParameter("jnspgg", QueryUtil.formatStringForLikeFilter(jnspgg));
+	    }
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EPenggunaanMaster add(EPenggunaanMaster entity) {
+		return save(entity);
+	}
+
+	public EPenggunaanMaster edit(EPenggunaanMaster entity) {
+		return save(entity);
+	}
+}

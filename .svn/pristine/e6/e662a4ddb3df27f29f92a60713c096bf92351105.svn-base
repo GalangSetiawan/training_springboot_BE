@@ -1,0 +1,97 @@
+package co.id.sofcograha.domain.invoicing.transaksi.berhenti.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.berhenti.entities.ETrxBerhenti;
+
+@Repository
+public class ETrxBerhentiRepository extends SimpleJpaRepository<ETrxBerhenti, String> {
+
+	protected final EntityManager em;
+
+	public ETrxBerhentiRepository(EntityManager em) {
+		super(ETrxBerhenti.class, em);
+		this.em = em;
+	}
+	
+	public ETrxBerhenti findByBK(String nomor) {
+		
+		String query = "SELECT e FROM ETrxBerhenti e " + 
+                       "WHERE e.nomor = :nomor";
+		
+		try {
+			return em.createQuery(query, ETrxBerhenti.class)
+					 .setParameter("nomor", nomor)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ETrxBerhenti getOne(String id) {
+
+		String query = "SELECT e FROM ETrxBerhenti e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, ETrxBerhenti.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public SearchResult<ETrxBerhenti> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ETrxBerhenti> search = new HqlSimpleSearchBuilder<>(ETrxBerhenti.class, em);
+		
+		String nomor = (String) searchParameter.getValueFromMappedParam("nomor");
+		String tgstop = (String) searchParameter.getValueFromMappedParam("tgstop");		
+		String customer = (String) searchParameter.getValueFromMappedParam("customer");
+		String produk = (String) searchParameter.getValueFromMappedParam("produk");
+
+		if (!QueryUtil.isAll(nomor)) {
+            search.addWhere("AND LOWER(nomor) LIKE LOWER(:nomor) ");
+            search.addParameter("nomor", QueryUtil.formatStringForLikeFilter(nomor));
+        }
+
+		if (!QueryUtil.isAll(tgstop)) {
+            search.addWhere("AND LOWER(tgstop) LIKE LOWER(:tgstop) ");
+            search.addParameter("tgstop", QueryUtil.formatStringForLikeFilter(tgstop));
+        }
+
+		if (!QueryUtil.isAll(customer)) {
+            search.addWhere("AND LOWER(customer.nama) LIKE LOWER(:customer) ");
+            search.addParameter("customer", QueryUtil.formatStringForLikeFilter(customer));
+        }
+
+		if (!QueryUtil.isAll(produk)) {
+            search.addWhere("AND LOWER(produk.nama) LIKE LOWER(:produk) ");
+            search.addParameter("produk", QueryUtil.formatStringForLikeFilter(produk));
+        }
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ETrxBerhenti add(ETrxBerhenti entity) {
+		return save(entity);
+	}
+
+	public ETrxBerhenti edit(ETrxBerhenti entity) {
+		return save(entity);
+	}
+}

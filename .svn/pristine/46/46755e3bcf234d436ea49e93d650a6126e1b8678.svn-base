@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailInitial;
+
+@Repository
+public class EInvoiceDetailInitialRepository extends SimpleJpaRepository<EInvoiceDetailInitial, String> {
+
+	protected final EntityManager em;
+
+	public EInvoiceDetailInitialRepository(EntityManager em) {
+		super(EInvoiceDetailInitial.class, em);
+		this.em = em;
+	}
+	
+	public EInvoiceDetailInitial findByBK(String idTi001, Integer nourut) {
+		
+		String query = "SELECT e FROM EInvoiceDetailInitial e " + 
+                       "WHERE e.header.id = :idTi001 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EInvoiceDetailInitial.class)
+					 .setParameter("idTi001", idTi001)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EInvoiceDetailInitial getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EInvoiceDetailInitial> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EInvoiceDetailInitial> search = new HqlSimpleSearchBuilder<>(EInvoiceDetailInitial.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EInvoiceDetailInitial add(EInvoiceDetailInitial entity) {
+		return save(entity);
+	}
+
+	public EInvoiceDetailInitial edit(EInvoiceDetailInitial entity) {
+		return save(entity);
+	}
+}

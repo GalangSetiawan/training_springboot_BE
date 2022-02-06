@@ -1,0 +1,251 @@
+package co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifDetail;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.entities.EGrupDiskonHeader;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.pojos.GrupDiskonHeader;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.entities.ESkemaHargaHeader;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.pojos.SkemaHargaHeader;
+
+@JsonInclude(Include.ALWAYS)
+public class CustomerProdukTarifDetail {
+	
+	public String id;
+	public Integer nourut;  
+	public String jnstrf;
+    public Date tglstart;
+    public Date tglstop;
+	public Integer jumdur;
+    public String satdur;
+    public Double pctdisc;
+    public Double nildisc;
+    public Integer freemo;
+	public Long version;  
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+	
+	// untuk keperluan matching error message di front end (bila input di grid)
+	public String keyIn;
+
+	// untuk penanda apakah detail ini tertandai delete (dari front end)
+	public boolean isSelect;
+	
+	public SkemaHargaHeader skemaHarga;
+	public GrupDiskonHeader grupDiskon;
+	
+	public CustomerProdukTarifHeader header;
+
+	// Untuk menampung message error di grid
+	public ArrayList<Message> errorMsg;
+	
+	public ECustomerProdukTarifDetail toEntity() {
+		
+		ECustomerProdukTarifDetail entity = new ECustomerProdukTarifDetail();
+		
+		entity.setId(id);
+		entity.setNourut(nourut);
+		entity.setJnstrf(jnstrf);
+
+		if (tglstart != null) {
+			entity.setTglstart(TimeUtil.convertDateToYyyyMmDd(tglstart)); 
+		}
+
+		if (tglstop != null) {
+			entity.setTglstop(TimeUtil.convertDateToYyyyMmDd(tglstop)); 
+		}
+        
+		entity.setJumdur(jumdur);
+		entity.setSatdur(satdur);
+		entity.setPctdisc(pctdisc);
+		entity.setNildisc(nildisc);
+		entity.setFreemo(freemo);
+		
+		entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+		
+		if (header != null && !StringUtils.isEmpty(header.id)) {
+			ECustomerProdukTarifHeader entityRef = new ECustomerProdukTarifHeader();
+		
+			entityRef.setId(header.id);
+			entityRef.setVersion(header.version);
+		
+			entity.setHeader(entityRef);
+		
+		} else {
+			entity.setHeader(null);
+		}
+
+		if (skemaHarga != null && !StringUtils.isEmpty(skemaHarga.id)) {
+			ESkemaHargaHeader entityRef = new ESkemaHargaHeader();
+		
+			entityRef.setId(skemaHarga.id);
+			entityRef.setVersion(skemaHarga.version);
+		
+			entity.setSkemaHarga(entityRef);
+		
+		} else {
+			entity.setSkemaHarga(null);
+		}
+		
+		if (grupDiskon != null && !StringUtils.isEmpty(grupDiskon.id)) {
+			EGrupDiskonHeader entityRef = new EGrupDiskonHeader();
+		
+			entityRef.setId(grupDiskon.id);
+			entityRef.setVersion(grupDiskon.version);
+		
+			entity.setGrupDiskon(entityRef);
+		
+		} else {
+			entity.setGrupDiskon(null);
+		}
+		
+		return entity;
+	}
+		
+	public static List<ECustomerProdukTarifDetail> toEntities(final List<CustomerProdukTarifDetail> pojos) {
+		List<ECustomerProdukTarifDetail> entities = new ArrayList<ECustomerProdukTarifDetail>();
+		for (CustomerProdukTarifDetail pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static CustomerProdukTarifDetail fromEntity(ECustomerProdukTarifDetail entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static CustomerProdukTarifDetail fromEntity(ECustomerProdukTarifDetail entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static CustomerProdukTarifDetail fromEntity(ECustomerProdukTarifDetail entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		CustomerProdukTarifDetail pojo = new CustomerProdukTarifDetail();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.nourut = entity.getNourut();
+			pojo.jnstrf = entity.getJnstrf();
+
+			if (entity.getTglstart() != null && !entity.getTglstart().trim().equals("")) {
+				pojo.tglstart = TimeUtil.getDate(entity.getTglstart());				
+			} else {
+				pojo.tglstart = null;
+			}
+			
+			if (entity.getTglstop() != null && !entity.getTglstop().trim().equals("")) {
+				pojo.tglstop = TimeUtil.getDate(entity.getTglstop());				
+			} else {
+				pojo.tglstop = null;
+			}
+			
+			pojo.jumdur = entity.getJumdur();
+			pojo.satdur = entity.getSatdur();
+			pojo.pctdisc = entity.getPctdisc();
+			pojo.nildisc = entity.getNildisc();
+			pojo.freemo = entity.getFreemo();
+			
+			pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+			
+			pojo.skemaHarga = SkemaHargaHeader.fromEntity(entity.getSkemaHarga());
+			pojo.grupDiskon = GrupDiskonHeader.fromEntity(entity.getGrupDiskon());
+			pojo.header = CustomerProdukTarifHeader.fromEntity(entity.getHeader(), depthLevel);
+	        
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+			}
+			
+			pojo.isSelect = false;
+		}
+				
+		return pojo;
+	}
+	
+	public static List<CustomerProdukTarifDetail> fromEntities(List<ECustomerProdukTarifDetail> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<CustomerProdukTarifDetail> fromEntities(final List<ECustomerProdukTarifDetail> entities, int depthLevel) {
+		return fromEntities(entities, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<CustomerProdukTarifDetail> fromEntities(List<ECustomerProdukTarifDetail> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<CustomerProdukTarifDetail> pojos = new ArrayList<>();
+		
+		for (ECustomerProdukTarifDetail entity : entities) {
+			pojos.add(CustomerProdukTarifDetail.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}

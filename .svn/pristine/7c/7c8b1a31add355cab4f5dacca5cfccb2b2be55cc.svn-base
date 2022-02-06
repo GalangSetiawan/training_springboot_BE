@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubDetailPerhitunganDiskon;
+
+@Repository
+public class EInvoiceSubDetailPerhitunganDiskonRepository extends SimpleJpaRepository<EInvoiceSubDetailPerhitunganDiskon, String> {
+
+	protected final EntityManager em;
+
+	public EInvoiceSubDetailPerhitunganDiskonRepository(EntityManager em) {
+		super(EInvoiceSubDetailPerhitunganDiskon.class, em);
+		this.em = em;
+	}
+	
+	public EInvoiceSubDetailPerhitunganDiskon findByBK(String idTi007, Integer nourut) {
+		
+		String query = "SELECT e FROM EInvoiceSubDetailPerhitunganDiskon e " + 
+                       "WHERE e.detailInitial.id = :idTi007 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EInvoiceSubDetailPerhitunganDiskon.class)
+					 .setParameter("idTi007", idTi007)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EInvoiceSubDetailPerhitunganDiskon getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EInvoiceSubDetailPerhitunganDiskon> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EInvoiceSubDetailPerhitunganDiskon> search = new HqlSimpleSearchBuilder<>(EInvoiceSubDetailPerhitunganDiskon.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EInvoiceSubDetailPerhitunganDiskon add(EInvoiceSubDetailPerhitunganDiskon entity) {
+		return save(entity);
+	}
+
+	public EInvoiceSubDetailPerhitunganDiskon edit(EInvoiceSubDetailPerhitunganDiskon entity) {
+		return save(entity);
+	}
+}

@@ -1,0 +1,45 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.setting.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.entities.ESetting;
+
+@Repository
+public class ESettingRepository extends SimpleJpaRepository<ESetting, String> {
+
+	protected final EntityManager em;
+
+	public ESettingRepository(EntityManager em) {
+		super(ESetting.class, em);
+		this.em = em;
+	}
+	
+	// Data di AM50 pasti hanya satu record saja
+	public ESetting getData() {
+		  ESetting entity;
+
+			try {
+				entity = em.createQuery("FROM ESetting", ESetting.class).getSingleResult();
+			} catch (NoResultException e) {
+				entity = null;
+			}
+
+			return entity;
+		}
+
+	public ESetting getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public ESetting add(ESetting entity) {
+		return save(entity);
+	}
+
+	public ESetting edit(ESetting entity) {
+		return save(entity);
+	}
+}

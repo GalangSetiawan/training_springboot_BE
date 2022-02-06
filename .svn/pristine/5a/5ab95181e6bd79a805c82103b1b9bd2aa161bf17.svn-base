@@ -1,0 +1,70 @@
+package co.id.sofcograha.base.master.user.pojos;
+
+import java.util.Base64;
+
+import org.apache.commons.lang3.ArrayUtils;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.company.pojos.CompanyPojo;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.utils.ImageUtil;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class UserInfo {
+
+  public String id;
+  public String loginName;
+  public String userName;
+  public String oldPassword;
+  public String newPassword1;
+  public String newPassword2;
+  public String fotoExt;
+  public String foto;
+  public String email;
+  public CompanyPojo company;
+
+  public static UserInfo fromEntity(EUser entity, int depthLevel) {
+    if (entity == null)
+      return null;
+    
+    if (depthLevel < 0)
+      depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+
+    UserInfo pojo = new UserInfo();
+
+    if (depthLevel > 0) {
+      depthLevel--;
+      
+      pojo.id = entity.getId();
+      pojo.loginName = entity.getLoginName();
+      pojo.userName = entity.getUserName();
+      pojo.oldPassword = "";
+      pojo.newPassword1 = "";
+      pojo.newPassword2 = "";
+      pojo.fotoExt = entity.getFotoExt();
+      pojo.foto = ImageUtil.getBase64FormatImage(entity.getFotoExt(), fromEntityByteArray(entity.getFoto()));
+      pojo.email = entity.getEmail();
+      pojo.company = CompanyPojo.fromEntity(entity.geteCompany(), depthLevel);
+    }
+    return pojo;
+  }
+  
+	public static UserInfo fromEntity(EUser entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+  protected static String fromEntityByteArray(Byte[] val) {
+    String result = null;
+    if (val != null) {
+      result = Base64.getEncoder().encodeToString(ArrayUtils.toPrimitive(val));
+    }
+    
+    return result;
+  }
+
+}

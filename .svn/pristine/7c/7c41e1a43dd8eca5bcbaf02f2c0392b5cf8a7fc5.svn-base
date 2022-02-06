@@ -1,0 +1,66 @@
+package co.id.sofcograha.base.master.helpInfo.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.master.helpInfo.entities.EStdInfoHeader;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Repository
+public class EStdInfoHeaderRepository extends SimpleJpaRepository<EStdInfoHeader, String> {
+
+	protected final EntityManager em;
+
+	public EStdInfoHeaderRepository(EntityManager em) {
+		super(EStdInfoHeader.class, em);
+		this.em = em;
+	}
+	
+	public EStdInfoHeader findByBK(String urlLayar, Integer nourut) {
+		
+		String query = "SELECT e FROM EStdInfoHeader e " + 
+                       "WHERE e.urlLayar = :urlLayar And e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EStdInfoHeader.class)
+					 .setParameter("urlLayar", urlLayar)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public SearchResult<EStdInfoHeader> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EStdInfoHeader> search = new HqlSimpleSearchBuilder<>(EStdInfoHeader.class, em);
+		
+		String nourut = (String) searchParameter.getValueFromMappedParam("nourut");
+		String urlLayar = (String) searchParameter.getValueFromMappedParam("urlLayar");
+    
+		//if (!QueryUtil.isAll(urlLayar)) {
+		//	search.addWhere("AND LOWER(urlLayar) LIKE LOWER(:urlLayar) ");
+		//	search.addParameter("urlLayar", QueryUtil.formatStringForLikeFilter(urlLayar));
+		//}
+
+		if (urlLayar != null) {
+			search.addWhere("AND urlLayar = :urlLayar ");
+			search.addParameter("urlLayar", urlLayar);
+		}
+		
+		if (nourut != null) {
+			search.addWhere("AND nourut = :nourut ");
+			search.addParameter("nourut", nourut);
+		}
+		
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}	
+}

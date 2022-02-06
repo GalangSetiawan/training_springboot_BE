@@ -1,0 +1,551 @@
+package co.id.sofcograha.base.utils;
+
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.poifs.filesystem.FileMagic;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.FormulaEvaluator;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Row.MissingCellPolicy;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.annotation.RequestScope;
+import org.springframework.web.multipart.MultipartFile;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.download.FileGenerator;
+
+@Component
+@RequestScope
+public class ExcelTemplateUtil extends BaseService {
+
+	private static final String DEFAULT_DATE_FORMAT = "dd/mm/yyyy";
+	private Workbook workbook;
+	private FormulaEvaluator formulaEvaluator;
+	private HashMap<String, Integer> uploadedHeaderMap;
+	private DataFormatter dataFormatter;
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+	public void init(String templateFileNameWithExtension) {
+		this.init(FileGenerator.getFromTemplateFile(templateFileNameWithExtension), false);
+	}
+
+	public void init(MultipartFile file) {
+		this.workbook = getWorkBookFromFile(file);
+		this.formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator(); // get value instead of formula
+		this.dataFormatter = new DataFormatter(); // help converting all type to string
+	}
+
+	public void init(MultipartFile file, List<String> headers) {
+		this.workbook = getWorkBookFromFile(file);
+		this.formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator(); // get value instead of formula
+		this.dataFormatter = new DataFormatter(); // help converting all type to string
+		validateUploadSheet();
+		validateHeader(headers);
+		deleteEmptyRowsFromUploadSheet();
+	}
+
+	public void init(MultipartFile file, List<String> headers, boolean isHeaderChange) {
+		this.workbook = getWorkBookFromFile(file);
+		this.formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator(); // get value instead of formula
+		this.dataFormatter = new DataFormatter(); // help converting all type to string
+		validateUploadSheet();
+		validateHeader(headers, isHeaderChange);
+		deleteEmptyRowsFromUploadSheet();
+	}
+
+	public void init(byte[] file) {
+		this.workbook = getWorkBookFromByte(file);
+		this.formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
+		this.dataFormatter = new DataFormatter();
+		populateHeaderMap();
+		validateUploadSheet();
+		deleteEmptyRowsFromUploadSheet();
+	}
+
+	public void init(byte[] file, Boolean validate) {
+		this.workbook = getWorkBookFromByte(file);
+		this.formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
+		this.dataFormatter = new DataFormatter();
+		populateHeaderMap();
+		if (validate == true) {
+			validateUploadSheet();
+		}
+		deleteEmptyRowsFromUploadSheet();
+	}
+
+	public void init(byte[] file, int row, Boolean validate) {
+		this.workbook = getWorkBookFromByte(file);
+		this.formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
+		this.dataFormatter = new DataFormatter();
+		populateHeaderMap(row);
+		if (validate == true) {
+			validateUploadSheet();
+		}
+		deleteEmptyRowsFromUploadSheet();
+	}
+
+	public void init(byte[] file, List<String> headers) {
+		this.workbook = getWorkBookFromByte(file);
+		this.formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
+		this.dataFormatter = new DataFormatter();
+		validateUploadSheet();
+		validateHeader(headers);
+		deleteEmptyRowsFromUploadSheet();
+	}
+
+	public void init(File file, List<String> headers) {
+		this.workbook = getWorkBookFromFile(file);
+		this.formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
+		this.dataFormatter = new DataFormatter();
+		validateUploadSheet();
+		validateHeader(headers);
+		deleteEmptyRowsFromUploadSheet();
+	}
+
+	public void init(File file, List<String> headers, boolean isHeaderChange) {
+		this.workbook = getWorkBookFromFile(file);
+		this.formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
+		this.dataFormatter = new DataFormatter();
+		validateUploadSheet();
+		validateHeader(headers, isHeaderChange);
+		deleteEmptyRowsFromUploadSheet();
+	}
+
+	public void init(String fileName, FileInputStream fileInputStream, List<String> headers) {
+		this.workbook = this.getWorkBookFromStream(fileName, fileInputStream);
+		this.formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
+		this.dataFormatter = new DataFormatter();
+		validateUploadSheet();
+		validateHeader(headers);
+		deleteEmptyRowsFromUploadSheet();
+	}
+
+	public void init(String fileName, FileInputStream fileInputStream, List<String> headers, Boolean isHeaderChange) {
+		this.workbook = this.getWorkBookFromStream(fileName, fileInputStream);
+		this.formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
+		this.dataFormatter = new DataFormatter();
+		validateUploadSheet();
+		validateHeader(headers, isHeaderChange);
+		deleteEmptyRowsFromUploadSheet();
+	}
+
+	public void init(String fileName, FileInputStream fileInputStream) {
+		this.workbook = this.getWorkBookFromStream(fileName, fileInputStream);
+		this.formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
+		this.dataFormatter = new DataFormatter();
+		validateUploadSheet();
+		deleteEmptyRowsFromUploadSheet();
+	}
+
+	public void initFromScratch() {
+		this.workbook = new XSSFWorkbook();
+		this.formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator(); // get value instead of formula
+		this.dataFormatter = new DataFormatter(); // help converting all type to string
+	}
+
+	private void validateUploadSheet() {
+		if (!getUploadSheet().getSheetName().equals("Upload"))
+			error("upload.sheet.not.found");
+	}
+
+	private void validateHeader(List<String> headers) {
+		validateEmptyHeader();
+		validateInvalidHeader(headers);
+	}
+
+	private void validateHeader(List<String> headers, Boolean isHeaderChange) {
+		validateEmptyHeader();
+		validateInvalidHeader(headers, isHeaderChange);
+	}
+
+	private void validateInvalidHeader(List<String> headers) {
+		populateHeaderMap();
+//        for (Map.Entry<String, Integer> item : this.uploadedHeaderMap.entrySet()) {
+//        	System.out.println("KKKK - " + item.getKey() + " " + item.getValue());
+//		}
+		for (String header : headers) {
+			if (this.uploadedHeaderMap.get(header) == null)
+				error("upload.header.invalid");
+		}
+	}
+
+	private void validateInvalidHeader(List<String> headers, Boolean isHeaderChange) {
+		populateHeaderMap();
+		if (isHeaderChange == true) {
+			for (String header : headers) {
+				if (this.uploadedHeaderMap.get(header) == null)
+					error("upload.header.invalid");
+			}
+		} else {
+			for (Map.Entry<String, Integer> entry : this.uploadedHeaderMap.entrySet()) {
+				try {
+					String header = entry.getKey();
+					int idx = entry.getValue();
+					if (!header.equals(headers.get(idx)))
+						error("upload.header.invalid");
+				} catch (IndexOutOfBoundsException e) {
+					error("upload.header.invalid");
+				}
+			}
+		}
+	}
+
+	private void validateEmptyHeader() {
+		if (!getUploadSheet().iterator().hasNext())
+			error("upload.header.invalid");
+	}
+
+	private HashMap<String, Integer> populateHeaderMap() {
+		this.uploadedHeaderMap = new HashMap<>();
+		Row headerRow = getHeaderRow();
+		int headerCellStart = headerRow.getFirstCellNum();
+		int headerCellEnd = headerRow.getLastCellNum();
+
+		for (int i = headerCellStart; i < headerCellEnd; i++) {
+			Cell headerCell = headerRow.getCell(i);
+			formulaEvaluator.evaluate(headerCell);
+			uploadedHeaderMap.put(dataFormatter.formatCellValue(headerCell), headerCell.getColumnIndex());
+		}
+		return uploadedHeaderMap;
+	}
+
+	private HashMap<String, Integer> populateHeaderMap(int row) {
+		this.uploadedHeaderMap = new HashMap<>();
+		Row headerRow = getHeaderRow(row);
+		int headerCellStart = headerRow.getFirstCellNum();
+		int headerCellEnd = headerRow.getLastCellNum();
+
+		for (int i = headerCellStart; i < headerCellEnd; i++) {
+			Cell headerCell = headerRow.getCell(i);
+			formulaEvaluator.evaluate(headerCell);
+			uploadedHeaderMap.put(dataFormatter.formatCellValue(headerCell), headerCell.getColumnIndex());
+		}
+		return uploadedHeaderMap;
+	}
+
+	public Sheet createNewSheet(String sheetName) {
+		return this.workbook.createSheet(sheetName);
+	}
+
+	public Row createNewRow() {
+		return getUploadSheet().createRow(getUploadSheet().getLastRowNum() + 1);
+	}
+
+	public Row createNewRow(int sheetIndex) {
+		return this.workbook.getSheetAt(sheetIndex).createRow(this.workbook.getSheetAt(sheetIndex).getLastRowNum() + 1);
+	}
+
+	public Workbook getWorkbook() {
+		return workbook;
+	}
+
+	public Sheet getUploadSheet() {
+		return this.workbook.getSheetAt(0);
+	}
+
+	public Sheet getSheet(int index) {
+		return this.workbook.getSheetAt(index);
+	}
+
+	public Sheet getSheet(String sheetName) {
+		return this.workbook.getSheet(sheetName);
+	}
+
+	public void setSheetName(int index, String sheetName) {
+		this.workbook.setSheetName(index, sheetName);
+	}
+
+	public void removeSheet(int index) {
+		this.workbook.removeSheetAt(index);
+	}
+
+	private Row getHeaderRow() {
+		return getUploadSheet().getRow(0);
+	}
+
+	private Row getHeaderRow(int row) {
+		return getUploadSheet().getRow(row);
+	}
+
+	public Iterator<Row> getDataIterator() {
+		Iterator<Row> rowIterator = getUploadSheet().rowIterator();
+		rowIterator.next();
+		return rowIterator;
+	}
+
+	public Iterator<Row> getDataIterator(int row) {
+		Iterator<Row> rowIterator = getUploadSheet().rowIterator();
+		// getFirstRowNum can be different between ms. excel and libre office?? case 2020/10/15
+		for (int i = getUploadSheet().getFirstRowNum(); i < row; i++) {
+			rowIterator.next();
+		}
+		return rowIterator;
+	}
+
+	public Cell createCell(Row row, String headerName) {
+		valColumnNotFound(headerName);
+		return row.createCell(uploadedHeaderMap.get(headerName));
+	}
+
+	public String getCellStringValue(Row row, String headerName) {
+		valColumnNotFound(headerName);
+		String value = null;
+		if (isColumnHeaderFound(headerName)) { // continue, even if column not found
+			value = getValue(row, headerName);
+			valNotEmptyableData(headerName, value);
+		}
+		return value;
+	}
+
+	public String getCellStringValue(Row row, String headerName, Boolean allowEmpty) {
+		if (allowEmpty == null)
+			allowEmpty = false;
+
+		valColumnNotFound(headerName);
+		String value = null;
+		if (isColumnHeaderFound(headerName)) { // continue, even if column not found
+			value = getValue(row, headerName);
+			if (allowEmpty == false) {
+				valNotEmptyableData(headerName, value);
+			}
+		}
+		return value;
+	}
+
+	public String getCellStringValueFromNumberCell(Row row, String headerName) {
+		valColumnNotFound(headerName);
+		String value = null;
+		if (isColumnHeaderFound(headerName)) { // continue, even if column not found
+			Cell dataCell = row.getCell(uploadedHeaderMap.get(headerName));
+			if (dataCell != null) {
+				short format = this.workbook.createDataFormat().getFormat("0");
+				CellStyle style = this.workbook.createCellStyle();
+				style.setDataFormat(format);
+				dataCell.setCellStyle(style);
+				value = getValue(row, headerName);
+				valNotEmptyableData(headerName, value);
+			}
+		}
+		return value;
+	}
+
+	public String getCellStringValueFromNumberCell(Row row, String headerName, Boolean allowEmpty) {
+		if (allowEmpty == null)
+			allowEmpty = false;
+
+		valColumnNotFound(headerName);
+		String value = null;
+		if (isColumnHeaderFound(headerName)) { // continue, even if column not found
+			Cell dataCell = row.getCell(uploadedHeaderMap.get(headerName));
+			if (dataCell != null) {
+				short format = this.workbook.createDataFormat().getFormat("0");
+				CellStyle style = this.workbook.createCellStyle();
+				style.setDataFormat(format);
+				dataCell.setCellStyle(style);
+				value = getValue(row, headerName);
+				if (allowEmpty == false) {
+					valNotEmptyableData(headerName, value);
+				}
+			}
+		}
+		return value;
+	}
+
+	public String getCellStringValueFromDateCell(Row row, String headerName, String format, Boolean allowEmpty) {
+		if (allowEmpty == null) allowEmpty = false;
+
+		valColumnNotFound(headerName);
+		String value = null;
+		if (isColumnHeaderFound(headerName)) { // continue, even if column not found
+			Cell dataCell = row.getCell(uploadedHeaderMap.get(headerName), MissingCellPolicy.CREATE_NULL_AS_BLANK);
+			if (dataCell != null) {
+				short formatX = this.workbook.createDataFormat().getFormat(format);
+				CellStyle style = this.workbook.createCellStyle();
+				style.setDataFormat(formatX);
+				dataCell.setCellStyle(style);
+				value = getValue(row, headerName);
+				if (!allowEmpty) {
+					valNotEmptyableData(headerName, value);
+				}
+			}
+		}
+		return value;
+	}
+
+	public String getCellStringValueFromDateCell(Row row, String headerName, String format) {
+		return getCellStringValueFromDateCell(row, headerName, format, false);
+	}
+
+	public String getCellStringValueFromDateCell(Row row, String headerName) {
+		return getCellStringValueFromDateCell(row, headerName, DEFAULT_DATE_FORMAT, false);
+	}
+
+	public String getCellStringValueFromDateCell(Row row, String headerName, Boolean allowEmpty) {
+		return getCellStringValueFromDateCell(row, headerName, DEFAULT_DATE_FORMAT, allowEmpty);
+	}
+
+	private String getValue(Row row, String headerName) {
+		Cell dataCell = row.getCell(uploadedHeaderMap.get(headerName));
+		return dataFormatter.formatCellValue(dataCell, formulaEvaluator).trim();
+	}
+
+	private void valColumnNotFound(String headerName) {
+		if (!isColumnHeaderFound(headerName)) {
+			error("upload.column.not.found", headerName);
+		}
+	}
+
+	private boolean isColumnHeaderFound(String headerName) {
+		return uploadedHeaderMap.containsKey(headerName);
+	}
+
+	private void valNotEmptyableData(String headerName, String value) {
+		if (!isEmptyable(headerName) && StringUtil.isBlank(value)) {
+			batchError("upload.data.empty", headerName);
+		}
+	}
+
+	private boolean isEmptyable(String headerName) {
+		return !headerName.contains(BaseConstants.REQUIRED_SYMBOL_FOR_EXCEL_TEMPLATE);
+	}
+
+	private Workbook getWorkBookFromByte(byte[] file) {
+		Workbook xWorkbook = null;
+		try {
+			if (FileMagic.valueOf(file).equals(FileMagic.OOXML)) {
+				xWorkbook = new XSSFWorkbook(new ByteArrayInputStream(file));
+			} else {
+				xWorkbook = new HSSFWorkbook(new ByteArrayInputStream(file));
+			}
+		} catch (IOException e) {
+			logger.debug(BaseConstants.TRACE, e);
+			throw new BusinessException("file.excel.unknown");
+		}
+
+		return xWorkbook;
+	}
+
+	private Workbook getWorkBookFromFile(File file) {
+		Workbook xWorkbook = null;
+		try {
+			if (file.getName().endsWith("xlsx")) {
+				xWorkbook = new XSSFWorkbook(file);
+			} else {
+				xWorkbook = new HSSFWorkbook(new FileInputStream(file));
+			}
+		} catch (Exception e) {
+			logger.debug(BaseConstants.TRACE, e);
+			throw new BusinessException("file.excel.unknown");
+		}
+
+		return xWorkbook;
+	}
+
+	private Workbook getWorkBookFromStream(String fileName, FileInputStream fileInputStream) {
+		Workbook xWorkbook = null;
+		try {
+			if (fileName.endsWith("xlsx")) {
+				xWorkbook = new XSSFWorkbook(fileInputStream);
+			} else {
+				xWorkbook = new HSSFWorkbook(fileInputStream);
+			}
+
+		} catch (Exception e) {
+			logger.debug(BaseConstants.TRACE, e);
+			throw new BusinessException("file.excel.unknown");
+		}
+
+		return xWorkbook;
+	}
+
+	private Workbook getWorkBookFromFile(MultipartFile file) {
+		Workbook xWorkbook = null;
+		try {
+			if (file.getOriginalFilename().endsWith("xlsx")) {
+				xWorkbook = new XSSFWorkbook(new ByteArrayInputStream(file.getBytes()));
+			} else {
+				xWorkbook = new HSSFWorkbook(new ByteArrayInputStream(file.getBytes()));
+			}
+		} catch (IOException e) {
+			logger.debug(BaseConstants.TRACE, e);
+			throw new BusinessException("file.excel.unknown");
+		} catch (NullPointerException e) {
+			logger.debug(BaseConstants.TRACE, e);
+			throw new BusinessException("file.upload.not.found");
+		}
+
+		return xWorkbook;
+	}
+
+	public Row getRow(int rowIndex) {
+		return this.getUploadSheet().getRow(rowIndex);
+	}
+
+	public Cell getCell(int rowIndex, int cellIndex) {
+		Sheet uploadSheet = this.getUploadSheet();
+		Row row = uploadSheet.getRow(rowIndex);
+		if (row == null) {
+			row = uploadSheet.createRow(rowIndex);
+		}
+		Cell cell = row.getCell(cellIndex);
+		if (cell == null) {
+			cell = row.createCell(cellIndex);
+		}
+		return cell;
+	}
+
+	private void deleteEmptyRowsFromUploadSheet() {
+		Sheet sheet = getUploadSheet();
+
+		boolean stop = false;
+		boolean nonBlankRowFound;
+		Row lastRow = null;
+		while (!stop) {
+			nonBlankRowFound = false;
+			lastRow = sheet.getRow(sheet.getLastRowNum());
+
+			if (!isRowEmpty(lastRow)) {
+				nonBlankRowFound = true;
+			}
+
+			if (nonBlankRowFound) {
+				stop = true;
+			} else {
+				sheet.removeRow(lastRow);
+			}
+		}
+	}
+
+	private boolean isRowEmpty(Row row) {
+		boolean isEmpty = true;
+		DataFormatter dataFormatter = new DataFormatter();
+
+		if (row != null) {
+			for (Cell cell : row) {
+				if (dataFormatter.formatCellValue(cell).trim().length() > 0) {
+					isEmpty = false;
+					break;
+				}
+			}
+		}
+
+		return isEmpty;
+	}
+}

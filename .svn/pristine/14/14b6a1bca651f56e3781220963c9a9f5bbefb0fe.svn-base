@@ -1,0 +1,166 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.Query;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetAdj;
+//import co.id.sofcograha.domain.invoicing.admin.renewal.entities.ESumNilai;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.ESumNilai2;
+
+@Repository
+public class EAdminRenewalDetAdjRepository extends SimpleJpaRepository<EAdminRenewalDetAdj, String> {
+
+	protected final EntityManager em;
+
+	public EAdminRenewalDetAdjRepository(EntityManager em) {
+		super(EAdminRenewalDetAdj.class, em);
+		this.em = em;
+	}
+	
+	public EAdminRenewalDetAdj findByBK(String idAi003, String tahun, String bulan) {
+		
+		String query = "SELECT e FROM EAdminRenewalDetAdj e " + 
+                       "WHERE e.header.id = :idAi003 And " +
+  	                         "e.tahun = :tahun And " + 
+                             "e.bulan = :bulan";
+		
+		try {
+			return em.createQuery(query, EAdminRenewalDetAdj.class)
+					 .setParameter("idAi003", idAi003)
+					 .setParameter("tahun", tahun)
+					 .setParameter("bulan", bulan)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public List<EAdminRenewalDetAdj> findByHeaderId(String idAi003) {
+		
+		String query = "SELECT e FROM EAdminRenewalDetAdj e " + 
+                       "WHERE e.header.id = :idAi003 " +
+  	                   "ORDER BY e.tahun, e.bulan"; 
+		
+		try {
+			return em.createQuery(query, EAdminRenewalDetAdj.class)
+					 .setParameter("idAi003", idAi003)
+					 .getResultList();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public List<EAdminRenewalDetAdj> findByCustomerProdukTahunBulanDitagih(String idMi010, String idMi001, String tahun, String bulan) {
+		
+		String query = "SELECT e FROM EAdminRenewalDetAdj e " + 
+                       "WHERE e.header.customer.id = :idMi010 And " +
+				             "e.header.produk.id = :idMi001 And " +
+				             "e.header.tahun = :tahun And " +
+				             "e.header.bulan = :bulan And " +
+				             "e.fltgh = 'Y' " +
+  	                   "ORDER BY e.tahun, e.bulan"; 
+		
+		try {
+			return em.createQuery(query, EAdminRenewalDetAdj.class)
+					 .setParameter("idMi010", idMi010)
+					 .setParameter("idMi001", idMi001)
+					 .setParameter("tahun", tahun)
+					 .setParameter("bulan", bulan)
+					 .getResultList();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public List<EAdminRenewalDetAdj> findByCustomerProdukTahunBulan(String idMi010, String idMi001, String tahun, String bulan) {
+		
+		String query = "SELECT e FROM EAdminRenewalDetAdj e " + 
+                       "WHERE e.header.customer.id = :idMi010 And " +
+				             "e.header.produk.id = :idMi001 And " +
+				             "e.header.tahun = :tahun And " +
+				             "e.header.bulan = :bulan " +
+  	                   "ORDER BY e.tahun, e.bulan"; 
+		
+		try {
+			return em.createQuery(query, EAdminRenewalDetAdj.class)
+					 .setParameter("idMi010", idMi010)
+					 .setParameter("idMi001", idMi001)
+					 .setParameter("tahun", tahun)
+					 .setParameter("bulan", bulan)
+					 .getResultList();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+    @SuppressWarnings("unchecked")
+    public ESumNilai2 getTotalNilaiByCustomerProdukTahunBulan2(String idMi010, String idMi001, String tahun, String bulan) {
+    	
+        Query query = null;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select public.sys_guid() as id, coalesce(sum(a.seljkbullalu + a.seljnkbullalu), 0) as jumkar, " + 
+        		                  "       coalesce(sum(a.bruto),0) as bruto, coalesce(sum(a.nildisc),0) as nildisc, " + 
+        		                  "       coalesce(sum(a.netto),0) as netto " + 
+        		                  "from ai310 a " + 
+        		                  "left join ai003 b on b.id_ai003 = a.id_ai003 " + 
+        		                  "where b.id_mi010 = :idMi010 and b.id_mi001 = :idMi001 and b.tahun = :tahun and b.bulan = :bulan and a.fltgh = 'Y'");
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), ESumNilai2.class);
+        
+        query.setParameter("idMi010", idMi010);
+        query.setParameter("idMi001", idMi001);
+        query.setParameter("tahun", tahun);
+        query.setParameter("bulan", bulan);
+        
+        System.out.println("idMi010 " + idMi010 + " idMi001 " + idMi001 + " tahun " + tahun + " bulan " + bulan);
+        //List<Object> list = query.getResultList();
+        List<ESumNilai2> list = query.getResultList();
+        if (!list.isEmpty()) {
+        	ESumNilai2 result = (ESumNilai2) list.get(0);
+//        	if (result.getJumkar() == null) result.setJumkar(0);
+//        	if (result.getBruto() == null) result.setBruto(0.0);
+//        	if (result.getNilpctdisc() == null) result.setNilpctdisc(0.0);
+//        	if (result.getNildisc() == null) result.setNildisc(0.0);
+//        	if (result.getNetto() == null) result.setNetto(0.0);
+        	return result;
+        } else {
+        	return null;
+        }
+    }
+		
+	public EAdminRenewalDetAdj getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EAdminRenewalDetAdj> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EAdminRenewalDetAdj> search = new HqlSimpleSearchBuilder<>(EAdminRenewalDetAdj.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EAdminRenewalDetAdj add(EAdminRenewalDetAdj entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+
+	public EAdminRenewalDetAdj edit(EAdminRenewalDetAdj entity) {
+		return save(entity);
+	}
+}

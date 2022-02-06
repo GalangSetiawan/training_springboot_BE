@@ -1,0 +1,88 @@
+package co.id.sofcograha.base.master.company.controllers;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.company.entities.ECompanyLogo;
+import co.id.sofcograha.base.master.company.pojos.CompanyLogoPojo;
+import co.id.sofcograha.base.master.company.services.CompanyLogoService;
+import co.id.sofcograha.base.utils.ApiResponse;
+
+//import id.co.sofcograha.gajiidapi.base.authorization.annotation.AuthAdd;
+//import id.co.sofcograha.gajiidapi.base.authorization.annotation.AuthDelete;
+//import id.co.sofcograha.gajiidapi.base.authorization.annotation.AuthEdit;
+//import id.co.sofcograha.gajiidapi.base.authorization.annotation.NoAuth;
+//import id.co.sofcograha.gajiidapi.base.constants.BaseFunctionConstants;
+//import id.co.sofcograha.gajiidapi.base.mst.company.entities.CompanyLogo;
+//import id.co.sofcograha.gajiidapi.base.mst.company.pojos.CompanyLogoPojo;
+//import id.co.sofcograha.gajiidapi.base.mst.company.services.CompanyLogoService;
+//import id.co.sofcograha.gajiidapi.base.responses.ApiResponse;
+//import id.co.sofcograha.gajiidapi.base.search.SearchParameter;
+//import id.co.sofcograha.gajiidapi.base.search.SearchResult;
+//import id.co.sofcograha.gajiidapi.domain.constants.DomainUriConstants;
+
+@RestController
+@RequestMapping(value = "/api/company/logo")
+public class CompanyLogoController {
+	
+	@Autowired
+	private CompanyLogoService companyLogoService;
+	
+	// find by company id
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String companyId) {
+
+		CompanyLogoPojo pojo = CompanyLogoPojo.fromEntity(companyLogoService.findByCompanyId(companyId));
+
+		return ApiResponse.data("item", CompanyLogoPojo.fromEntity(companyLogoService.findByCompanyId(companyId)));
+	}
+	
+//	@GetMapping(value = BaseConstants.ID)
+//	public ApiResponse get(@PathVariable String id) {
+//		return ApiResponse.data("item", CompanyLogoPojo.fromEntity(companyLogoService.get(id)));
+//	}
+	
+	/* belum perlu
+	@GetMapping(value = DomainUriConstants.SEARCH)
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+	  SearchResult<CompanyLogo> searchResult = companyLogoService.search(SearchParameter.generate(searchParameter, 
+			  																			CompanyLogoPojo.getFieldMappings()));
+	  
+	  return ApiResponse.dataWithPaging(CompanyLogoPojo.MULTI, 
+			  							CompanyLogoPojo.fromEntities(searchResult.getResult()),
+			  							searchResult.getPaging());
+	}
+	*/
+	
+	@NoAuth
+	@PostMapping
+	public ApiResponse add(@RequestBody CompanyLogoPojo pojo) {
+		ECompanyLogo entity = companyLogoService.add(pojo.toEntity());
+		return ApiResponse.data("item", CompanyLogoPojo.fromEntity(entity));
+	}
+	
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody CompanyLogoPojo pojo) {
+	  ECompanyLogo entity = companyLogoService.edit(pojo.toEntity());
+	  return ApiResponse.data("item", CompanyLogoPojo.fromEntity(entity));
+	}
+	
+	@NoAuth
+	@DeleteMapping(value = BaseConstants.ID)
+	public ApiResponse delete(@PathVariable String id, @RequestParam(required = false) Long version) {
+	  companyLogoService.delete(id, version);
+	  return ApiResponse.ok();
+	}
+}

@@ -1,0 +1,127 @@
+package co.id.sofcograha.base.master.helpInfo.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.helpInfo.entities.EStdInfoDetail;
+import co.id.sofcograha.base.master.helpInfo.entities.EStdInfoHeader;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+
+@JsonInclude(Include.ALWAYS)
+public class StdInfoDetail {
+	
+	public String id;
+	public Integer nourut;
+	public String keterangan;
+	public String atribut;
+	public String filename;
+	public Long version;  
+	
+	public StdInfoHeader header;
+	
+	public EStdInfoDetail toEntity() {
+		
+		EStdInfoDetail entity = new EStdInfoDetail();
+		
+		entity.setId(id);
+		entity.setNourut(nourut);
+		entity.setKeterangan(keterangan);
+		entity.setAtribut(atribut);
+		entity.setFilename(filename);
+		entity.setVersion(version);
+		
+		if (header != null && !StringUtils.isEmpty(header.id)) {
+			EStdInfoHeader eStdInfoHeader = new EStdInfoHeader();
+		
+			eStdInfoHeader.setId(header.id);
+			eStdInfoHeader.setVersion(header.version);
+		
+			entity.setHeader(eStdInfoHeader);
+		
+		} else {
+			entity.setHeader(null);
+		}
+	  
+		return entity;
+	}
+		
+	public static List<EStdInfoDetail> toEntities(final List<StdInfoDetail> pojos) {
+		List<EStdInfoDetail> entities = new ArrayList<EStdInfoDetail>();
+		for (StdInfoDetail pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static StdInfoDetail fromEntity(EStdInfoDetail entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static StdInfoDetail fromEntity(EStdInfoDetail entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static StdInfoDetail fromEntity(EStdInfoDetail entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		StdInfoDetail pojo = new StdInfoDetail();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.nourut = entity.getNourut();
+			pojo.keterangan = entity.getKeterangan();
+			pojo.atribut = entity.getAtribut();
+			pojo.filename = entity.getFilename();
+			pojo.version = entity.getVersion();
+		      
+			pojo.header = StdInfoHeader.fromEntity(entity.getHeader(), depthLevel);
+			
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+			}
+			
+		}
+				
+		return pojo;
+	}
+	
+	public static List<StdInfoDetail> fromEntities(List<EStdInfoDetail> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<StdInfoDetail> fromEntities(final List<EStdInfoDetail> entities, int depthLevel) {
+		return fromEntities(entities, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<StdInfoDetail> fromEntities(List<EStdInfoDetail> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<StdInfoDetail> pojos = new ArrayList<>();
+		
+		for (EStdInfoDetail entity : entities) {
+			pojos.add(StdInfoDetail.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		return mappings;
+	}
+}

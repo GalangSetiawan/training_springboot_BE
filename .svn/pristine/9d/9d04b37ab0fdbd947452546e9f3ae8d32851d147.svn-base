@@ -1,0 +1,15 @@
+package co.id.sofcograha.base.queue.notification;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+
+public class NotificationMainConstants {
+
+	public static final String NOTIF_END_POINT = BaseConstants.PUBLIC + "/notification";
+	public static final String TOPIC = "/topic";
+	public static final String APP = "/app_notif";
+	
+//	public static final String TOPIC_NOTIF_MSG_MAPPING = "/get_msg";
+	
+	public static final String TOPIC_NOTIF_ALL = TOPIC + "/all";
+	
+}

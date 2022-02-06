@@ -1,0 +1,281 @@
+package co.id.sofcograha.domain.invoicing.transaksi.implementasiTraining.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.implementasi.entities.EImplementasi;
+import co.id.sofcograha.domain.invoicing.masters.implementasi.services.ImplementasiService;
+import co.id.sofcograha.domain.invoicing.transaksi.implementasiTraining.entities.EImplementasiTrainingDetailImplementasi;
+import co.id.sofcograha.domain.invoicing.transaksi.implementasiTraining.pojos.ImplementasiTrainingDetailImplementasi;
+import co.id.sofcograha.domain.invoicing.transaksi.implementasiTraining.repositories.EImplementasiTrainingDetailImplementasiRepository;
+
+@Service("implementasiTrainingDetailImplementasiService")
+public class ImplementasiTrainingDetailImplementasiService extends BaseService {
+	
+	@Autowired private EImplementasiTrainingDetailImplementasiRepository repo;
+	
+	@Autowired private ImplementasiService implementasiService;
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public ImplementasiTrainingDetailImplementasi findByBk(String idTi050, Integer nourut) {
+		return ImplementasiTrainingDetailImplementasi.fromEntity(repo.findByBK(idTi050, nourut));
+	}
+
+	public SearchResult<EImplementasiTrainingDetailImplementasi> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public EImplementasiTrainingDetailImplementasi add(EImplementasiTrainingDetailImplementasi entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		manageMinMaxValues(entity);
+		//throwBatchError();
+		
+		manageReferences(entity);
+		//throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		//throwBatchError();
+		
+		if (!isAnyBatchErrors()) {
+			preAdd(entity);
+			EImplementasiTrainingDetailImplementasi addedEntity = repo.add(entity);
+			postAdd(addedEntity);
+			
+			return addedEntity;	
+		}
+			
+		//throwBatchError();
+		return entity;	
+
+	}
+	
+	@Transactional
+	public EImplementasiTrainingDetailImplementasi edit(EImplementasiTrainingDetailImplementasi entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		EImplementasiTrainingDetailImplementasi toBeSaved = repo.getOne(entity.getId());
+		EImplementasiTrainingDetailImplementasi oldEntity = (EImplementasiTrainingDetailImplementasi) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EImplementasiTrainingDetailImplementasi.class.getSimpleName());
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		EImplementasiTrainingDetailImplementasi toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		//throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		//throwBatchError();
+		
+	}
+	
+	// terkait manipulasi data
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EImplementasiTrainingDetailImplementasi dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EImplementasiTrainingDetailImplementasi entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(EImplementasiTrainingDetailImplementasi newValues, EImplementasiTrainingDetailImplementasi toBeSaved) {
+
+		if (toBeSaved != null) {			
+			toBeSaved.setNourut(newValues.getNourut());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+			toBeSaved.setHarga(newValues.getHarga());
+			toBeSaved.setJumlah(newValues.getJumlah());
+			toBeSaved.setBruto(newValues.getBruto());
+			toBeSaved.setPctdisc(newValues.getPctdisc());
+			toBeSaved.setNilpctdisc(newValues.getNilpctdisc());
+			toBeSaved.setNildisc(newValues.getNildisc());
+			toBeSaved.setNetto(newValues.getNetto());
+			toBeSaved.setImplementasi(newValues.getImplementasi());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(EImplementasiTrainingDetailImplementasi entity) {
+		valRequiredInteger(entity.getNourut(), "implementasi.training.detail.implementasi.nourut.required");
+		valRequiredString(entity.getKeterangan(), "implementasi.training.detail.implementasi.keterangan.required");
+		valRequiredInteger(entity.getJumlah(), "implementasi.training.detail.implementasi.jumlah.required");
+		valRequiredDouble(entity.getHarga(), "implementasi.training.detail.implementasi.harga.required");
+		valRequiredDouble(entity.getBruto(), "implementasi.training.detail.implementasi.bruto.required");
+		valRequiredDouble(entity.getPctdisc(), "implementasi.training.detail.implementasi.pctdisc.required");
+		valRequiredDouble(entity.getNilpctdisc(), "implementasi.training.detail.implementasi.nilpctdisc.required");
+		valRequiredDouble(entity.getNildisc(), "implementasi.training.detail.implementasi.nildisc.required");
+		valRequiredDouble(entity.getNetto(), "implementasi.training.detail.implementasi.netto.required");
+	}
+	
+	protected void manageMinMaxValues(EImplementasiTrainingDetailImplementasi entity) {
+		valMinInteger(entity.getNourut(), 0, "implementasi.training.detail.implementasi.nourut.min.length");
+		valMaxInteger(entity.getNourut(), 999, "implementasi.training.detail.implementasi.nourut.max.length");
+		valMaxString(entity.getKeterangan(), 200, "implementasi.training.detail.implementasi.keterangan.max.length");
+		valMinInteger(entity.getJumlah(), 0, "implementasi.training.detail.implementasi.jumlah.min.length");
+		valMaxInteger(entity.getJumlah(), 99999, "implementasi.training.detail.implementasi.jumlah.max.length");
+		valMinDouble(entity.getHarga(), 0D, "implementasi.training.detail.implementasi.harga.min.length");
+		valMaxDouble(entity.getHarga(), 999999999D, "implementasi.training.detail.implementasi.harga.max.length");
+		valMinDouble(entity.getPctdisc(), 0D, "implementasi.training.detail.implementasi.pctdisc.min.length");
+		valMaxDouble(entity.getPctdisc(), 9999D, "implementasi.training.detail.implementasi.pctdisc.max.length");
+		valMinDouble(entity.getNilpctdisc(), 0D, "implementasi.training.detail.implementasi.nilpctdisc.min.length");
+		valMaxDouble(entity.getNilpctdisc(), 999999999D, "implementasi.training.detail.implementasi.nilpctdisc.max.length");
+		valMinDouble(entity.getNildisc(), 0D, "implementasi.training.detail.implementasi.nildisc.min.length");
+		valMaxDouble(entity.getNildisc(), 999999999D, "implementasi.training.detail.implementasi.nildisc.max.length");
+		valMinDouble(entity.getBruto(), 0D, "implementasi.training.detail.implementasi.bruto.min.length");
+		valMaxDouble(entity.getBruto(), 999999999D, "implementasi.training.detail.implementasi.bruto.max.length");
+		valMinDouble(entity.getNetto(), 0D, "implementasi.training.detail.implementasi.netto.min.length");
+		valMaxDouble(entity.getNetto(), 999999999D, "implementasi.training.detail.implementasi.netto.max.length");
+	}
+
+	protected void manageReferences(EImplementasiTrainingDetailImplementasi entity) {
+		if (entity.getImplementasi() != null) {
+			EImplementasi eFromDb = implementasiService.get(entity.getImplementasi().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setImplementasi(eFromDb);
+				} else {
+					batchError("implementasi.not.active");
+				}
+			} else {
+				batchError("implementasi.not.found");
+			}			
+		}
+	}
+
+	protected void valDelete(EImplementasiTrainingDetailImplementasi toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(EImplementasiTrainingDetailImplementasi addedEntity) {
+		EImplementasiTrainingDetailImplementasi entityFromDb = repo.findByBK(addedEntity.getHeader().getId(), addedEntity.getNourut());
+		if (entityFromDb != null) {
+			throw new BusinessException("implementasi.training.detail.implementasi.bk", addedEntity.getNourut());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EImplementasiTrainingDetailImplementasi editedEntity) {
+		EImplementasiTrainingDetailImplementasi entityFromDb = repo.findByBK(editedEntity.getHeader().getId(), editedEntity.getNourut());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("implementasi.training.detail.implementasi.bk", editedEntity.getNourut());
+			}
+		}
+	}
+
+	protected void preAdd(EImplementasiTrainingDetailImplementasi entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(EImplementasiTrainingDetailImplementasi entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(EImplementasiTrainingDetailImplementasi toBeSaved, EImplementasiTrainingDetailImplementasi oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(EImplementasiTrainingDetailImplementasi toBeSaved, EImplementasiTrainingDetailImplementasi oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(EImplementasiTrainingDetailImplementasi entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(EImplementasiTrainingDetailImplementasi entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	// ----
+	
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya	
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+}

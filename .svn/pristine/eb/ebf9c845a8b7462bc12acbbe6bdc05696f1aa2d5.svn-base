@@ -1,0 +1,33 @@
+package co.id.sofcograha.base.master.jenisTransaksi.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+import co.id.sofcograha.base.master.jenisTransaksi.repositories.EJenisTransaksiRepository;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+
+@Service("jenisTransaksiService")
+public class JenisTransaksiService {
+    
+	@Autowired
+    private LocalErrors errorManager;
+    
+	@Autowired
+	private EJenisTransaksiRepository eJenisTransaksiRepository;	
+	
+	public EJenisTransaksi findByBk(String kode) {
+		return eJenisTransaksiRepository.findByBK(kode);
+	}
+	
+	public EJenisTransaksi get(String id) {
+		return eJenisTransaksiRepository.findOne(id);
+	}
+	
+	public SearchResult<EJenisTransaksi> search(SearchParameter searchParameter) {
+		return eJenisTransaksiRepository.search(searchParameter);
+	}
+
+}

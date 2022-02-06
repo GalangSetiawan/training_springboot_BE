@@ -1,0 +1,57 @@
+package co.id.sofcograha.domain.invoicing.report.invoice.service;
+
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.domain.invoicing.report.invoice.entities.ERptRekapCustomerPerTahun;
+import co.id.sofcograha.domain.invoicing.report.invoice.repositories.RekapInvoiceRepository;
+
+@Service("rekapInvoiceService")
+public class RekapInvoiceService extends BaseService {
+	
+	@Autowired private RekapInvoiceRepository rekapInvoiceRepository;
+	
+	public List<ERptRekapCustomerPerTahun> prosesRekapCustomerPerTahun(String tahun, String idMi001) {
+		return rekapInvoiceRepository.prosesRekapCustomerPerTahun(tahun, idMi001);
+	}
+	
+	public Map<String, Integer> getJumlahKaryawanPerBulanPerCustomer(String idMi010, String idMi001, String tahun, String bulan) {	
+		return rekapInvoiceRepository.getJumlahKaryawanPerBulanPerCustomer(idMi010, idMi001, tahun, bulan);
+	}
+	
+	/*
+	@Transactional
+	public SearchResult<ERptRekapCustomerPerTahun> rekapCustomerPerTahun(SearchParameter searchParameter) {
+
+		String tahun = (String) searchParameter.getValueFromMappedParam("tahun");
+		String idMi001 = (String) searchParameter.getValueFromMappedParam("idMi001");
+		
+		valRequiredString(tahun, "rekap.customer.per.tahun.tahun.required");
+		valRequiredString(idMi001, "rekap.customer.per.tahun.produk.required");
+		
+		String pProsesId = rekapInvoiceRepository.prosesRekapCustomerPerTahun(tahun, idMi001);
+		
+		List<ERptNeracaPercobaan> list = rekapInvoiceRepository.getRekapCustomerPerTahun(searchParameter, pProsesId);
+				
+		ArrayList<RptNeracaPercobaan> result = new ArrayList<RptNeracaPercobaan>();
+		
+		if (!list.isEmpty()) {
+			for (ERptNeracaPercobaan item : list) {
+				RptNeracaPercobaan itemRpt = RptNeracaPercobaan.fromEntity(item);
+				scanSubCoa(pProsesId, item, itemRpt);
+				result.add(itemRpt);
+			}
+		}
+		
+		generalLedgerRptRepository.deleteTempTableReport(pProsesId);		
+		
+		return result;
+		
+	}
+	*/
+		
+}

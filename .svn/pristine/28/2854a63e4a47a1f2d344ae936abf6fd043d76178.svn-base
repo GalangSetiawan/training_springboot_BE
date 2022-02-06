@@ -1,0 +1,176 @@
+package co.id.sofcograha.base.master.widget.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.master.widget.entities.EWidget;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+//import id.co.sofcograha.gajiidapi.base.extendables.BaseRepository;
+//import id.co.sofcograha.gajiidapi.base.mst.company.entities.Company;
+//import id.co.sofcograha.gajiidapi.base.mst.widget.entities.Widget;
+//import id.co.sofcograha.gajiidapi.base.search.HqlSimpleSearchBuilder;
+//import id.co.sofcograha.gajiidapi.base.search.NativeSearchBuilder;
+//import id.co.sofcograha.gajiidapi.base.search.SearchParameter;
+//import id.co.sofcograha.gajiidapi.base.search.SearchResult;
+//import id.co.sofcograha.gajiidapi.base.utils.QueryUtil;
+
+@Repository
+public class WidgetRepository extends SimpleJpaRepository<EWidget, String> {
+
+	protected final EntityManager em;
+	
+	public WidgetRepository(EntityManager em) {
+		super(EWidget.class, em);
+		this.em = em;
+	}
+
+	public EWidget findByBK(String widgetId) {
+		
+		String query = "SELECT e FROM EWidget e " + 
+	                   "WHERE e.widgetId = :widgetId";
+		
+		try {
+			return em.createQuery(query, EWidget.class)
+					.setParameter("widgetId", widgetId)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+
+	public SearchResult<EWidget> search(SearchParameter searchParameter) {
+		
+		HqlSimpleSearchBuilder<EWidget> search = new HqlSimpleSearchBuilder<>(EWidget.class, em);
+
+		String widgetId = (String) searchParameter.getValueFromMappedParam("widgetId");
+		String widgetName = (String) searchParameter.getValueFromMappedParam("widgetName");
+		Integer cols = (Integer) searchParameter.getValueFromMappedParam("cols");
+		Integer rows = (Integer) searchParameter.getValueFromMappedParam("rows");
+		String functionAccessId = (String) searchParameter.getValueFromMappedParam("functionAccess.id");
+		Boolean active = (Boolean) searchParameter.getValueFromMappedParam("active");
+
+		if (!QueryUtil.isAll(widgetId)) {
+			search.addWhere("AND LOWER(widgetId) LIKE LOWER(:widgetId) ");
+			search.addParameter("widgetId", QueryUtil.formatStringForLikeFilter(widgetId));
+		}
+		
+		if (!QueryUtil.isAll(widgetName)) {
+			search.addWhere("AND LOWER(widgetName) LIKE LOWER(:widgetName) ");
+			search.addParameter("widgetName", QueryUtil.formatStringForLikeFilter(widgetName));
+		}
+		
+		if (cols != null) {
+			search.addWhere("AND cols = :cols ");
+			search.addParameter("cols", cols);
+		}
+		
+		if (rows != null) {
+			search.addWhere("AND rows = :rows ");
+			search.addParameter("rows", rows);
+		}
+		
+		if (functionAccessId != null) {
+			search.addWhere("AND functionAccess.id = :functionAccessId ");
+			search.addParameter("functionAccessId", functionAccessId);
+		}
+		
+		if (active != null) {
+			search.addWhere("AND active = :active ");
+			search.addParameter("active", active);
+		}
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+//	public SearchResult<EWidget> searchAllowedUserWidgets(ECompany company, SearchParameter searchParameter) {
+//		
+//		String userId = (String) searchParameter.getValueFromMappedParam("userId");
+//		String widgetId = (String) searchParameter.getValueFromMappedParam("widgetId");
+//		String widgetName = (String) searchParameter.getValueFromMappedParam("widgetName");
+//		
+//		StringBuilder queryStringBuilder = new StringBuilder();
+//		queryStringBuilder.append("SELECT 	a.id, a.widget_id, a.widget_name, a.cols, a.rows, a.hm_msy007_function_access_id, a.image_extension, a.image, a.active, a.version, a.user_create, a.creation_time, a.user_modify, modification_time\n");
+//		queryStringBuilder.append("FROM 	public.hm_msy046 a\n");
+//		queryStringBuilder.append("WHERE   	(a.hm_msy007_function_access_id IS NULL OR\n");
+//		queryStringBuilder.append("        	 a.hm_msy007_function_access_id IN (\n");
+//		queryStringBuilder.append("                                           	SELECT DISTINCT b.hm_msy007_id\n");
+//		queryStringBuilder.append("                                           	FROM public.hm_msy006 a\n");
+//		queryStringBuilder.append("                                           	INNER JOIN public.hm_msy009 b ON a.hm_msy003_id = b.hm_msy003_id\n");
+//		queryStringBuilder.append("											 	WHERE ");
+//		
+//		if (userId != null) {
+//			queryStringBuilder.append("                                         		a.hm_msy004_id = :userId AND \n");
+//		}
+//		queryStringBuilder.append("                                         			b.hm_msy007_id IN (SELECT	hm_msy007_id\n");
+//		queryStringBuilder.append("                                           				   			   FROM 	public.hm_msy008\n");
+//		queryStringBuilder.append("                                                             		   WHERE 	hm_msy002_id IS NULL OR hm_msy002_id = :companyId)\n");		
+//		queryStringBuilder.append("                                            	UNION\n");
+//		queryStringBuilder.append("                                            	SELECT	DISTINCT a.hm_msy007_id\n");
+//		queryStringBuilder.append("                                            	FROM 	hm_msy010 a\n");
+//		queryStringBuilder.append("                                            	WHERE 	");
+//		
+//		if (userId != null) {
+//			queryStringBuilder.append("												a.hm_msy004_id = :userId AND\n"); 
+//		}
+//		queryStringBuilder.append("                                              	a.hm_msy007_id IN (SELECT	hm_msy007_id\n"); 
+//		queryStringBuilder.append("                                                                    FROM 	public.hm_msy008\n"); 
+//		queryStringBuilder.append("                                                                    WHERE 	hm_msy002_id IS NULL OR hm_msy002_id = :companyId)\n");		
+//		queryStringBuilder.append("                                        	   )");
+//		queryStringBuilder.append("           )\n");
+//		if (userId != null) {
+//			queryStringBuilder.append("       AND (\n");
+//			queryStringBuilder.append("			   	a.id NOT IN (\n");
+//			queryStringBuilder.append("			   					SELECT 	DISTINCT b.hm_msy046_widget_id\n");
+//			queryStringBuilder.append("								FROM 	public.hm_msy047 b\n");
+//			queryStringBuilder.append("								WHERE 	b.hm_msy004_user_id = :userId\n");
+//			queryStringBuilder.append("           				)\n");
+//			queryStringBuilder.append("           )\n");
+//		}
+//		
+//		if (!QueryUtil.isAll(widgetId)) {
+//			queryStringBuilder.append("AND LOWER(a.widgetId) LIKE LOWER(:widgetId) \n");
+//		}
+//		
+//		if (!QueryUtil.isAll(widgetName)) {
+//			queryStringBuilder.append("AND LOWER(a.widgetName) LIKE LOWER(:widgetName) \n");
+//		}
+//		
+//		NativeSearchBuilder<Widget> search = new NativeSearchBuilder<Widget>(Widget.class, em);
+//		search.setQueryString(queryStringBuilder);
+//		if (userId != null) {
+//			search.addParameter("userId", userId);
+//		}
+//		search.addParameter("companyId", company.getId());
+//		
+//		if (!QueryUtil.isAll(widgetId)) {
+//			search.addParameter("widgetId", widgetId);
+//		}
+//		
+//		if (!QueryUtil.isAll(widgetName)) {
+//			search.addParameter("widgetName", widgetName);
+//		}
+//		
+//		search.setPagination(searchParameter.getPagination());
+//		search.setSort(searchParameter.getSort());
+//		
+//		return search.getSearchResult();
+//	}
+
+	public EWidget add(EWidget entity) {
+		return save(entity);
+	}
+
+	public EWidget edit(EWidget entity) {
+		return save(entity);
+	}
+}

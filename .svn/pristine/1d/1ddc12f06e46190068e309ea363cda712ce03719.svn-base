@@ -1,0 +1,29 @@
+package co.id.sofcograha.base.queue.processstatus.controllers;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.queue.processstatus.pojos.ProcessStatusPojo;
+import co.id.sofcograha.base.queue.processstatus.services.ProcessStatusService;
+import co.id.sofcograha.base.utils.ApiResponse;
+
+@RestController
+@RequestMapping(value = "/api/processStatusInfo")
+
+public class ProcessStatusInfoController {
+	@Autowired
+	private ProcessStatusService processStatusService;
+	
+    @NoAuth
+	@DeleteMapping(value = "/multi")
+	public ApiResponse deleteMulti(@RequestBody final List<ProcessStatusPojo> pojos) {
+		processStatusService.deleteMulti(pojos);
+		return ApiResponse.ok();
+	}
+}

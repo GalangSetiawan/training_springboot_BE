@@ -1,0 +1,17 @@
+package co.id.sofcograha.base.exceptions;
+
+import org.springframework.security.core.AuthenticationException;
+
+public class TokenAuthenticationException extends AuthenticationException {
+
+	private static final long serialVersionUID = -1236936234449683435L;
+
+	public TokenAuthenticationException(String msg, Throwable t) {
+		super(msg, t);
+	}
+
+	public TokenAuthenticationException(String msg) {
+		super(msg);
+	}
+}
+

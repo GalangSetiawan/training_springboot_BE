@@ -1,0 +1,133 @@
+package co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.controllers;
+
+import java.text.ParseException;
+import java.util.Date;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifComplete;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifCOPdfService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifCompleteService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifHeaderService;
+import co.id.sofcograha.domain.invoicing.masters.produk.pojos.Produk;
+import co.id.sofcograha.domain.invoicing.proses.hitung.pojos.HitungTarifModel;
+
+@RestController
+@RequestMapping("/api/customer-produk-tarif")
+public class CustomerProdukTarifController {
+	
+	public static final Logger logger = LoggerFactory.getLogger(CustomerProdukTarifController.class);
+	
+	@Autowired private CustomerProdukTarifHeaderService customerProdukTarifHeaderService;
+	//@Autowired private SkemaHargaDetailService skemaHargaDetailService;
+	@Autowired private CustomerProdukTarifCompleteService customerProdukTarifCompleteService;
+	@Autowired private CustomerProdukTarifCOPdfService customerProdukTarifCOPdfService;
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<ECustomerProdukTarifHeader> searchResult = customerProdukTarifHeaderService.search(SearchParameter.generate(searchParameter, 
+				CustomerProdukTarifHeader.getFieldMappings()));
+		
+		return ApiResponse.dataWithPaging("items", 
+				CustomerProdukTarifHeader.fromEntities(searchResult.getResult()), 
+				searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String idMi010, @RequestParam String idMi001) throws JsonProcessingException, ParseException {
+		CustomerProdukTarifComplete data = customerProdukTarifCompleteService.findByBk(idMi010, idMi001);
+
+		// looping untuk menandai detail sudah pernah digunakan atau tidak 
+		// NB: digunakan looping, karena diyakini item tarif yang ada di satu data tidak akan lebih dari 10 record
+		if (data != null) {
+			customerProdukTarifCompleteService.tandaiSudahDigunakan(data);			
+		}
+		
+	    return ApiResponse.data("item", data);
+	}
+	
+	@NoAuth
+	@GetMapping(value = "/jatuh-tempo")
+	public ApiResponse get(@RequestParam String idMi010,
+			               @RequestParam String idMi001,
+			               @RequestParam String tanggal) {
+		
+		Date datTanggal = TimeUtil.convertIso8601ToDate(tanggal);
+		
+		Date data = customerProdukTarifCompleteService.getTglJatuhTempo(idMi010, idMi001, datTanggal);
+	    
+	    return ApiResponse.data("item", data);
+	}
+	
+	@NoAuth
+	@GetMapping(value = "/produk")
+	public ApiResponse getProdukList(@RequestParam String idMi010,
+			                         @RequestParam String nama) {
+		
+	    return ApiResponse.data("items", Produk.fromEntities(customerProdukTarifCompleteService.getProdukByCustomer(idMi010, nama)));
+	}
+	
+	//@AuthAdd("TRX_PP")
+	@NoAuth
+	@PostMapping
+	public ApiResponse add(@RequestBody CustomerProdukTarifComplete pojo) {
+
+		
+		ECustomerProdukTarifHeader header = customerProdukTarifCompleteService.add(pojo);
+		
+		return ApiResponse.data("item", CustomerProdukTarifComplete.setFromEntity(header));
+	}
+	
+	//@AuthEdit("TRX_PP")
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody CustomerProdukTarifComplete pojo) {
+		
+		ECustomerProdukTarifHeader header = customerProdukTarifCompleteService.edit(pojo);
+		
+		return ApiResponse.data("item", CustomerProdukTarifComplete.setFromEntity(header));
+	}
+
+	//@AuthDelete("TRX_PP")
+	@NoAuth
+	@DeleteMapping
+	public ApiResponse delete(@RequestParam String id, @RequestParam(required = false) Long version) {
+		
+		customerProdukTarifCompleteService.delete(id, version);
+		
+		return ApiResponse.ok();
+	}
+	
+	@NoAuth
+    @GetMapping("/pdf")
+    public ApiResponse createAndSendPdf(@RequestParam Map<String, String> searchParameter) throws ParseException {
+		
+	    Base64StringEncodedPojo result = customerProdukTarifCOPdfService.pdfReport(searchParameter);
+	    
+	    return ApiResponse.data("item", result);		
+    }	
+}

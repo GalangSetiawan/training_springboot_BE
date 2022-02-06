@@ -1,0 +1,243 @@
+package co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.entities.EPenerimaanBayarHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.pojos.PenerimaanBayarHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.repositories.EPenerimaanBayarHeaderRepository;
+
+@Service("penerimaanBayarHeaderService")
+public class PenerimaanBayarHeaderService extends BaseService {
+	
+	@Autowired private EPenerimaanBayarHeaderRepository repo;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public PenerimaanBayarHeader findByBk(String nomor) {
+		return PenerimaanBayarHeader.fromEntity(repo.findByBK(nomor));
+	}
+	
+	public SearchResult<EPenerimaanBayarHeader> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public EPenerimaanBayarHeader add(EPenerimaanBayarHeader entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		EPenerimaanBayarHeader addedEntity = repo.add(entity);
+		postAdd(addedEntity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+	
+	@Transactional
+	public EPenerimaanBayarHeader edit(EPenerimaanBayarHeader entity) {
+				
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		EPenerimaanBayarHeader toBeSaved = repo.getOne(entity.getId());
+		EPenerimaanBayarHeader oldEntity = (EPenerimaanBayarHeader) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EPenerimaanBayarHeader.class.getSimpleName());
+		throwBatchError();
+		
+		EPenerimaanBayarHeader toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		throwBatchError();
+		
+	}
+	
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EPenerimaanBayarHeader dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EPenerimaanBayarHeader entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(EPenerimaanBayarHeader newValues, EPenerimaanBayarHeader toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setNomor(newValues.getNomor());
+			toBeSaved.setTgtrn(newValues.getTgtrn());
+			toBeSaved.setTipe(newValues.getTipe());
+			toBeSaved.setBank(newValues.getBank());
+			toBeSaved.setJumlah(newValues.getJumlah());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(EPenerimaanBayarHeader entity) {
+		valRequiredString(entity.getNomor(), "penerimaan.bayar.header.nomor.required");
+		valRequiredString(entity.getTgtrn(), "penerimaan.bayar.header.tgtrn.required");
+		valRequiredString(entity.getTipe(), "penerimaan.bayar.header.tipe.required");
+		valRequiredString(entity.getBank(), "penerimaan.bayar.header.bank.required");
+		valRequiredDouble(entity.getJumlah(), "penerimaan.bayar.header.jumlah.required");
+		//valRequiredString(entity.getKeterangan(), "penerimaan.bayar.header.keterangan.required");
+	}
+	
+	protected void manageMinMaxValues(EPenerimaanBayarHeader entity) {
+		valMaxString(entity.getNomor(), 50, "penerimaan.bayar.header.nomor.max.length");
+		valMaxString(entity.getTgtrn(), 8, "penerimaan.bayar.header.tgtrn.max.length");
+		valMaxString(entity.getTipe(), 10, "penerimaan.bayar.header.tipe.max.length");
+		valMaxString(entity.getBank(), 200, "penerimaan.bayar.header.bank.max.length");
+		valMaxString(entity.getKeterangan(), 500, "penerimaan.bayar.header.keterangan.max.length");
+		
+		valMinDouble(entity.getJumlah(), 0D, "penerimaan.bayar.header.jumlah.min.length");
+		valMaxDouble(entity.getJumlah(), 999999999D, "penerimaan.bayar.header.jumlah.max.length");
+	}
+
+	protected void manageReferences(EPenerimaanBayarHeader entity) {
+	}
+
+	protected void valDelete(EPenerimaanBayarHeader toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(EPenerimaanBayarHeader addedEntity) {
+		EPenerimaanBayarHeader entityFromDb = repo.findByBK(addedEntity.getNomor());
+		if (entityFromDb != null) {
+			throw new BusinessException("penerimaan.bayar.header.bk");
+		}
+	}
+
+	protected void valUniquenessOnEdit(EPenerimaanBayarHeader editedEntity) {
+		EPenerimaanBayarHeader entityFromDb = repo.findByBK(editedEntity.getNomor());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("penerimaan.bayar.header.bk");
+			}
+		}
+	}
+	
+	protected void preAdd(EPenerimaanBayarHeader entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(EPenerimaanBayarHeader entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(EPenerimaanBayarHeader toBeSaved, EPenerimaanBayarHeader oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(EPenerimaanBayarHeader toBeSaved, EPenerimaanBayarHeader oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(EPenerimaanBayarHeader entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(EPenerimaanBayarHeader entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+	
+	public EPenerimaanBayarHeader get(String id) {
+		return repo.getOne(id);
+	}
+	
+}

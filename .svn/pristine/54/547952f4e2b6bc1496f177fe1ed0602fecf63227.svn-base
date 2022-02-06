@@ -1,0 +1,13 @@
+CREATE OR REPLACE FUNCTION public.sys_guid()
+    RETURNS character varying
+    LANGUAGE plpgsql
+AS $function$
+DECLARE
+    uuid varchar;
+BEGIN
+    SELECT md5(clock_timestamp()::text||random()::text||nextval('public.seq_new_val')) INTO uuid;
+    RETURN uuid;
+END;
+$function$
+;
+

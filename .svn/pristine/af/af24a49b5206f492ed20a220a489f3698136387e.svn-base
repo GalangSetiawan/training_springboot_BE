@@ -1,0 +1,124 @@
+package co.id.sofcograha.domain.invoicing.admin.diskon.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.diskon.entities.EAdminDiskon;
+import co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.entities.EPenggunaanMaster;
+
+@Repository
+public class EAdminDiskonRepository extends SimpleJpaRepository<EAdminDiskon, String> {
+
+	protected final EntityManager em;
+
+	public EAdminDiskonRepository(EntityManager em) {
+		super(EAdminDiskon.class, em);
+		this.em = em;
+	}
+	
+	public EAdminDiskon findByBK(String tahun, String bulan, String idMi010, String idMi001, String jnsdis) {
+		
+		String query = "SELECT e FROM EAdminDiskon e " + 
+					   "WHERE e.tahun = :tahun And " + 
+			                 "e.bulan = :bulan And " +
+				             "e.customer.id = :idMi010 And " +
+      			             "e.produk.id = :idMi001 And " +
+      			             "e.jnsdis = :jnsdis";
+
+		try {
+			return em.createQuery(query, EAdminDiskon.class)
+					.setParameter("tahun", tahun)
+					.setParameter("bulan", bulan)
+					.setParameter("idMi010", idMi010)
+					.setParameter("idMi001", idMi001)
+					.setParameter("jnsdis", jnsdis)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+
+	}
+	
+	public List<EAdminDiskon> getByCustomerProdukDanTahunBulan(String idMi010, String idMi001, String tahun, String bulan) {
+		
+		String query = "SELECT e FROM EAdminDiskon e " + 
+				       "WHERE e.tahun = :tahun And " + 
+		                     "e.bulan = :bulan And " +
+			                 "e.customer.id = :idMi010 And " +
+			                 "e.produk.id = :idMi001 " +
+			           "ORDER BY e.nourut";
+		
+		try {
+			return em.createQuery(query, EAdminDiskon.class)
+					.setParameter("tahun", tahun)
+					.setParameter("bulan", bulan)
+					.setParameter("idMi010", idMi010)
+					.setParameter("idMi001", idMi001)
+					.getResultList();
+		} catch (NoResultException e) {
+			return null;
+		}
+
+	}
+	
+	public EAdminDiskon getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EAdminDiskon> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EAdminDiskon> search = new HqlSimpleSearchBuilder<>(EAdminDiskon.class, em);
+
+		String tahun = (String) searchParameter.getValueFromMappedParam("tahun");
+		String bulan = (String) searchParameter.getValueFromMappedParam("bulan");
+		String customer = (String) searchParameter.getValueFromMappedParam("customer");
+		String produk = (String) searchParameter.getValueFromMappedParam("produk");
+		String jnsdis = (String) searchParameter.getValueFromMappedParam("jnsdis");
+
+		if (!QueryUtil.isAll(tahun)) {
+            search.addWhere("AND LOWER(tahun) LIKE LOWER(:tahun) ");
+            search.addParameter("tahun", QueryUtil.formatStringForLikeFilter(tahun));
+        }
+
+	    if (!QueryUtil.isAll(bulan)) {
+	      search.addWhere("AND LOWER(bulan) LIKE LOWER(:bulan) ");
+	      search.addParameter("bulan", QueryUtil.formatStringForLikeFilter(bulan));
+	    }
+
+		if (!QueryUtil.isAll(customer)) {
+            search.addWhere("AND LOWER(customer.nama) LIKE LOWER(:customer) ");
+            search.addParameter("customer", QueryUtil.formatStringForLikeFilter(customer));
+        }
+
+		if (!QueryUtil.isAll(produk)) {
+            search.addWhere("AND LOWER(produk.nama) LIKE LOWER(:produk) ");
+            search.addParameter("produk", QueryUtil.formatStringForLikeFilter(produk));
+        }
+
+		if (!QueryUtil.isAll(jnsdis)) {
+            search.addWhere("AND LOWER(jnsdis) LIKE LOWER(:jnsdis) ");
+            search.addParameter("jnsdis", QueryUtil.formatStringForLikeFilter(jnsdis));
+        }
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EAdminDiskon add(EAdminDiskon entity) {
+		return save(entity);
+	}
+
+	public EAdminDiskon edit(EAdminDiskon entity) {
+		return save(entity);
+	}
+}

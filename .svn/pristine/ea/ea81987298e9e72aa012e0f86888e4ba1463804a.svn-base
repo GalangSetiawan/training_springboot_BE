@@ -1,0 +1,62 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubSubDetailAdjDiskon;
+
+@Repository
+public class EInvoiceSubSubDetailAdjDiskonRepository extends SimpleJpaRepository<EInvoiceSubSubDetailAdjDiskon, String> {
+
+	protected final EntityManager em;
+
+	public EInvoiceSubSubDetailAdjDiskonRepository(EntityManager em) {
+		super(EInvoiceSubSubDetailAdjDiskon.class, em);
+		this.em = em;
+	}
+	
+	public EInvoiceSubSubDetailAdjDiskon findByBK(String idTi121, Integer nourut) {
+		
+		String query = "SELECT e FROM EInvoiceSubSubDetailAdjDiskon e " + 
+                       "WHERE e.subDetailPerincian.id = :idTi121 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EInvoiceSubSubDetailAdjDiskon.class)
+					 .setParameter("idTi121", idTi121)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EInvoiceSubSubDetailAdjDiskon getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EInvoiceSubSubDetailAdjDiskon> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EInvoiceSubSubDetailAdjDiskon> search = new HqlSimpleSearchBuilder<>(EInvoiceSubSubDetailAdjDiskon.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EInvoiceSubSubDetailAdjDiskon add(EInvoiceSubSubDetailAdjDiskon entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+
+	public EInvoiceSubSubDetailAdjDiskon edit(EInvoiceSubSubDetailAdjDiskon entity) {
+		return save(entity);
+	}
+}

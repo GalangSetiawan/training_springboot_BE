@@ -1,0 +1,29 @@
+package co.id.sofcograha.base.multitenancy;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+public class TenantContext {
+
+	private static Log logger = LogFactory.getLog(TenantContext.class.getName());
+	
+	private static ThreadLocal<String> currentTenant = new ThreadLocal<String>() {
+		public void set(String value) {
+			logger.debug("Setting ACTIVE companyCode to (" + value + ")");
+			super.set(value);
+		};
+	};
+    public static void setCurrentTenant(String tenant) {
+    	if (tenant == null) tenant = MultiTenancyConstants.DEFAULT_TENANTID;
+        currentTenant.set(tenant);
+    }
+    public static String getCurrentTenant() {
+    	String tenant = currentTenant.get();
+    	if (tenant == null) tenant = MultiTenancyConstants.DEFAULT_TENANTID;
+        return tenant;
+    }
+    public static void setDefault() {
+        currentTenant.set(MultiTenancyConstants.DEFAULT_TENANTID);
+    }
+	
+}

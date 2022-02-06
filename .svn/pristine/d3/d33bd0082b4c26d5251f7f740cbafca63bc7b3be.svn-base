@@ -1,0 +1,111 @@
+package co.id.sofcograha.domain.invoicing.masters.training.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.masters.training.entities.ETraining;
+
+@JsonInclude(Include.ALWAYS)
+public class Training {
+
+    public String id;
+	public String nama;
+	public String keterangan;
+	public Integer jumdur;
+	public String satdur;
+	public String tipe;
+	public Double harga;
+	public Boolean flakt;
+    public Long version;
+    public boolean isDeleted;
+    
+    public ETraining toEntity() {
+		
+    	ETraining entity = new ETraining();
+  		
+  	    entity.setId(id);
+  		entity.setNama(nama);
+  		entity.setKeterangan(keterangan);
+  		entity.setJumdur(jumdur);
+  		entity.setSatdur(satdur);
+  		entity.setTipe(tipe);
+  		entity.setHarga(harga);
+  		
+  		if (flakt == true) {
+  		  entity.setFlakt("Y");
+  		} else {
+  		  entity.setFlakt("T");
+  		}
+  		
+        entity.setVersion(version);
+          
+  		return entity;
+  	}
+    
+	public static Training fromEntity (ETraining entity) {
+		return fromEntity(entity,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static Training fromEntity(ETraining entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		
+		Training pojo = new Training();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.nama = entity.getNama();
+			pojo.keterangan = entity.getKeterangan();
+			pojo.jumdur = entity.getJumdur();
+			pojo.satdur = entity.getSatdur();
+			pojo.tipe = entity.getTipe();
+			pojo.harga = entity.getHarga();
+		    
+		    if (entity.getFlakt().equals("Y")) {
+		      pojo.flakt = true;
+		    } else {
+		      pojo.flakt = false;
+		    }
+		    
+	        pojo.version = entity.getVersion();
+		}
+
+		return pojo;
+	}
+	
+	public static List<Training> fromEntities(List<ETraining> entities){
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static List<Training> fromEntities(List<ETraining> entities, int depthLevel){
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<Training> pojos = new ArrayList<>();
+		
+		for (ETraining entity : entities) {
+			pojos.add(Training.fromEntity(entity, depthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+	
+		mappings.add(new SearchFieldMapping("nama", "nama"));
+		mappings.add(new SearchFieldMapping("keterangan", "keterangan"));
+		mappings.add(new SearchFieldMapping("tipe", "tipe"));
+		mappings.add(new SearchFieldMapping("flakt", "flakt").searchOnly());
+//		mappings.add(new SearchFieldMapping("urutan", "urutan", Integer.class).sortOnly());
+	
+		return mappings;
+	} 
+	
+}

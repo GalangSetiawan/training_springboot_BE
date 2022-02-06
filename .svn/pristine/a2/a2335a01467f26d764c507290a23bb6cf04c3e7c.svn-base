@@ -1,0 +1,263 @@
+package co.id.sofcograha.base.master.company.entities;
+
+import java.util.Date;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.exceptions.DevException;
+import co.id.sofcograha.base.master.customer.entities.ECustomer;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(schema="public", name = "std_company", uniqueConstraints = @UniqueConstraint(columnNames = { "code" }))
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class ECompany {
+
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@Version
+	@Column(name = "version")
+	private Long version;
+
+	@Column(name = "code")
+	private String code;
+
+	@Column(name = "name")
+	private String name;
+
+	@OneToOne
+	@JoinColumn(name = "std_customer_id")
+	private ECustomer customer;
+
+	@Column(name = "address")
+	private String address;
+
+	@Column(name = "city")
+	private String city;
+
+	@Column(name = "phone_number")
+	private String phoneNumber;
+
+	@Column(name = "email")
+	private String email;
+
+	@Column(name = "pic_name")
+	private String picName;
+	
+	@Column(name = "pic_position")
+	private String picPosition;
+	
+	@Column(name = "pic_email")
+	private String picEmail;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "active_start_month")
+	private Date activeStartMonth;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "active_end_month")
+	private Date activeEndMonth;
+
+	@Column(name = "active")
+	private Boolean active;
+	
+	@Column(name = "user_create")
+	private String userCreate;
+
+	@Column(name = "creation_time")
+	private Date creationTime;
+
+	@Column(name = "user_modify")
+	private String userModify;
+
+	@Column(name = "modification_time")
+	private Date modificationTime;
+
+	public String getCode() {
+		return code;
+	}
+
+	public void setCode(String code) {
+		this.code = code;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public ECustomer getCustomer() {
+		return customer;
+	}
+
+	public void setCustomer(ECustomer customer) {
+		this.customer = customer;
+	}
+
+	public String getAddress() {
+		return address;
+	}
+
+	public void setAddress(String address) {
+		this.address = address;
+	}
+
+	public String getCity() {
+		return city;
+	}
+
+	public void setCity(String city) {
+		this.city = city;
+	}
+
+	public String getPhoneNumber() {
+		return phoneNumber;
+	}
+
+	public void setPhoneNumber(String phoneNumber) {
+		this.phoneNumber = phoneNumber;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+	
+	public String getPicName() {
+		return picName;
+	}
+
+	public void setPicName(String picName) {
+		this.picName = picName;
+	}
+
+	public String getPicPosition() {
+		return picPosition;
+	}
+
+	public void setPicPosition(String picPosition) {
+		this.picPosition = picPosition;
+	}
+
+	public String getPicEmail() {
+		return picEmail;
+	}
+
+	public void setPicEmail(String picEmail) {
+		this.picEmail = picEmail;
+	}
+
+	public Date getActiveStartMonth() {
+		return activeStartMonth;
+	}
+
+	public void setActiveStartMonth(Date activeStartMonth) {
+		this.activeStartMonth = activeStartMonth;
+	}
+
+	public Date getActiveEndMonth() {
+		return activeEndMonth;
+	}
+
+	public void setActiveEndMonth(Date activeEndMonth) {
+		this.activeEndMonth = activeEndMonth;
+	}
+	
+	public Boolean getActive() {
+		return active;
+	}
+	public void setActive(Boolean active) {
+		this.active = active;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public String getUserCreate() {
+		return userCreate;
+	}
+
+	public void setUserCreate(String userCreate) {
+		this.userCreate = userCreate;
+	}
+
+	public Date getCreationTime() {
+		return creationTime;
+	}
+
+	public void setCreationTime(Date creationTime) {
+		this.creationTime = creationTime;
+	}
+
+	public String getUserModify() {
+		return userModify;
+	}
+
+	public void setUserModify(String userModify) {
+		this.userModify = userModify;
+	}
+
+	public Date getModificationTime() {
+		return modificationTime;
+	}
+
+	public void setModificationTime(Date modificationTime) {
+		this.modificationTime = modificationTime;
+	}
+	
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+	
+	@PrePersist
+	private void prePersist() {
+		Date currentDateTime = new Date();
+		
+		this.id = UUID.randomUUID().toString();
+		this.userCreate = CurrentUser.getUsername();
+		this.creationTime = currentDateTime;
+		this.userModify = CurrentUser.getUsername();
+		this.modificationTime = currentDateTime;
+	}
+}

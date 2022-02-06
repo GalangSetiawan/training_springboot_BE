@@ -1,0 +1,142 @@
+package co.id.sofcograha.base.master.userwidget.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.pojos.UserInfo;
+import co.id.sofcograha.base.master.userwidget.entities.EUserWidget;
+import co.id.sofcograha.base.master.widget.entities.EWidget;
+import co.id.sofcograha.base.master.widget.pojos.WidgetPojo;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+
+//import id.co.sofcograha.gajiidapi.base.constants.BaseConstants;
+//import id.co.sofcograha.gajiidapi.base.extendables.BasePojo;
+//import id.co.sofcograha.gajiidapi.base.mst.user.entities.User;
+//import id.co.sofcograha.gajiidapi.base.mst.user.pojos.UserPojo;
+//import id.co.sofcograha.gajiidapi.base.mst.userwidget.entities.UserWidget;
+//import id.co.sofcograha.gajiidapi.base.mst.widget.entities.Widget;
+//import id.co.sofcograha.gajiidapi.base.mst.widget.pojos.WidgetPojo;
+//import id.co.sofcograha.gajiidapi.base.search.SearchFieldMapping;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class UserWidgetPojo {
+	
+	private static final long serialVersionUID = 6310431486166317340L;
+	public static final String SINGLE = "userWidget";
+	public static final String MULTI = "userWidgets";
+	
+	public String id;
+	public Long version;
+	public WidgetPojo widget;
+	public UserInfo user;
+	public Integer orderNumber;
+	public Integer cols;
+	public Integer rows;
+	public Integer x;
+	public Integer y;
+	public boolean isDeleted;
+	
+	public EUserWidget toEntity() {
+		
+		EUserWidget entity = new EUserWidget();
+		
+		entity.setId(id);
+		entity.setVersion(version);		
+		entity.setOrderNumber(orderNumber);
+		entity.setCols(cols);
+		entity.setRows(rows);
+		entity.setX(x);
+		entity.setY(y);
+		entity.setDeleted(isDeleted);
+		
+		if (widget != null && !StringUtils.isEmpty(widget.id)) {
+			EWidget eWidget = new EWidget();
+			
+			eWidget.setId(widget.id);
+			eWidget.setVersion(widget.version);
+			
+			entity.setWidget(eWidget);
+			
+		} else {
+			entity.setWidget(null);
+		}
+		
+		if (user != null && !StringUtils.isEmpty(user.id)) {
+			EUser eUser = new EUser();
+			
+			eUser.setId(user.id);
+			//eUser.setVersion(user.version);
+			
+			entity.setUser(eUser);
+			
+		} else {
+			entity.setUser(null);
+		}
+		
+		return entity;
+	}
+	
+	public static UserWidgetPojo fromEntity(EUserWidget entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static UserWidgetPojo fromEntity(EUserWidget entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		UserWidgetPojo pojo = new UserWidgetPojo();
+
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			
+			depthLevel--;
+			
+			pojo.version = entity.getVersion();
+			pojo.widget = WidgetPojo.fromEntity(entity.getWidget(), depthLevel);
+			pojo.user = UserInfo.fromEntity(entity.getUser(), depthLevel);
+			pojo.orderNumber = entity.getOrderNumber();
+			pojo.cols = entity.getCols();
+			pojo.rows = entity.getRows();
+			pojo.x = entity.getX();
+			pojo.y = entity.getY();
+			pojo.isDeleted = false;
+		}
+		return pojo;
+	}
+	
+	public static List<UserWidgetPojo> fromEntities(List<EUserWidget> entities) {
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static List<UserWidgetPojo> fromEntities(List<EUserWidget> entities, int depthLevel) {
+		if (entities == null) return new ArrayList<UserWidgetPojo>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<UserWidgetPojo> pojos = new ArrayList<UserWidgetPojo>();
+		for(EUserWidget entity: entities) {
+			pojos.add(UserWidgetPojo.fromEntity(entity));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+		mappings.add(new SearchFieldMapping("userId", "user.id").searchOnly());
+		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		mappings.add(new SearchFieldMapping("orderNumberFrom", "orderNumberFrom", Integer.class).searchOnly());
+		mappings.add(new SearchFieldMapping("orderNumberTo", "orderNumberTo", Integer.class).searchOnly());
+		
+		return mappings;
+	}
+}

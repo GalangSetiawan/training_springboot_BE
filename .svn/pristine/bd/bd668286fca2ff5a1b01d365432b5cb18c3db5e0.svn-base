@@ -1,0 +1,268 @@
+package co.id.sofcograha.base.master.company.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.repositories.CompanyRepository;
+import co.id.sofcograha.base.master.customer.entities.ECustomer;
+import co.id.sofcograha.base.master.customer.services.CustomerService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Service
+public class CompanyService extends BaseService {
+
+	@Autowired
+	private CompanyRepository companyRepository;
+
+	@Autowired
+	private CustomerService customerService;
+	
+	@Transactional
+	public ECompany add(ECompany entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		ECompany addedEntity = companyRepository.add(entity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+
+	@Transactional
+	public ECompany edit(ECompany entity) {
+		
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		ECompany toBeSaved = companyRepository.getOne(entity.getId());
+//		ECompany oldEntity = (ECompany) toBeSaved.clone();
+		
+		//TODO: this may cause org.hibernate.TransientPropertyValueException
+		// (set reference to non existing data, then before reaching manageReferences, another thread trigger hibernate flush)
+		defineEditableValues(entity, toBeSaved);
+		
+		toBeSaved = companyRepository.edit(toBeSaved);
+
+		throwBatchError();
+		return toBeSaved;	
+	}
+	
+	@Transactional
+	public void delete(String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, ECompany.class.getSimpleName());
+		throwBatchError();
+		
+		ECompany toBeDeleted = companyRepository.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		companyRepository.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ECompany dbEntity = companyRepository.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (companyRepository.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(ECompany entity) {
+		if (entity.getActive() == null) entity.setActive(true);
+	}
+
+	protected void defineEditableValues(ECompany newValues, ECompany toBeSaved) {
+		toBeSaved.setCode(newValues.getCode());
+		toBeSaved.setName(newValues.getName());
+		toBeSaved.setCustomer(newValues.getCustomer());
+		toBeSaved.setAddress(newValues.getAddress());
+		toBeSaved.setCity(newValues.getCity());
+		toBeSaved.setPhoneNumber(newValues.getPhoneNumber());
+		toBeSaved.setEmail(newValues.getEmail());
+		toBeSaved.setPicName(newValues.getPicName());
+		toBeSaved.setPicPosition(newValues.getPicPosition());
+		toBeSaved.setPicEmail(newValues.getPicEmail());
+		toBeSaved.setActiveStartMonth(newValues.getActiveStartMonth());
+		toBeSaved.setActiveEndMonth(newValues.getActiveEndMonth());
+		toBeSaved.setActive(newValues.getActive());
+	}
+
+	protected void valRequiredValues(ECompany entity) {
+		valRequiredString(entity.getCode(), "company.code.required");
+		valRequiredString(entity.getName(), "company.name.required");
+		valRequiredReference(entity.getCustomer(), "company.customer.required");
+		valRequiredString(entity.getAddress(), "company.address.required");
+		valRequiredString(entity.getCity(), "company.city.required");
+		valRequiredString(entity.getPhoneNumber(), "company.phoneNumber.required");
+		valRequiredString(entity.getEmail(), "company.email.required");
+		valRequiredString(entity.getPicName(), "company.picName.required");
+		valRequiredString(entity.getPicPosition(), "company.picPosition.required");
+		valRequiredString(entity.getPicEmail(), "company.picEmail.required");
+		valRequiredDate(entity.getActiveStartMonth(), "company.activeStartMonth.required");
+		valRequiredDate(entity.getActiveEndMonth(), "company.activeEndMonth.required");
+		valRequiredBoolean(entity.getActive(), "company.active.required");
+	}
+	
+	protected void valRequiredReference(ECustomer ref, String msgCode, Object... args) {
+		if (ref == null) { batchError(msgCode, args); return; }
+		if (ref.getId() == null) { batchError(msgCode, args); return; }
+		if (ref.getId().equals("")) { batchError(msgCode, args); return; }
+	}
+	
+/*	
+	@Override
+	protected void valValid(Company entity) {
+	}
+*/
+
+	protected void manageMinMaxValues(ECompany entity) {
+		valMaxString(entity.getCode(), 20, "company.code.max.length");
+		valMaxString(entity.getName(), 50, "company.name.max.length");
+		valMaxString(entity.getCity(), 50, "company.city.max.length");
+		valMaxString(entity.getPhoneNumber(), 20, "company.phoneNumber.max.length");
+		valMaxString(entity.getEmail(), 50, "company.email.max.length");
+		valMaxString(entity.getPicName(), 50, "company.picName.max.length");
+		valMaxString(entity.getPicPosition(), 50, "company.picPosition.max.length");
+		valMaxString(entity.getPicEmail(), 50, "company.picEmail.max.length");
+		valMaxDate(entity.getActiveStartMonth(), entity.getActiveEndMonth(), "company.activeStartMonth.max.length");
+		valMinDate(entity.getActiveEndMonth(), entity.getActiveStartMonth(), "company.activeEndMonth.min.length");
+	}
+	
+	protected void manageReferences(ECompany entity) {
+//		OptionalConsumerUtil.of(customerService.find(entity.getCustomer().getId())).ifPresent(customer -> {
+//			if (customer.getActive()) {
+//				entity.setCustomer(customer);
+//			} else {
+//				batchError("company.customer.not.active");
+//			}
+//		}).ifNotPresent(() -> {
+//			batchError("company.customer.not.found");
+//		});
+		
+		ECustomer eCustomerFromDb = customerService.find(entity.getCustomer().getId());
+		if (eCustomerFromDb != null) {
+			if (eCustomerFromDb.getActive()) {
+				entity.setCustomer(eCustomerFromDb);
+			} else {
+				batchError("company.customer.not.active");
+			}
+		} else {
+			batchError("company.customer.not.found");
+		}
+	}
+/*
+	@Override
+	protected void valAdd(Company entity) {
+	}
+
+	@Override
+	protected void valEdit(Company entity, Company fromDb) {
+	}
+*/
+	
+	protected void valDelete(ECompany toBeDeleted) {
+	}
+
+	protected void valUniquenessOnAdd(ECompany addedEntity) {
+//		OptionalConsumerUtil.of(findByBk(addedEntity.getCode())).ifPresent(fromDb -> {
+//			throw new BusinessException("company.bk", addedEntity.getCode());
+//		});
+		ECompany eCompanyFromDb = companyRepository.findByBK(addedEntity.getCode());
+		if (eCompanyFromDb != null) {
+			throw new BusinessException("company.bk", addedEntity.getCode());
+		}
+	}
+
+
+	protected void valUniquenessOnEdit(ECompany editedEntity) {
+//		OptionalConsumerUtil.of(findByBk(editedEntity.getCode())).ifPresent(fromDb -> {
+//			if (!editedEntity.getId().equals(fromDb.getId())) {
+//				throw new BusinessException("company.bk", editedEntity.getCode());
+//			}
+//		});
+		ECompany eCompanyFromDb = companyRepository.findByBK(editedEntity.getCode());
+		if (eCompanyFromDb != null) {
+			if (!editedEntity.getId().equals(eCompanyFromDb.getId())) {
+				throw new BusinessException("company.bk", editedEntity.getCode());
+			}
+		}
+	}
+	
+
+	/* method get aslinya :
+	public E get(String id) {
+		return this.getFromDb(id);
+	}
+	protected E getFromDb(String id) {
+		return this.findInDb(id).orElse(null);
+	}
+	protected Optional<E> findInDb(String id) {
+		return this.mainRepo.findById(id);
+	}
+	*/
+	
+	public List<ECompany> getListActiveCompany() {
+		return companyRepository.getActiveListCompany();
+	}
+
+	public ECompany findByBk(String code) {
+		return companyRepository.findByBK(code);
+	}
+
+	public SearchResult<ECompany> search(SearchParameter searchParameter) {
+		return companyRepository.search(searchParameter);
+	}
+	
+	public ECompany get(String id) {
+		return companyRepository.findOne(id);
+	}
+	
+	public ECompany find(String id) {
+		return companyRepository.getOne(id);
+	}
+}

@@ -1,0 +1,107 @@
+package co.id.sofcograha.domain.invoicing.admin.upload.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.EAdminUploadAkumulasi;
+
+@Repository
+public class EAdminUploadAkumulasiRepository extends SimpleJpaRepository<EAdminUploadAkumulasi, String> {
+
+	protected final EntityManager em;
+
+	public EAdminUploadAkumulasiRepository(EntityManager em) {
+		super(EAdminUploadAkumulasi.class, em);
+		this.em = em;
+	}
+	
+	public EAdminUploadAkumulasi findByBK(String tahun, String bulan, String idMi015) {
+		
+		String query = "SELECT e FROM EAdminUploadAkumulasi e " + 
+                       "WHERE e.tahun = :tahun And " + 
+				             "e.bulan = :bulan And " +
+                             "e.grupAkumulasi.id = :idMi015";
+		
+		try {
+			return em.createQuery(query, EAdminUploadAkumulasi.class)
+					 .setParameter("tahun", tahun)
+					 .setParameter("bulan", bulan)
+					 .setParameter("idMi015", idMi015)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public List<EAdminUploadAkumulasi> findByTahunBulan(String tahun, String bulan) {
+		
+		String query = "SELECT e FROM EAdminUploadAkumulasi e " + 
+                       "WHERE e.tahun = :tahun And " +
+				             "e.bulan = :bulan"; 
+		
+		try {
+			return em.createQuery(query, EAdminUploadAkumulasi.class)
+					 .setParameter("tahun", tahun)
+					 .setParameter("bulan", bulan)
+					 .getResultList();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+		
+	public EAdminUploadAkumulasi getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EAdminUploadAkumulasi> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EAdminUploadAkumulasi> search = new HqlSimpleSearchBuilder<>(EAdminUploadAkumulasi.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EAdminUploadAkumulasi add(EAdminUploadAkumulasi entity) {
+		return save(entity);
+	}
+
+	public EAdminUploadAkumulasi edit(EAdminUploadAkumulasi entity) {
+		return save(entity);
+	}
+	
+	@Transactional
+	public void deletePerTahunBulan(String tahun, String bulan) {
+		
+		StringBuilder queryStringBuilder = new StringBuilder();
+		
+		queryStringBuilder.append("delete from ai008 "); 
+		queryStringBuilder.append("where tahun = :tahun and bulan = :bulan "); 
+		
+		em.createNativeQuery(queryStringBuilder.toString())
+		  .setParameter("tahun", tahun)
+		  .setParameter("bulan", bulan)
+		  .executeUpdate();
+		
+		queryStringBuilder = new StringBuilder();
+		queryStringBuilder.append("delete from ai005 "); 
+		queryStringBuilder.append("where tahun = :tahun and bulan = :bulan "); 
+		
+		em.createNativeQuery(queryStringBuilder.toString())
+		  .setParameter("tahun", tahun)
+		  .setParameter("bulan", bulan)
+		  .executeUpdate();
+		
+	}
+}

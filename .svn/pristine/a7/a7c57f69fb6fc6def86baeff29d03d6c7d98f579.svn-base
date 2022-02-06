@@ -1,0 +1,67 @@
+package co.id.sofcograha.base.master.user.controllers;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.pojos.User;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.screencontrol.DisplayControl;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@RestController
+@RequestMapping("/api/user")
+public class UserController {
+
+	@Autowired
+	private UserService userService;
+
+	@NoAuth
+	@GetMapping
+	public ApiResponse getUser(@RequestParam String idUser) {
+		return ApiResponse.data("item",
+				User.fromEntity(userService.findById(idUser), BaseConstants.DEFAULT_QUERY_DEPTH));
+	}
+
+	@NoAuth
+	@PostMapping
+    public ApiResponse add(@RequestBody User pojo) {
+      EUser added = userService.add(pojo.toEntity());
+      
+      ArrayList<DisplayControl> dispCtlList = new ArrayList<DisplayControl>();
+      dispCtlList.add(new DisplayControl("loginName", "disable"));
+      
+      return ApiResponse.data("item", User.fromEntity(added),
+          dispCtlList);
+    }
+        
+	@NoAuth
+    @GetMapping(value = "/search")
+    public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+      
+      List<SearchFieldMapping> mappings = new ArrayList<>();
+      mappings.add(new SearchFieldMapping("loginName", "loginName", String.class));
+      mappings.add(new SearchFieldMapping("userName", "userName", String.class));
+      
+      SearchResult<EUser> searchResult = userService.search(SearchParameter.generate(searchParameter, 
+          mappings));
+      
+      return ApiResponse.dataWithPaging("items", 
+          User.fromEntities(searchResult.getResult()), 
+          searchResult.getPaging());
+    }
+}

@@ -1,0 +1,291 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTghSubDetSkemaTarif;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetTghSubDetSkemaTarif;
+import co.id.sofcograha.domain.invoicing.admin.renewal.repositories.EAdminRenewalDetTghSubDetSkemaTarifRepository;
+
+@Service("adminRenewalDetTghSubDetSkemaTarifService")
+public class AdminRenewalDetTghSubDetSkemaTarifService extends BaseService {
+	
+	@Autowired private EAdminRenewalDetTghSubDetSkemaTarifRepository repo;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public AdminRenewalDetTghSubDetSkemaTarif findByBk(String idAi320, Integer nourut) {
+		return AdminRenewalDetTghSubDetSkemaTarif.fromEntity(repo.findByBK(idAi320, nourut));
+	}
+
+	public List<EAdminRenewalDetTghSubDetSkemaTarif> findByDetailId(String idAi320) {
+		return repo.findByDetailId(idAi320);
+	}
+	
+	public SearchResult<EAdminRenewalDetTghSubDetSkemaTarif> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public EAdminRenewalDetTghSubDetSkemaTarif add2(EAdminRenewalDetTghSubDetSkemaTarif entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		EAdminRenewalDetTghSubDetSkemaTarif addedEntity = repo.add(entity);
+		postAdd(addedEntity);
+			
+		throwBatchError();
+		return addedEntity;	
+
+	}
+
+	@Transactional
+	public EAdminRenewalDetTghSubDetSkemaTarif add(EAdminRenewalDetTghSubDetSkemaTarif entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+//		if (!isAnyBatchErrors()) {
+			preAdd(entity);
+			EAdminRenewalDetTghSubDetSkemaTarif addedEntity = repo.add(entity);
+			postAdd(addedEntity);
+			
+//			return addedEntity;	
+//		} else {
+//			System.out.println("ada error di add EAdminRenewalDetTghSubDetSkemaTarif");
+//		}
+			
+		throwBatchError();
+		return entity;	
+
+	}
+	
+	@Transactional
+	public EAdminRenewalDetTghSubDetSkemaTarif edit(EAdminRenewalDetTghSubDetSkemaTarif entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		EAdminRenewalDetTghSubDetSkemaTarif toBeSaved = repo.getOne(entity.getId());
+		EAdminRenewalDetTghSubDetSkemaTarif oldEntity = (EAdminRenewalDetTghSubDetSkemaTarif) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EAdminRenewalDetTghSubDetSkemaTarif.class.getSimpleName());
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		EAdminRenewalDetTghSubDetSkemaTarif toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		//throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		//throwBatchError();
+		
+	}
+	
+	// terkait manipulasi data
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EAdminRenewalDetTghSubDetSkemaTarif dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EAdminRenewalDetTghSubDetSkemaTarif entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(EAdminRenewalDetTghSubDetSkemaTarif newValues, EAdminRenewalDetTghSubDetSkemaTarif toBeSaved) {
+
+		if (toBeSaved != null) {
+			toBeSaved.setNourut(newValues.getNourut());
+			toBeSaved.setJnstrf(newValues.getJnstrf());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+			toBeSaved.setJumlah(newValues.getJumlah());
+			toBeSaved.setHarga(newValues.getHarga());
+			toBeSaved.setBruto(newValues.getBruto());
+			toBeSaved.setNetto(newValues.getNetto());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(EAdminRenewalDetTghSubDetSkemaTarif entity) {
+		valRequiredInteger(entity.getNourut(), "admin.renewal.det.tgh.sub.det.skema.tarif.nourut.required");
+		valRequiredString(entity.getJnstrf(), "admin.renewal.det.tgh.sub.det.skema.tarif.jnstrf.required");		
+		valRequiredString(entity.getKeterangan(), "admin.renewal.det.tgh.sub.det.skema.tarif.keterangan.required");		
+		valRequiredInteger(entity.getJumlah(), "admin.renewal.det.tgh.sub.det.skema.tarif.jumlah.required");
+		valRequiredDouble(entity.getHarga(), "admin.renewal.det.tgh.sub.det.skema.tarif.harga.required");
+		valRequiredDouble(entity.getBruto(), "admin.renewal.det.tgh.sub.det.skema.tarif.bruto.required");
+		valRequiredDouble(entity.getNetto(), "admin.renewal.det.tgh.sub.det.skema.tarif.netto.required");
+	}
+	
+	protected void manageMinMaxValues(EAdminRenewalDetTghSubDetSkemaTarif entity) {
+		valMinInteger(entity.getNourut(), 0, "admin.renewal.det.tgh.sub.det.skema.tarif.nourut.min.length");
+		valMaxInteger(entity.getNourut(), 999, "admin.renewal.det.tgh.sub.det.skema.tarif.nourut.max.length");
+		valMaxString(entity.getJnstrf(), 15, "admin.renewal.det.tgh.sub.det.skema.tarif.jnstrf.max.length");
+		valMaxString(entity.getKeterangan(), 200, "admin.renewal.det.tgh.sub.det.skema.tarif.keterangan.max.length");
+		valMinInteger(entity.getJumlah(), 0, "admin.renewal.det.tgh.sub.det.skema.tarif.jumlah.min.length");
+		valMaxInteger(entity.getJumlah(), 999999, "admin.renewal.det.tgh.sub.det.skema.tarif.jumlah.max.length");
+		valMinDouble(entity.getHarga(), 0D, "admin.renewal.det.tgh.sub.det.skema.tarif.harga.min.length");
+		valMaxDouble(entity.getHarga(), 999999999D, "admin.renewal.det.tgh.sub.det.skema.tarif.harga.max.length");
+		valMinDouble(entity.getBruto(), 0D, "admin.renewal.det.tgh.sub.det.skema.tarif.bruto.min.length");
+		valMaxDouble(entity.getBruto(), 999999999D, "admin.renewal.det.tgh.sub.det.skema.tarif.bruto.max.length");
+		valMinDouble(entity.getNetto(), 0D, "admin.renewal.det.tgh.sub.det.skema.tarif.netto.min.length");
+		valMaxDouble(entity.getNetto(), 999999999D, "admin.renewal.det.tgh.sub.det.skema.tarif.netto.max.length");
+	}
+
+	protected void manageReferences(EAdminRenewalDetTghSubDetSkemaTarif entity) {
+	}
+
+	protected void valDelete(EAdminRenewalDetTghSubDetSkemaTarif toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(EAdminRenewalDetTghSubDetSkemaTarif addedEntity) {
+		EAdminRenewalDetTghSubDetSkemaTarif entityFromDb = repo.findByBK(addedEntity.getDetailTagih().getId(), addedEntity.getNourut());
+		if (entityFromDb != null) {
+			throw new BusinessException("admin.renewal.det.tgh.sub.det.skema.tarif.bk", addedEntity.getNourut());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EAdminRenewalDetTghSubDetSkemaTarif editedEntity) {
+		EAdminRenewalDetTghSubDetSkemaTarif entityFromDb = repo.findByBK(editedEntity.getDetailTagih().getId(), editedEntity.getNourut());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("admin.renewal.det.tgh.sub.det.skema.tarif.bk", editedEntity.getNourut());
+			}
+		}
+	}
+
+	protected void preAdd(EAdminRenewalDetTghSubDetSkemaTarif entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(EAdminRenewalDetTghSubDetSkemaTarif entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(EAdminRenewalDetTghSubDetSkemaTarif toBeSaved, EAdminRenewalDetTghSubDetSkemaTarif oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(EAdminRenewalDetTghSubDetSkemaTarif toBeSaved, EAdminRenewalDetTghSubDetSkemaTarif oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(EAdminRenewalDetTghSubDetSkemaTarif entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(EAdminRenewalDetTghSubDetSkemaTarif entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	// ----
+	
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya	
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+}

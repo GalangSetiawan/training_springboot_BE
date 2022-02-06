@@ -1,0 +1,154 @@
+package co.id.sofcograha.base.master.company.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.customer.entities.ECustomer;
+import co.id.sofcograha.base.master.customer.pojos.CustomerPojo;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+
+//import id.co.sofcograha.gajiidapi.base.constants.BaseConstants;
+//import id.co.sofcograha.gajiidapi.base.extendables.BasePojo;
+//import id.co.sofcograha.gajiidapi.base.mst.company.entities.Company;
+//import id.co.sofcograha.gajiidapi.base.mst.customer.entities.Customer;
+//import id.co.sofcograha.gajiidapi.base.mst.customer.pojos.CustomerPojo;
+//import id.co.sofcograha.gajiidapi.base.search.SearchFieldMapping;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class CompanyPojo {
+
+	private static final long serialVersionUID = -8177369436498749344L;
+	public static final String SINGLE = "company";
+	public static final String MULTI = "companys";
+
+	public String id;
+	public Long version;
+	public String code;
+	public String name;
+	public CustomerPojo customer;
+	public String address;
+	public String city;
+	public String phoneNumber;
+	public String email;
+	public String picName;
+	public String picPosition;
+	public String picEmail;
+	public Date activeStartMonth;
+	public Date activeEndMonth;
+	public Boolean active;
+
+	public ECompany toEntity() {
+		
+		ECompany entity = new ECompany();
+		
+		entity.setId(id);
+		entity.setVersion(version);
+		entity.setCode(code);
+		entity.setName(name);
+		entity.setAddress(address);
+		entity.setCity(city);
+		entity.setPhoneNumber(phoneNumber);
+		entity.setEmail(email);
+		entity.setPicName(picName);
+		entity.setPicPosition(picPosition);
+		entity.setPicEmail(picEmail);
+		entity.setActiveStartMonth(activeStartMonth);
+		entity.setActiveEndMonth(activeEndMonth);
+		entity.setActive(active);
+		
+		if (customer != null && !StringUtils.isEmpty(customer.id)) {
+			ECustomer eCustomer = new ECustomer();
+			
+			eCustomer.setId(customer.id);
+			eCustomer.setVersion(customer.version);
+			
+			entity.setCustomer(eCustomer);
+			
+		} else {
+			entity.setCustomer(null);
+		}
+
+		return entity;
+	}
+
+	public static CompanyPojo fromEntity(ECompany entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static CompanyPojo fromEntity(ECompany entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+
+//		CompanyPojo pojo = BasePojo.fromBaseEntity(CompanyPojo.class, entity, depthLevel);
+		CompanyPojo pojo = new CompanyPojo();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			
+			depthLevel--;
+			
+			pojo.version = entity.getVersion();
+			pojo.code = entity.getCode();
+			pojo.name = entity.getName();
+			pojo.customer = CustomerPojo.fromEntity(entity.getCustomer(), depthLevel);
+			pojo.address = entity.getAddress();
+			pojo.city = entity.getCity();
+			pojo.phoneNumber = entity.getPhoneNumber();
+			pojo.email = entity.getEmail();
+			pojo.picName = entity.getPicName();
+			pojo.picPosition = entity.getPicPosition();
+			pojo.picEmail = entity.getPicEmail();
+			pojo.activeStartMonth = entity.getActiveStartMonth();
+			pojo.activeEndMonth = entity.getActiveEndMonth();
+			pojo.active = entity.getActive();
+		}
+		return pojo;
+	}
+
+	public static List<CompanyPojo> fromEntities(List<ECompany> entities) {
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static List<CompanyPojo> fromEntities(List<ECompany> entities, int depthLevel) {
+		if (entities == null)
+			return new ArrayList<CompanyPojo>();
+		if (depthLevel < 0)
+			depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+
+		List<CompanyPojo> pojos = new ArrayList<CompanyPojo>();
+		for (ECompany entity : entities) {
+			pojos.add(CompanyPojo.fromEntity(entity));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+
+		mappings.add(new SearchFieldMapping("code", "code"));
+		mappings.add(new SearchFieldMapping("name", "name"));
+		mappings.add(new SearchFieldMapping("customerId", "customer.id").searchOnly());
+		mappings.add(new SearchFieldMapping("address", "address"));
+		mappings.add(new SearchFieldMapping("city", "city"));
+		mappings.add(new SearchFieldMapping("phoneNumber", "phoneNumber"));
+		mappings.add(new SearchFieldMapping("email", "email"));
+		mappings.add(new SearchFieldMapping("picName", "picName"));
+		mappings.add(new SearchFieldMapping("picPosition", "picPosition"));
+		mappings.add(new SearchFieldMapping("picEmail", "picEmail"));
+		mappings.add(new SearchFieldMapping("activeStartMonth", "activeStartMonth", Date.class));
+		mappings.add(new SearchFieldMapping("activeEndMonth", "activeEndMonth", Date.class));
+		mappings.add(new SearchFieldMapping("active", "active", Boolean.class));
+
+		return mappings;
+	}
+}

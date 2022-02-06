@@ -1,0 +1,293 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailAdj;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailAdj;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories.EInvoiceDetailAdjRepository;
+
+@Service("invoiceDetailAdjService")
+public class InvoiceDetailAdjService extends BaseService {
+	
+	@Autowired private EInvoiceDetailAdjRepository repo;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public InvoiceDetailAdj findByBk(String idTi001, Integer nourut) {
+		return InvoiceDetailAdj.fromEntity(repo.findByBK(idTi001, nourut));
+	}
+
+	public SearchResult<EInvoiceDetailAdj> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public EInvoiceDetailAdj addFromProses(EInvoiceDetailAdj entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		EInvoiceDetailAdj addedEntity = repo.add(entity);
+		throwBatchError();
+
+		postAdd(addedEntity);
+		
+		return addedEntity;	
+			
+	}
+	
+	@Transactional
+	public EInvoiceDetailAdj add(EInvoiceDetailAdj entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		manageMinMaxValues(entity);
+		//throwBatchError();
+		
+		manageReferences(entity);
+		//throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		//throwBatchError();
+		
+		if (!isAnyBatchErrors()) {
+			preAdd(entity);
+			EInvoiceDetailAdj addedEntity = repo.add(entity);
+			postAdd(addedEntity);
+			
+			return addedEntity;	
+		}
+			
+		//throwBatchError();
+		return entity;	
+
+	}
+	
+	@Transactional
+	public EInvoiceDetailAdj edit(EInvoiceDetailAdj entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		EInvoiceDetailAdj toBeSaved = repo.getOne(entity.getId());
+		EInvoiceDetailAdj oldEntity = (EInvoiceDetailAdj) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EInvoiceDetailAdj.class.getSimpleName());
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		EInvoiceDetailAdj toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		//throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		//throwBatchError();
+		
+	}
+	
+	// terkait manipulasi data
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EInvoiceDetailAdj dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EInvoiceDetailAdj entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(EInvoiceDetailAdj newValues, EInvoiceDetailAdj toBeSaved) {
+
+		if (toBeSaved != null) {			
+			toBeSaved.setNourut(newValues.getNourut());
+			toBeSaved.setTotjumkar(newValues.getTotjumkar());
+			toBeSaved.setHarga(newValues.getHarga());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+			toBeSaved.setBruto(newValues.getBruto());
+			toBeSaved.setPctdisc(newValues.getPctdisc());
+			toBeSaved.setNilpctdisc(newValues.getNilpctdisc());
+			toBeSaved.setNildisc(newValues.getNildisc());
+			toBeSaved.setNetto(newValues.getNetto());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(EInvoiceDetailAdj entity) {
+		valRequiredInteger(entity.getNourut(), "invoice.otomatis.detail.adj.nourut.required");
+		valRequiredInteger(entity.getTotjumkar(), "invoice.otomatis.detail.adj.totjumkar.required");
+		valRequiredString(entity.getKeterangan(), "invoice.otomatis.detail.adj.keterangan.required");
+		valRequiredDouble(entity.getHarga(), "invoice.otomatis.detail.adj.harga.required");
+		valRequiredDouble(entity.getBruto(), "invoice.otomatis.detail.adj.bruto.required");
+		valRequiredDouble(entity.getPctdisc(), "invoice.otomatis.detail.adj.pctdisc.required");
+		valRequiredDouble(entity.getNilpctdisc(), "invoice.otomatis.detail.adj.nilpctdisc.required");
+		valRequiredDouble(entity.getNildisc(), "invoice.otomatis.detail.adj.nildisc.required");
+		valRequiredDouble(entity.getNetto(), "invoice.otomatis.detail.adj.netto.required");
+	}
+	
+	protected void manageMinMaxValues(EInvoiceDetailAdj entity) {
+		valMinInteger(entity.getNourut(), 0, "invoice.otomatis.detail.adj.nourut.min.length");
+		valMaxInteger(entity.getNourut(), 999, "invoice.otomatis.detail.adj.nourut.max.length");
+		valMinInteger(entity.getTotjumkar(), -9999999, "invoice.otomatis.detail.adj.totjumkar.min.length");
+		valMaxInteger(entity.getTotjumkar(), 9999999, "invoice.otomatis.detail.adj.totjumkar.max.length");
+		valMaxString(entity.getKeterangan(), 200, "invoice.otomatis.detail.adj.keterangan.max.length");
+		valMinDouble(entity.getHarga(), 0D, "invoice.otomatis.detail.adj.harga.min.length");
+		valMaxDouble(entity.getHarga(), 999999999D, "invoice.otomatis.detail.adj.harga.max.length");
+		valMinDouble(entity.getPctdisc(), 0D, "invoice.otomatis.detail.adj.pctdisc.min.length");
+		valMaxDouble(entity.getPctdisc(), 9999D, "invoice.otomatis.detail.adj.pctdisc.max.length");
+		valMinDouble(entity.getNilpctdisc(), 0D, "invoice.otomatis.detail.adj.nilpctdisc.min.length");
+		valMaxDouble(entity.getNilpctdisc(), 999999999D, "invoice.otomatis.detail.adj.nilpctdisc.max.length");
+		valMinDouble(entity.getNildisc(), 0D, "invoice.otomatis.detail.adj.nildisc.min.length");
+		valMaxDouble(entity.getNildisc(), 999999999D, "invoice.otomatis.detail.adj.nildisc.max.length");
+		valMinDouble(entity.getBruto(), -999999999D, "invoice.otomatis.detail.adj.bruto.min.length");
+		valMaxDouble(entity.getBruto(), 999999999D, "invoice.otomatis.detail.adj.bruto.max.length");
+		valMinDouble(entity.getNetto(), -999999999D, "invoice.otomatis.detail.adj.netto.min.length");
+		valMaxDouble(entity.getNetto(), 999999999D, "invoice.otomatis.detail.adj.netto.max.length");
+	}
+
+	protected void manageReferences(EInvoiceDetailAdj entity) {
+	}
+
+	protected void valDelete(EInvoiceDetailAdj toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(EInvoiceDetailAdj addedEntity) {
+		EInvoiceDetailAdj entityFromDb = repo.findByBK(addedEntity.getHeader().getId(), addedEntity.getNourut());
+		if (entityFromDb != null) {
+			throw new BusinessException("invoice.otomatis.detail.adj.bk", addedEntity.getNourut());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EInvoiceDetailAdj editedEntity) {
+		EInvoiceDetailAdj entityFromDb = repo.findByBK(editedEntity.getHeader().getId(), editedEntity.getNourut());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("invoice.otomatis.detail.adj.bk", editedEntity.getNourut());
+			}
+		}
+	}
+
+	protected void preAdd(EInvoiceDetailAdj entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(EInvoiceDetailAdj entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(EInvoiceDetailAdj toBeSaved, EInvoiceDetailAdj oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(EInvoiceDetailAdj toBeSaved, EInvoiceDetailAdj oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(EInvoiceDetailAdj entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(EInvoiceDetailAdj entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	// ----
+	
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya	
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+}

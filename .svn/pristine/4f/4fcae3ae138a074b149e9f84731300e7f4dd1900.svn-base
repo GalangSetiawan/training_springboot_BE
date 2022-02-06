@@ -1,0 +1,186 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.setting.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.entities.ESetting;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.repositories.ESettingRepository;
+
+@Service("settingService")
+public class SettingService extends BaseService {
+  
+	@Autowired private CompanyService companyService;
+	
+	@Autowired private ESettingRepository repo;	
+	
+	public ESetting getOne(String id) {
+	  return repo.getOne(id);
+	}
+	
+	public ESetting getData() {
+		return repo.getData();
+	}
+	
+	@Transactional
+	public ESetting add(ESetting entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		ESetting addedEntity = repo.add(entity);
+		postAdd(addedEntity);
+			
+		throwBatchError();
+		return addedEntity;			
+		
+	}
+	
+	@Transactional
+	public ESetting edit(ESetting entity) {
+				
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		ESetting toBeSaved = repo.getOne(entity.getId());
+		ESetting oldEntity = (ESetting) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ESetting dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(ESetting entity) {
+	}
+	
+	protected void defineEditableValues(ESetting newValues, ESetting toBeSaved) {
+		
+		toBeSaved.setRstoto(newValues.getRstoto());
+		toBeSaved.setBahasa(newValues.getBahasa());
+		
+	}
+	
+	protected void valRequiredValues(ESetting entity) {
+		valRequiredString(entity.getRstoto(), "settingGL.resetCounterBulananTahunan.required");
+		valRequiredString(entity.getBahasa(), "settingGL.Locale.required");
+	}
+	
+	protected void manageMinMaxValues(ESetting entity) {
+		
+	    valMaxString(entity.getRstoto(), 1, "settingGL.resetCounterBulananTahunan.min.length");
+	    valMaxString(entity.getBahasa(), 5, "settingGL.Locale.min.length");
+
+	}
+
+	protected void manageReferences(ESetting entity) {
+		
+		if (entity.geteCompany() != null) {
+			ECompany eCompanyFromDb = companyService.get(entity.geteCompany().getId());
+			if (eCompanyFromDb != null) {
+				if (eCompanyFromDb.getActive()) {
+					entity.seteCompany(eCompanyFromDb);
+				} else {
+					batchError("company.not.active");
+				}
+			} else {
+				batchError("company.not.found");
+			}			
+		}
+		
+	}
+
+	protected void valDelete(ESetting toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(ESetting addedEntity) {
+		// master setting ini hanya berisi satu record tidak bisa lebih dan tidak punya unique constraint
+	}
+
+	protected void valUniquenessOnEdit(ESetting editedEntity) {
+		// master setting ini hanya berisi satu record tidak bisa lebih dan tidak punya unique constraint
+	}
+	
+	protected void preAdd(ESetting entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(ESetting entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(ESetting toBeSaved, ESetting oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(ESetting toBeSaved, ESetting oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(ESetting entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(ESetting entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+}

@@ -1,0 +1,32 @@
+package co.id.sofcograha.base.screencontrol.controllers;
+
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.screencontrol.pojos.ScreenControlPojo;
+import co.id.sofcograha.base.screencontrol.services.ScreenControlService;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+
+@RestController
+@RequestMapping(value = "api/screenControl")
+public class ScreenControlController {
+	
+	@Autowired
+	private ScreenControlService screenControlService;
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+	  
+	  return ApiResponse.data(ScreenControlPojo.MULTI,
+			  screenControlService.search(SearchParameter.generate(searchParameter, ScreenControlPojo.getFieldMappings())));
+	}
+	
+}

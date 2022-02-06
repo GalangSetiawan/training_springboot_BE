@@ -1,0 +1,207 @@
+package co.id.sofcograha.domain.invoicing.admin.freemonth.entities;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.exceptions.DevException;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(name = "ai006", uniqueConstraints = @UniqueConstraint(columnNames = { "tahun", "bulan", "id_mi010", "id_mi001" }))
+public class EAdminFreemonth implements Cloneable{
+	
+	@Id
+	@Column(name = "id_ai006")
+	private String id;
+	
+	@Column(name = "tahun")
+	private String tahun;
+
+	@Column(name = "bulan")
+    private String bulan;
+
+	@Column(name = "nomst")
+    private Integer nomst;
+	
+	@Version
+    @Column(name = "version")
+    private Long version;
+    
+    @Column(name = "usrcrt")
+    private String usrcrt;
+    
+    @Column(name = "tglcrt")
+    private String tglcrt;
+    
+    @Column(name = "jamcrt")
+    private String jamcrt;
+    
+    @Column(name = "usrupd")
+    private String usrupd;
+    
+    @Column(name = "tglupd")
+    private String tglupd;
+    
+    @Column(name = "jamupd")
+    private String jamupd;
+    
+	@OneToOne
+	@JoinColumn(name = "id_mi010")
+	private ECustomerGajiId customer;
+
+	@OneToOne
+	@JoinColumn(name = "id_mi001")
+	private EProduk produk;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getTahun() {
+		return tahun;
+	}
+
+	public void setTahun(String tahun) {
+		this.tahun = tahun;
+	}
+
+	public String getBulan() {
+		return bulan;
+	}
+
+	public void setBulan(String bulan) {
+		this.bulan = bulan;
+	}
+
+	public Integer getNomst() {
+		return nomst;
+	}
+
+	public void setNomst(Integer nomst) {
+		this.nomst = nomst;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public String getUsrcrt() {
+		return usrcrt;
+	}
+
+	public void setUsrcrt(String usrcrt) {
+		this.usrcrt = usrcrt;
+	}
+
+	public String getTglcrt() {
+		return tglcrt;
+	}
+
+	public void setTglcrt(String tglcrt) {
+		this.tglcrt = tglcrt;
+	}
+
+	public String getJamcrt() {
+		return jamcrt;
+	}
+
+	public void setJamcrt(String jamcrt) {
+		this.jamcrt = jamcrt;
+	}
+
+	public String getUsrupd() {
+		return usrupd;
+	}
+
+	public void setUsrupd(String usrupd) {
+		this.usrupd = usrupd;
+	}
+
+	public String getTglupd() {
+		return tglupd;
+	}
+
+	public void setTglupd(String tglupd) {
+		this.tglupd = tglupd;
+	}
+
+	public String getJamupd() {
+		return jamupd;
+	}
+
+	public void setJamupd(String jamupd) {
+		this.jamupd = jamupd;
+	}
+
+	public ECustomerGajiId getCustomer() {
+		return customer;
+	}
+
+	public void setCustomer(ECustomerGajiId customer) {
+		this.customer = customer;
+	}
+
+	public EProduk getProduk() {
+		return produk;
+	}
+
+	public void setProduk(EProduk produk) {
+		this.produk = produk;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+
+    @PrePersist
+	private void prePersist() {	
+    	
+      Date currentDate = new Date();
+      
+      this.id = UUID.randomUUID().toString();
+      
+      this.usrcrt = CurrentUser.getUsername();
+      this.tglcrt = new SimpleDateFormat("yyyyMMdd").format(currentDate);
+      this.jamcrt = new SimpleDateFormat("HHmmss").format(currentDate);
+      
+    }
+    
+    @PreUpdate
+	private void preUpdate() {
+		Date currentDate = new Date();
+		
+		this.usrupd = CurrentUser.getUsername();
+		this.tglupd = new SimpleDateFormat("yyyyMMdd").format(currentDate);
+		this.jamupd = new SimpleDateFormat("HHmmss").format(currentDate);
+	}
+    
+}

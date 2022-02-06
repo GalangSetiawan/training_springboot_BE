@@ -1,0 +1,279 @@
+package co.id.sofcograha.domain.invoicing.saldo.deposit.data.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.entities.ESaldoDepositDetailTambah;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.pojos.SaldoDepositDetailTambah;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.repositories.ESaldoDepositDetailTambahRepository;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.entities.EPenerimaanBayarSubDetailAlokasi;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.services.PenerimaanBayarSubDetailAlokasiService;
+
+@Service("saldoDepositDetailTambahService")
+public class SaldoDepositDetailTambahService extends BaseService {
+	
+	@Autowired private ESaldoDepositDetailTambahRepository repo;
+	
+	@Autowired private PenerimaanBayarSubDetailAlokasiService penerimaanBayarSubDetailAlokasiService;
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public SaldoDepositDetailTambah findByInvoice(String idSi001, String idTi001) {
+		return SaldoDepositDetailTambah.fromEntity(repo.findByInvoice(idSi001, idTi001));
+	}
+
+	public SaldoDepositDetailTambah findByAlokasi(String idSi001, String idTi611) {
+		return SaldoDepositDetailTambah.fromEntity(repo.findByAlokasi(idSi001, idTi611));
+	}
+
+	public SearchResult<ESaldoDepositDetailTambah> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public ESaldoDepositDetailTambah add(ESaldoDepositDetailTambah entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		manageMinMaxValues(entity);
+		//throwBatchError();
+		
+		manageReferences(entity);
+		//throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		//throwBatchError();
+		
+		if (!isAnyBatchErrors()) {
+			preAdd(entity);
+			ESaldoDepositDetailTambah addedEntity = repo.add(entity);
+			postAdd(addedEntity);
+			
+			return addedEntity;	
+		}
+			
+		//throwBatchError();
+		return entity;	
+
+	}
+	
+	@Transactional
+	public ESaldoDepositDetailTambah edit(ESaldoDepositDetailTambah entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		ESaldoDepositDetailTambah toBeSaved = repo.getOne(entity.getId());
+		ESaldoDepositDetailTambah oldEntity = (ESaldoDepositDetailTambah) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, ESaldoDepositDetailTambah.class.getSimpleName());
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		ESaldoDepositDetailTambah toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		//throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		//throwBatchError();
+		
+	}
+	
+	// terkait manipulasi data
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ESaldoDepositDetailTambah dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(ESaldoDepositDetailTambah entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(ESaldoDepositDetailTambah newValues, ESaldoDepositDetailTambah toBeSaved) {
+
+		if (toBeSaved != null) {			
+			toBeSaved.setNildep(newValues.getNildep());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(ESaldoDepositDetailTambah entity) {
+		valRequiredDouble(entity.getNildep(), "saldodeposit.detail.tambah.nildep.required");
+	}
+	
+	protected void manageMinMaxValues(ESaldoDepositDetailTambah entity) {
+		valMinDouble(entity.getNildep(), 0D, "saldodeposit.detail.tambah.nildep.min.length");
+		valMaxDouble(entity.getNildep(), 999999999D, "saldodeposit.detail.tambah.nildep.max.length");
+	}
+
+	protected void manageReferences(ESaldoDepositDetailTambah entity) {
+		if (entity.getInvoice() != null) {
+			EInvoiceHeader eFromDb = invoiceHeaderService.get(entity.getInvoice().getId());
+			if (eFromDb != null) {
+				entity.setInvoice(eFromDb);
+			} else {
+				batchError("invoice.not.found");
+			}			
+		}
+
+		if (entity.getAlokasiBayar() != null) {
+			EPenerimaanBayarSubDetailAlokasi eFromDb = penerimaanBayarSubDetailAlokasiService.get(entity.getAlokasiBayar().getId());
+			if (eFromDb != null) {
+				entity.setAlokasiBayar(eFromDb);
+			} else {
+				batchError("penerimaan.bayar.sub.detail.alokasi.not.found");
+			}			
+		}
+	}
+
+	protected void valDelete(ESaldoDepositDetailTambah toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(ESaldoDepositDetailTambah addedEntity) {
+		if (addedEntity.getInvoice() != null) {
+			ESaldoDepositDetailTambah entityFromDb = repo.findByInvoice(addedEntity.getHeader().getId(), addedEntity.getInvoice().getId());
+			if (entityFromDb != null) {
+				throw new BusinessException("saldodeposit.detail.tambah.bk");
+			}			
+		}
+		if (addedEntity.getAlokasiBayar() != null) {
+			ESaldoDepositDetailTambah entityFromDb = repo.findByAlokasi(addedEntity.getHeader().getId(), addedEntity.getAlokasiBayar().getId());
+			if (entityFromDb != null) {
+				throw new BusinessException("saldodeposit.detail.tambah.bk");
+			}			
+		}
+	}
+
+	protected void valUniquenessOnEdit(ESaldoDepositDetailTambah editedEntity) {
+		if (editedEntity.getInvoice() != null) {
+			ESaldoDepositDetailTambah entityFromDb = repo.findByInvoice(editedEntity.getHeader().getId(), editedEntity.getInvoice().getId());
+			if (entityFromDb != null) {
+				if (!editedEntity.getId().equals(entityFromDb.getId())) {
+					throw new BusinessException("saldodeposit.detail.tambah.bk");
+				}
+			}			
+		}
+
+		if (editedEntity.getAlokasiBayar() != null) {
+			ESaldoDepositDetailTambah entityFromDb = repo.findByAlokasi(editedEntity.getHeader().getId(), editedEntity.getAlokasiBayar().getId());
+			if (entityFromDb != null) {
+				if (!editedEntity.getId().equals(entityFromDb.getId())) {
+					throw new BusinessException("saldodeposit.detail.tambah.bk");
+				}
+			}			
+		}
+	}
+
+	protected void preAdd(ESaldoDepositDetailTambah entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(ESaldoDepositDetailTambah entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(ESaldoDepositDetailTambah toBeSaved, ESaldoDepositDetailTambah oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(ESaldoDepositDetailTambah toBeSaved, ESaldoDepositDetailTambah oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(ESaldoDepositDetailTambah entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(ESaldoDepositDetailTambah entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	// ----
+	
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya	
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+}

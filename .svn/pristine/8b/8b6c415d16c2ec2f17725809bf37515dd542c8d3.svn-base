@@ -1,0 +1,564 @@
+package co.id.sofcograha.base.screencontrol.entities;
+
+import java.util.Date;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.exceptions.DevException;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(schema="public", name="std_screen_control", uniqueConstraints = @UniqueConstraint(columnNames = { "screen_id", "component_id" }))
+@JsonIgnoreProperties(ignoreUnknown=true)
+public class ScreenControl {
+
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@Version
+	@Column(name = "version")
+	private Long version;
+
+	@Column(name = "screen_id")
+	private String screenId;
+
+	@Column(name = "component_id")
+	private String componentId;
+
+	@Column(name = "approval_first_user_flag")
+	private Boolean approvalFirstUserFlag;
+
+	@Column(name = "approval_confirm_flag")
+	private Boolean approvalConfirmFlag;
+
+	@Column(name = "approval_next_confirm_flag")
+	private Boolean approvalNextConfirmFlag;
+
+	@Column(name = "approval_last_confirm_flag")
+	private Boolean approvalLastConfirmFlag;
+
+	@Column(name = "approval_flag1")
+	private Boolean approvalFlag1;
+
+	@Column(name = "approval_flag2")
+	private Boolean approvalFlag2;
+
+	@Column(name = "approval_flag3")
+	private Boolean approvalFlag3;
+
+	@Column(name = "approval_flag4")
+	private Boolean approvalFlag4;
+
+	@Column(name = "approval_flag5")
+	private Boolean approvalFlag5;
+
+	@Column(name = "approval_flag6")
+	private Boolean approvalFlag6;
+
+	@Column(name = "approval_flag7")
+	private Boolean approvalFlag7;
+
+	@Column(name = "approval_flag8")
+	private Boolean approvalFlag8;
+
+	@Column(name = "approval_flag9")
+	private Boolean approvalFlag9;
+
+	@Column(name = "approval_flag10")
+	private Boolean approvalFlag10;
+
+	@Column(name = "non_approval_flag1")
+	private Boolean nonApprovalFlag1;
+
+	@Column(name = "non_approval_flag2")
+	private Boolean nonApprovalFlag2;
+
+	@Column(name = "non_approval_flag3")
+	private Boolean nonApprovalFlag3;
+
+	@Column(name = "non_approval_flag4")
+	private Boolean nonApprovalFlag4;
+
+	@Column(name = "non_approval_flag5")
+	private Boolean nonApprovalFlag5;
+
+	@Column(name = "non_approval_flag6")
+	private Boolean nonApprovalFlag6;
+
+	@Column(name = "non_approval_flag7")
+	private Boolean nonApprovalFlag7;
+
+	@Column(name = "non_approval_flag8")
+	private Boolean nonApprovalFlag8;
+
+	@Column(name = "non_approval_flag9")
+	private Boolean nonApprovalFlag9;
+
+	@Column(name = "non_approval_flag10")
+	private Boolean nonApprovalFlag10;
+
+	@Column(name = "common_new_document_flag")
+	private Boolean commonNewDocumentFlag;
+
+	@Column(name = "common_flag1")
+	private Boolean commonFlag1;
+
+	@Column(name = "common_flag2")
+	private Boolean commonFlag2;
+
+	@Column(name = "common_flag3")
+	private Boolean commonFlag3;
+
+	@Column(name = "common_flag4")
+	private Boolean commonFlag4;
+
+	@Column(name = "common_flag5")
+	private Boolean commonFlag5;
+
+	@Column(name = "common_flag6")
+	private Boolean commonFlag6;
+
+	@Column(name = "common_flag7")
+	private Boolean commonFlag7;
+
+	@Column(name = "common_flag8")
+	private Boolean commonFlag8;
+
+	@Column(name = "common_flag9")
+	private Boolean commonFlag9;
+
+	@Column(name = "common_flag10")
+	private Boolean commonFlag10;
+
+	@Column(name = "comp_state_using_apprvl_and_rslt_true")
+	private String componentStateIfUsingApprovalAndResultTrue;
+
+	@Column(name = "comp_state_using_apprvl_and_rslt_false")
+	private String componentStateIfUsingApprovalAndResultFalse;
+
+	@Column(name = "comp_state_not_using_apprvl_and_rslt_true")
+	private String componentStateIfNotUsingApprovalAndResultTrue;
+
+	@Column(name = "comp_state_not_using_apprvl_and_rslt_false")
+	private String componentStateIfNotUsingApprovalAndResultFalse;
+
+	@Column(name = "user_create")
+	private String userCreate;
+
+	@Column(name = "creation_time")
+	private Date creationTime;
+
+	@Column(name = "user_modify")
+	private String userModify;
+
+	@Column(name = "modification_time")
+	private Date modificationTime;
+
+	public String getScreenId() {
+		return screenId;
+	}
+
+	public void setScreenId(String screenId) {
+		this.screenId = screenId;
+	}
+
+	public String getComponentId() {
+		return componentId;
+	}
+
+	public void setComponentId(String componentId) {
+		this.componentId = componentId;
+	}
+
+	public Boolean getApprovalFirstUserFlag() {
+		return approvalFirstUserFlag;
+	}
+
+	public void setApprovalFirstUserFlag(Boolean approvalFirstUserFlag) {
+		this.approvalFirstUserFlag = approvalFirstUserFlag;
+	}
+
+	public Boolean getApprovalConfirmFlag() {
+		return approvalConfirmFlag;
+	}
+
+	public void setApprovalConfirmFlag(Boolean approvalConfirmFlag) {
+		this.approvalConfirmFlag = approvalConfirmFlag;
+	}
+
+	public Boolean getApprovalNextConfirmFlag() {
+		return approvalNextConfirmFlag;
+	}
+
+	public void setApprovalNextConfirmFlag(Boolean approvalNextConfirmFlag) {
+		this.approvalNextConfirmFlag = approvalNextConfirmFlag;
+	}
+
+	public Boolean getApprovalLastConfirmFlag() {
+		return approvalLastConfirmFlag;
+	}
+
+	public void setApprovalLastConfirmFlag(Boolean approvalLastConfirmFlag) {
+		this.approvalLastConfirmFlag = approvalLastConfirmFlag;
+	}
+
+	public Boolean getApprovalFlag1() {
+		return approvalFlag1;
+	}
+
+	public void setApprovalFlag1(Boolean approvalFlag1) {
+		this.approvalFlag1 = approvalFlag1;
+	}
+
+	public Boolean getApprovalFlag2() {
+		return approvalFlag2;
+	}
+
+	public void setApprovalFlag2(Boolean approvalFlag2) {
+		this.approvalFlag2 = approvalFlag2;
+	}
+
+	public Boolean getApprovalFlag3() {
+		return approvalFlag3;
+	}
+
+	public void setApprovalFlag3(Boolean approvalFlag3) {
+		this.approvalFlag3 = approvalFlag3;
+	}
+
+	public Boolean getApprovalFlag4() {
+		return approvalFlag4;
+	}
+
+	public void setApprovalFlag4(Boolean approvalFlag4) {
+		this.approvalFlag4 = approvalFlag4;
+	}
+
+	public Boolean getApprovalFlag5() {
+		return approvalFlag5;
+	}
+
+	public void setApprovalFlag5(Boolean approvalFlag5) {
+		this.approvalFlag5 = approvalFlag5;
+	}
+
+	public Boolean getApprovalFlag6() {
+		return approvalFlag6;
+	}
+
+	public void setApprovalFlag6(Boolean approvalFlag6) {
+		this.approvalFlag6 = approvalFlag6;
+	}
+
+	public Boolean getApprovalFlag7() {
+		return approvalFlag7;
+	}
+
+	public void setApprovalFlag7(Boolean approvalFlag7) {
+		this.approvalFlag7 = approvalFlag7;
+	}
+
+	public Boolean getApprovalFlag8() {
+		return approvalFlag8;
+	}
+
+	public void setApprovalFlag8(Boolean approvalFlag8) {
+		this.approvalFlag8 = approvalFlag8;
+	}
+
+	public Boolean getApprovalFlag9() {
+		return approvalFlag9;
+	}
+
+	public void setApprovalFlag9(Boolean approvalFlag9) {
+		this.approvalFlag9 = approvalFlag9;
+	}
+
+	public Boolean getApprovalFlag10() {
+		return approvalFlag10;
+	}
+
+	public void setApprovalFlag10(Boolean approvalFlag10) {
+		this.approvalFlag10 = approvalFlag10;
+	}
+
+	public Boolean getNonApprovalFlag1() {
+		return nonApprovalFlag1;
+	}
+
+	public void setNonApprovalFlag1(Boolean nonApprovalFlag1) {
+		this.nonApprovalFlag1 = nonApprovalFlag1;
+	}
+
+	public Boolean getNonApprovalFlag2() {
+		return nonApprovalFlag2;
+	}
+
+	public void setNonApprovalFlag2(Boolean nonApprovalFlag2) {
+		this.nonApprovalFlag2 = nonApprovalFlag2;
+	}
+
+	public Boolean getNonApprovalFlag3() {
+		return nonApprovalFlag3;
+	}
+
+	public void setNonApprovalFlag3(Boolean nonApprovalFlag3) {
+		this.nonApprovalFlag3 = nonApprovalFlag3;
+	}
+
+	public Boolean getNonApprovalFlag4() {
+		return nonApprovalFlag4;
+	}
+
+	public void setNonApprovalFlag4(Boolean nonApprovalFlag4) {
+		this.nonApprovalFlag4 = nonApprovalFlag4;
+	}
+
+	public Boolean getNonApprovalFlag5() {
+		return nonApprovalFlag5;
+	}
+
+	public void setNonApprovalFlag5(Boolean nonApprovalFlag5) {
+		this.nonApprovalFlag5 = nonApprovalFlag5;
+	}
+
+	public Boolean getNonApprovalFlag6() {
+		return nonApprovalFlag6;
+	}
+
+	public void setNonApprovalFlag6(Boolean nonApprovalFlag6) {
+		this.nonApprovalFlag6 = nonApprovalFlag6;
+	}
+
+	public Boolean getNonApprovalFlag7() {
+		return nonApprovalFlag7;
+	}
+
+	public void setNonApprovalFlag7(Boolean nonApprovalFlag7) {
+		this.nonApprovalFlag7 = nonApprovalFlag7;
+	}
+
+	public Boolean getNonApprovalFlag8() {
+		return nonApprovalFlag8;
+	}
+
+	public void setNonApprovalFlag8(Boolean nonApprovalFlag8) {
+		this.nonApprovalFlag8 = nonApprovalFlag8;
+	}
+
+	public Boolean getNonApprovalFlag9() {
+		return nonApprovalFlag9;
+	}
+
+	public void setNonApprovalFlag9(Boolean nonApprovalFlag9) {
+		this.nonApprovalFlag9 = nonApprovalFlag9;
+	}
+
+	public Boolean getNonApprovalFlag10() {
+		return nonApprovalFlag10;
+	}
+
+	public void setNonApprovalFlag10(Boolean nonApprovalFlag10) {
+		this.nonApprovalFlag10 = nonApprovalFlag10;
+	}
+
+	public Boolean getCommonNewDocumentFlag() {
+		return commonNewDocumentFlag;
+	}
+
+	public void setCommonNewDocumentFlag(Boolean commonNewDocumentFlag) {
+		this.commonNewDocumentFlag = commonNewDocumentFlag;
+	}
+
+	public Boolean getCommonFlag1() {
+		return commonFlag1;
+	}
+
+	public void setCommonFlag1(Boolean commonFlag1) {
+		this.commonFlag1 = commonFlag1;
+	}
+
+	public Boolean getCommonFlag2() {
+		return commonFlag2;
+	}
+
+	public void setCommonFlag2(Boolean commonFlag2) {
+		this.commonFlag2 = commonFlag2;
+	}
+
+	public Boolean getCommonFlag3() {
+		return commonFlag3;
+	}
+
+	public void setCommonFlag3(Boolean commonFlag3) {
+		this.commonFlag3 = commonFlag3;
+	}
+
+	public Boolean getCommonFlag4() {
+		return commonFlag4;
+	}
+
+	public void setCommonFlag4(Boolean commonFlag4) {
+		this.commonFlag4 = commonFlag4;
+	}
+
+	public Boolean getCommonFlag5() {
+		return commonFlag5;
+	}
+
+	public void setCommonFlag5(Boolean commonFlag5) {
+		this.commonFlag5 = commonFlag5;
+	}
+
+	public Boolean getCommonFlag6() {
+		return commonFlag6;
+	}
+
+	public void setCommonFlag6(Boolean commonFlag6) {
+		this.commonFlag6 = commonFlag6;
+	}
+
+	public Boolean getCommonFlag7() {
+		return commonFlag7;
+	}
+
+	public void setCommonFlag7(Boolean commonFlag7) {
+		this.commonFlag7 = commonFlag7;
+	}
+
+	public Boolean getCommonFlag8() {
+		return commonFlag8;
+	}
+
+	public void setCommonFlag8(Boolean commonFlag8) {
+		this.commonFlag8 = commonFlag8;
+	}
+
+	public Boolean getCommonFlag9() {
+		return commonFlag9;
+	}
+
+	public void setCommonFlag9(Boolean commonFlag9) {
+		this.commonFlag9 = commonFlag9;
+	}
+
+	public Boolean getCommonFlag10() {
+		return commonFlag10;
+	}
+
+	public void setCommonFlag10(Boolean commonFlag10) {
+		this.commonFlag10 = commonFlag10;
+	}
+
+	public String getComponentStateIfUsingApprovalAndResultTrue() {
+		return componentStateIfUsingApprovalAndResultTrue;
+	}
+
+	public void setComponentStateIfUsingApprovalAndResultTrue(String componentStateIfUsingApprovalAndResultTrue) {
+		this.componentStateIfUsingApprovalAndResultTrue = componentStateIfUsingApprovalAndResultTrue;
+	}
+
+	public String getComponentStateIfUsingApprovalAndResultFalse() {
+		return componentStateIfUsingApprovalAndResultFalse;
+	}
+
+	public void setComponentStateIfUsingApprovalAndResultFalse(String componentStateIfUsingApprovalAndResultFalse) {
+		this.componentStateIfUsingApprovalAndResultFalse = componentStateIfUsingApprovalAndResultFalse;
+	}
+
+	public String getComponentStateIfNotUsingApprovalAndResultTrue() {
+		return componentStateIfNotUsingApprovalAndResultTrue;
+	}
+
+	public void setComponentStateIfNotUsingApprovalAndResultTrue(String componentStateIfNotUsingApprovalAndResultTrue) {
+		this.componentStateIfNotUsingApprovalAndResultTrue = componentStateIfNotUsingApprovalAndResultTrue;
+	}
+
+	public String getComponentStateIfNotUsingApprovalAndResultFalse() {
+		return componentStateIfNotUsingApprovalAndResultFalse;
+	}
+
+	public void setComponentStateIfNotUsingApprovalAndResultFalse(String componentStateIfNotUsingApprovalAndResultFalse) {
+		this.componentStateIfNotUsingApprovalAndResultFalse = componentStateIfNotUsingApprovalAndResultFalse;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public String getUserCreate() {
+		return userCreate;
+	}
+
+	public void setUserCreate(String userCreate) {
+		this.userCreate = userCreate;
+	}
+
+	public Date getCreationTime() {
+		return creationTime;
+	}
+
+	public void setCreationTime(Date creationTime) {
+		this.creationTime = creationTime;
+	}
+
+	public String getUserModify() {
+		return userModify;
+	}
+
+	public void setUserModify(String userModify) {
+		this.userModify = userModify;
+	}
+
+	public Date getModificationTime() {
+		return modificationTime;
+	}
+
+	public void setModificationTime(Date modificationTime) {
+		this.modificationTime = modificationTime;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+	
+	@PrePersist
+	private void prePersist() {
+		Date currentDateTime = new Date();
+		
+		this.id = UUID.randomUUID().toString();
+		this.userCreate = CurrentUser.getUsername();
+		this.creationTime = currentDateTime;
+		this.userModify = CurrentUser.getUsername();
+		this.modificationTime = currentDateTime;
+	}
+}

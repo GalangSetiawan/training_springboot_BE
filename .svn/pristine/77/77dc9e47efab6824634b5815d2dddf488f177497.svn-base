@@ -1,0 +1,162 @@
+package co.id.sofcograha.domain.invoicing.masters.grupAkumulasi.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.masters.grupAkumulasi.entities.EGrupAkumulasi;
+
+@JsonInclude(Include.ALWAYS)
+public class GrupAkumulasi {
+	
+	public String id;
+	public String nama;
+	public String keterangan;
+	public Boolean flakt;
+	public Long version;  
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+	
+	public EGrupAkumulasi toEntity() {
+		
+		EGrupAkumulasi entity = new EGrupAkumulasi();
+		
+		entity.setId(id);
+		entity.setNama(nama);
+		entity.setKeterangan(keterangan);
+		
+  		if (flakt == true) {
+  			entity.setFlakt("Y");
+  		} else {
+  			entity.setFlakt("T");
+  		}
+		
+		entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+		
+		return entity;
+	}
+	
+	public static List<EGrupAkumulasi> toEntities(List<GrupAkumulasi> pojos) {
+		if (pojos == null) return null;
+
+		List<EGrupAkumulasi> entities = new ArrayList<EGrupAkumulasi>();
+		for (GrupAkumulasi pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static GrupAkumulasi fromEntity (EGrupAkumulasi entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static GrupAkumulasi fromEntity (EGrupAkumulasi entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static GrupAkumulasi fromEntity(EGrupAkumulasi entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		GrupAkumulasi pojo = new GrupAkumulasi();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.nama = entity.getNama();
+			pojo.keterangan = entity.getKeterangan();
+					    
+		    if (entity.getFlakt().equals("Y")) {
+		      pojo.flakt = true;
+		    } else {
+		      pojo.flakt = false;
+		    }
+			
+			pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+	      
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+			}
+		}
+
+		return pojo;
+	}
+	
+	public static List<GrupAkumulasi> fromEntities(List<EGrupAkumulasi> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static List<GrupAkumulasi> fromEntities(List<EGrupAkumulasi> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<GrupAkumulasi> pojos = new ArrayList<>();
+		
+		for (EGrupAkumulasi entity : entities) {
+			pojos.add(GrupAkumulasi.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("nama", "nama"));
+		mappings.add(new SearchFieldMapping("keterangan", "keterangan"));
+		mappings.add(new SearchFieldMapping("flakt", "flakt").searchOnly());
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}	

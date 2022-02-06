@@ -1,0 +1,62 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubDetailHslProSkemaTarif;
+
+@Repository
+public class EInvoiceSubDetailHslProSkemaTarifRepository extends SimpleJpaRepository<EInvoiceSubDetailHslProSkemaTarif, String> {
+
+	protected final EntityManager em;
+
+	public EInvoiceSubDetailHslProSkemaTarifRepository(EntityManager em) {
+		super(EInvoiceSubDetailHslProSkemaTarif.class, em);
+		this.em = em;
+	}
+	
+	public EInvoiceSubDetailHslProSkemaTarif findByBK(String idTi110, Integer nourut) {
+		
+		String query = "SELECT e FROM EInvoiceSubDetailHslProSkemaTarif e " + 
+                       "WHERE e.detailHasilProses.id = :idTi110 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EInvoiceSubDetailHslProSkemaTarif.class)
+					 .setParameter("idTi110", idTi110)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EInvoiceSubDetailHslProSkemaTarif getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EInvoiceSubDetailHslProSkemaTarif> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EInvoiceSubDetailHslProSkemaTarif> search = new HqlSimpleSearchBuilder<>(EInvoiceSubDetailHslProSkemaTarif.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EInvoiceSubDetailHslProSkemaTarif add(EInvoiceSubDetailHslProSkemaTarif entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+
+	public EInvoiceSubDetailHslProSkemaTarif edit(EInvoiceSubDetailHslProSkemaTarif entity) {
+		return save(entity);
+	}
+}

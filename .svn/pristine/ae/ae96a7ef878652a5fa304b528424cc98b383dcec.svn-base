@@ -1,0 +1,116 @@
+package co.id.sofcograha.domain.invoicing.transaksi.tagihanTerjadwal.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.tagihanTerjadwal.entities.ETagihanTerjadwalHeader;
+
+@Repository
+public class ETagihanTerjadwalHeaderRepository extends SimpleJpaRepository<ETagihanTerjadwalHeader, String> {
+
+	protected final EntityManager em;
+
+	public ETagihanTerjadwalHeaderRepository(EntityManager em) {
+		super(ETagihanTerjadwalHeader.class, em);
+		this.em = em;
+	}
+	
+	public ETagihanTerjadwalHeader findByBK(String nomor) {
+		
+		String query = "SELECT e FROM ETagihanTerjadwalHeader e " + 
+                       "WHERE e.nomor = :nomor";
+		
+		try {
+			return em.createQuery(query, ETagihanTerjadwalHeader.class)
+					 .setParameter("nomor", nomor)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ETagihanTerjadwalHeader getOne(String id) {
+
+		String query = "SELECT e FROM ETagihanTerjadwalHeader e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, ETagihanTerjadwalHeader.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public SearchResult<ETagihanTerjadwalHeader> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ETagihanTerjadwalHeader> search = new HqlSimpleSearchBuilder<>(ETagihanTerjadwalHeader.class, em);
+		
+		String nomor = (String) searchParameter.getValueFromMappedParam("nomor");
+		String keterangan = (String) searchParameter.getValueFromMappedParam("keterangan");
+		String customer = (String) searchParameter.getValueFromMappedParam("customer");
+		String produk = (String) searchParameter.getValueFromMappedParam("produk");
+		String tahuntgh = (String) searchParameter.getValueFromMappedParam("tahuntgh");
+		String bulantgh = (String) searchParameter.getValueFromMappedParam("bulantgh");
+		String flproi = (String) searchParameter.getValueFromMappedParam("flproi");
+
+		if (!QueryUtil.isAll(nomor)) {
+            search.addWhere("AND LOWER(nomor) LIKE LOWER(:nomor) ");
+            search.addParameter("nomor", QueryUtil.formatStringForLikeFilter(nomor));
+        }
+
+		if (!QueryUtil.isAll(keterangan)) {
+            search.addWhere("AND LOWER(keterangan) LIKE LOWER(:keterangan) ");
+            search.addParameter("keterangan", QueryUtil.formatStringForLikeFilter(keterangan));
+        }
+
+		if (!QueryUtil.isAll(flproi)) {
+            search.addWhere("AND LOWER(flproi) LIKE LOWER(:flproi) ");
+            search.addParameter("flproi", QueryUtil.formatStringForLikeFilter(flproi));
+        }
+
+		if (!QueryUtil.isAll(customer)) {
+            search.addWhere("AND LOWER(customer.nama) LIKE LOWER(:customer) ");
+            search.addParameter("customer", QueryUtil.formatStringForLikeFilter(customer));
+        }
+
+		if (!QueryUtil.isAll(produk)) {
+            search.addWhere("AND LOWER(produk.nama) LIKE LOWER(:produk) ");
+            search.addParameter("produk", QueryUtil.formatStringForLikeFilter(produk));
+        }
+
+		if (!QueryUtil.isAll(tahuntgh)) {
+            search.addWhere("AND LOWER(tahuntgh) LIKE LOWER(:tahuntgh) ");
+            search.addParameter("tahuntgh", QueryUtil.formatStringForLikeFilter(tahuntgh));
+        }
+
+		if (!QueryUtil.isAll(bulantgh)) {
+            search.addWhere("AND LOWER(bulantgh) LIKE LOWER(:bulantgh) ");
+            search.addParameter("bulantgh", QueryUtil.formatStringForLikeFilter(bulantgh));
+        }
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ETagihanTerjadwalHeader add(ETagihanTerjadwalHeader entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+
+	public ETagihanTerjadwalHeader edit(ETagihanTerjadwalHeader entity) {
+		return save(entity);
+	}
+}

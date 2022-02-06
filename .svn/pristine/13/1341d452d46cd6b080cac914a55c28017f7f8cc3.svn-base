@@ -1,0 +1,30 @@
+package co.id.sofcograha.base.forgetpassword.controller;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.email.EmailService;
+import co.id.sofcograha.base.utils.ApiResponse;
+
+@RestController
+@RequestMapping("/public/resetpassword")
+public class PasswordController {
+
+//	@Autowired
+//	private UserService userService;
+
+	@Autowired
+	private EmailService emailService;
+
+	@NoAuth
+	@PostMapping(value = "{loginName:.+}")
+	public ApiResponse changePassword(@PathVariable String loginName) {
+		emailService.sendEmail(loginName);
+		return ApiResponse.ok();
+	}
+	
+}

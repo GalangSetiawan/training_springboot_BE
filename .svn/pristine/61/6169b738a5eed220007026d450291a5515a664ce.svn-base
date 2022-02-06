@@ -1,0 +1,244 @@
+package co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.entities.EPenerimaanBayarDetailCustomer;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.pojos.PenerimaanBayarDetailCustomer;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.repositories.EPenerimaanBayarDetailCustomerRepository;
+
+@Service("penerimaanBayarDetailCustomerService")
+public class PenerimaanBayarDetailCustomerService extends BaseService {
+	
+	@Autowired private EPenerimaanBayarDetailCustomerRepository repo;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public PenerimaanBayarDetailCustomer findByBk(String idTi600, Integer nourut) {
+		return PenerimaanBayarDetailCustomer.fromEntity(repo.findByBK(idTi600, nourut));
+	}
+
+	public SearchResult<EPenerimaanBayarDetailCustomer> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public EPenerimaanBayarDetailCustomer add(EPenerimaanBayarDetailCustomer entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		manageMinMaxValues(entity);
+		//throwBatchError();
+		
+		manageReferences(entity);
+		//throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		//throwBatchError();
+		
+		if (!isAnyBatchErrors()) {
+			preAdd(entity);
+			EPenerimaanBayarDetailCustomer addedEntity = repo.add(entity);
+			postAdd(addedEntity);
+			
+			return addedEntity;	
+		}
+			
+		//throwBatchError();
+		return entity;	
+
+	}
+	
+	@Transactional
+	public EPenerimaanBayarDetailCustomer edit(EPenerimaanBayarDetailCustomer entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		EPenerimaanBayarDetailCustomer toBeSaved = repo.getOne(entity.getId());
+		EPenerimaanBayarDetailCustomer oldEntity = (EPenerimaanBayarDetailCustomer) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EPenerimaanBayarDetailCustomer.class.getSimpleName());
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		EPenerimaanBayarDetailCustomer toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		//throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		//throwBatchError();
+		
+	}
+	
+	// terkait manipulasi data
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EPenerimaanBayarDetailCustomer dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EPenerimaanBayarDetailCustomer entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(EPenerimaanBayarDetailCustomer newValues, EPenerimaanBayarDetailCustomer toBeSaved) {
+
+		if (toBeSaved != null) {			
+			toBeSaved.setNourut(newValues.getNourut());
+			toBeSaved.setCustomer(newValues.getCustomer());
+			toBeSaved.setNobukti(newValues.getNobukti());
+			toBeSaved.setNilai(newValues.getNilai());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(EPenerimaanBayarDetailCustomer entity) {
+		valRequiredInteger(entity.getNourut(), "penerimaan.bayar.detail.initial.nourut.required");
+		valRequiredString(entity.getNobukti(), "penerimaan.bayar.detail.initial.nobukti.required");
+		valRequiredString(entity.getKeterangan(), "penerimaan.bayar.detail.initial.keterangan.required");
+		valRequiredDouble(entity.getNilai(), "penerimaan.bayar.detail.initial.nilai.required");
+	}
+	
+	protected void manageMinMaxValues(EPenerimaanBayarDetailCustomer entity) {
+		valMinInteger(entity.getNourut(), 0, "penerimaan.bayar.detail.initial.nourut.min.length");
+		valMaxInteger(entity.getNourut(), 999, "penerimaan.bayar.detail.initial.nourut.max.length");
+		valMaxString(entity.getKeterangan(), 300, "penerimaan.bayar.detail.initial.keterangan.max.length");
+		valMaxString(entity.getNobukti(), 50, "penerimaan.bayar.detail.initial.nobukti.max.length");
+		valMinDouble(entity.getNilai(), 0D, "penerimaan.bayar.detail.initial.nilai.min.length");
+		valMaxDouble(entity.getNilai(), 999999999D, "penerimaan.bayar.detail.initial.nilai.max.length");
+	}
+
+	protected void manageReferences(EPenerimaanBayarDetailCustomer entity) {
+	}
+
+	protected void valDelete(EPenerimaanBayarDetailCustomer toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(EPenerimaanBayarDetailCustomer addedEntity) {
+		EPenerimaanBayarDetailCustomer entityFromDb = repo.findByBK(addedEntity.getHeader().getId(), addedEntity.getNourut());
+		if (entityFromDb != null) {
+			throw new BusinessException("penerimaan.bayar.detail.initial.bk", addedEntity.getNourut());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EPenerimaanBayarDetailCustomer editedEntity) {
+		EPenerimaanBayarDetailCustomer entityFromDb = repo.findByBK(editedEntity.getHeader().getId(), editedEntity.getNourut());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("penerimaan.bayar.detail.initial.bk", editedEntity.getNourut());
+			}
+		}
+	}
+
+	protected void preAdd(EPenerimaanBayarDetailCustomer entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(EPenerimaanBayarDetailCustomer entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(EPenerimaanBayarDetailCustomer toBeSaved, EPenerimaanBayarDetailCustomer oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(EPenerimaanBayarDetailCustomer toBeSaved, EPenerimaanBayarDetailCustomer oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(EPenerimaanBayarDetailCustomer entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(EPenerimaanBayarDetailCustomer entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	// ----
+	
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya	
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+}

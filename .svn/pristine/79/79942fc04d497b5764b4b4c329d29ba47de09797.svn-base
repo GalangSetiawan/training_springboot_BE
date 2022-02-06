@@ -1,0 +1,101 @@
+package co.id.sofcograha.base.multitenancy;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+import javax.sql.DataSource;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.hibernate.HibernateException;
+import org.hibernate.engine.jdbc.connections.spi.MultiTenantConnectionProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+@Component
+public class MultiTenantConnectionProviderImpl implements MultiTenantConnectionProvider {
+
+	private static final long serialVersionUID = -6755804227163026240L;
+
+	private Log logger = LogFactory.getLog(this.getClass());
+
+	@Autowired
+	private DataSource dataSource;
+
+	@Override
+	public Connection getAnyConnection() throws SQLException {
+		Connection connection = dataSource.getConnection();
+		// logger.debug("DataSource: " + dataSource);
+		String currentSchemaFromConnection = getCurrentSchemaFromConnection(connection);
+		logger.debug(
+				"Get/Created connection with schema: " + currentSchemaFromConnection + "|" + System.identityHashCode(connection));
+
+		return connection;
+	}
+
+	@Override
+	public void releaseAnyConnection(Connection connection) throws SQLException {
+		String currentSchemaFromConnection = getCurrentSchemaFromConnection(connection);
+		logger.debug("Release connection with schema: " + currentSchemaFromConnection + "|" + System.identityHashCode(connection));
+
+		connection.close();
+	}
+
+	@Override
+	public Connection getConnection(String tenantIdentifier) throws SQLException {
+		final Connection connection = getAnyConnection();
+		try {
+			logger.debug("Set Current schema to: " + tenantIdentifier);
+			if (tenantIdentifier != null) {
+				// XXX This code only working on PostgreSQL
+				connection.createStatement().execute("SET search_path TO " + tenantIdentifier);
+			} else {
+				connection.createStatement().execute("SET search_path TO default");
+			}
+		} catch (SQLException e) {
+			throw new HibernateException("Problem setting schema to " + tenantIdentifier, e);
+		}
+
+		return connection;
+	}
+
+	@Override
+	public void releaseConnection(String tenantIdentifier, Connection connection) throws SQLException {
+		releaseAnyConnection(connection);
+	}
+
+	@SuppressWarnings("rawtypes")
+	@Override
+	public boolean isUnwrappableAs(Class unwrapType) {
+		return false;
+	}
+
+	@Override
+	public <T> T unwrap(Class<T> unwrapType) {
+		return null;
+	}
+
+	@Override
+	public boolean supportsAggressiveRelease() {
+		return true;
+	}
+
+	private String getCurrentSchemaFromConnection(Connection connection) {
+		// XXX This code only working on PostgreSQL
+		String result = "";
+		try {
+			Statement statement = connection.createStatement();
+			statement.execute("select current_schema ()");
+			ResultSet resultSet = statement.getResultSet();
+			resultSet.next();
+			result = resultSet.getString("current_schema");
+		} catch (SQLException e) {
+			logger.error("Fail to get current schema!", e);
+			e.printStackTrace();
+		}
+
+		return result;
+	}
+}

@@ -1,0 +1,141 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.repositories;
+
+import java.util.Date;
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.Query;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.NativeSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.proses.upload.entities.EUploadDataRpt;
+
+@Repository
+public class UploadRptRepository {
+	
+	@Autowired
+	EntityManager em;
+	
+	public UploadRptRepository() {
+	}
+	
+	/*
+    public List<ERptDetailArusKas> getDetailArusKasByPeriodAndCode(String tglawl, String tglakh, String idAm58) {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("Select public.sys_guid() as id, a.tgjrnl, a.nojrnl, a.kettrn, b.debet, b.kredit " + 
+        		                  "From WT01 a " + 
+        		                  "Left Join WT02 b on b.id_wt01 = a.id_wt01 " + 
+        		                  "Where a.tgjrnl between :tglawl and :tglakh and b.id_am58 = :idAm58");
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), ERptDetailArusKas.class);
+        
+        query.setParameter("tglawl", tglawl);
+        query.setParameter("tglakh", tglakh);
+        query.setParameter("idAm58", idAm58);
+        
+        return query.getResultList();
+    }
+    */
+    
+    public List<EUploadDataRpt> getDetailArusKasByPeriodAndCode(String tahun, String bulan, String idMi001) {
+    	
+        Query query;
+      
+		StringBuilder queryStringBuilder = new StringBuilder();
+		queryStringBuilder.append("select public.sys_guid() as id, f.id_mi010 as id_mi010, f.nama as nama, d.id_mi013 as id_mi013, d.kodept as kodept, d.namapt as namapt, d.npwp as npwp, e.id_ai001 as id_ai001, e.fluplo as fluplo ");
+		queryStringBuilder.append("from si004 a "); 
+		queryStringBuilder.append("left join ti010 b on b.id_ti010 = a.id_ti010 "); 
+		queryStringBuilder.append("left join mi011 c on c.id_mi010 = a.id_mi010 and c.id_mi001 = a.id_mi001 "); 
+		queryStringBuilder.append("left join mi013 d on d.id_mi011 = c.id_mi011 "); 
+		queryStringBuilder.append("left join (select x.id_mi013 as id_mi013, x.fluplo, x.id_ai001 as id_ai001 ");
+		queryStringBuilder.append("           from ai001 x where x.tahun = :tahun and x.bulan = :bulan) e on e.id_mi013 = d.id_mi013 "); 
+		queryStringBuilder.append("left join mi010 f on f.id_mi010 = c.id_mi010 "); 
+		queryStringBuilder.append("where 1 = 1 and a.id_mi001 like :idMi001 "); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), EUploadDataRpt.class);
+        
+        query.setParameter("tahun", tahun);
+        query.setParameter("bulan", bulan);
+        query.setParameter("idMi001", idMi001);
+        
+        return query.getResultList();
+    }
+
+	public SearchResult<EUploadDataRpt> search(SearchParameter searchParameter) {
+		
+		String tahun = (String) searchParameter.getValueFromMappedParam("tahun");
+		String bulan = (String) searchParameter.getValueFromMappedParam("bulan");
+		String idMi001 = (String) searchParameter.getValueFromMappedParam("idMi001");
+		    
+		StringBuilder queryStringBuilder = new StringBuilder();
+		queryStringBuilder.append("select public.sys_guid() as id, f.id_mi010 as id_mi010, f.nama as nama, d.id_mi013 as id_mi013, d.kodept as kodept, d.namapt as namapt, d.npwp as npwp, e.id_ai001 as id_ai001, e.fluplo as fluplo ");
+		queryStringBuilder.append("from si004 a "); 
+		queryStringBuilder.append("left join ti010 b on b.id_ti010 = a.id_ti010 "); 
+		queryStringBuilder.append("left join mi011 c on c.id_mi010 = a.id_mi010 and c.id_mi001 = a.id_mi001 "); 
+		queryStringBuilder.append("left join mi013 d on d.id_mi011 = c.id_mi011 "); 
+		queryStringBuilder.append("left join (select x.id_mi013 as id_mi013, x.fluplo, x.id_ai001 as id_ai001 ");
+		queryStringBuilder.append("           from ai001 x where x.tahun = :tahun and x.bulan = :bulan) e on e.id_mi013 = d.id_mi013 "); 
+		queryStringBuilder.append("left join mi010 f on f.id_mi010 = c.id_mi010 "); 
+		queryStringBuilder.append("where 1 = 1 and a.id_mi001 like :idMi001 "); 
+
+		/*
+		queryStringBuilder.append("SELECT           A.* \n");
+		queryStringBuilder.append("FROM             hm_oat024 A \n");
+		queryStringBuilder.append("LEFT OUTER JOIN  public.hm_msd025 B ON B.id = A.hm_msd025_kelompok_jenis_absensi_id \n");
+		queryStringBuilder.append("LEFT OUTER JOIN  hm_oem001 C ON C.id = A.hm_oem001_karyawan_id \n");
+		queryStringBuilder.append("WHERE            1 = 1 \n");
+		*/
+		    
+		NativeSearchBuilder<EUploadDataRpt> search = new NativeSearchBuilder<>(EUploadDataRpt.class, em);
+
+		search.addParameter("tahun", tahun);
+		search.addParameter("bulan", bulan);
+
+		if (!QueryUtil.isAll(idMi001)) {
+			search.addParameter("idMi001", QueryUtil.formatStringForLikeFilter(idMi001));
+		} else {
+			search.addParameter("idMi001", "%");			
+		}
+		
+//		if (!QueryUtil.isAll(idMi001)) {
+//            search.addParameter("idMi001", QueryUtil.formatStringForLikeFilter(idMi001));
+//        }
+		
+		/*
+		    if (karyawanId != null) {
+		      queryStringBuilder.append("AND A.hm_oem001_karyawan_id = :karyawanId \n");
+		      search.addParameter("karyawanId", karyawanId);
+		    }
+		    
+		    if (nip != null) {
+		      queryStringBuilder.append("AND C.employee_id = :nip \n");
+		      search.addParameter("nip", nip);
+		    }
+		    
+		    if (flagAktif != null) {
+		      queryStringBuilder.append("AND CASE \n");
+		      queryStringBuilder.append("     WHEN :flagAktif = TRUE \n");
+		      queryStringBuilder.append("       THEN (:tanggalSistem BETWEEN A.tanggal_awal_berlaku AND A.koreksi_tanggal_akhir_berlaku) \n");
+		      queryStringBuilder.append("     ELSE A.koreksi_tanggal_akhir_berlaku < :tanggalSistem \n");
+		      queryStringBuilder.append("   END \n");
+		      search.addParameter("flagAktif", flagAktif);
+		      search.addParameter("tanggalSistem", tanggalSistem);
+		    }
+		*/    
+		    
+		search.setQueryString(queryStringBuilder);
+		search.setPagination(searchParameter.getPagination());
+		search.setSort(searchParameter.getSort());
+
+		return search.getSearchResult();
+	}
+}
+

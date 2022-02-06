@@ -1,0 +1,158 @@
+package co.id.sofcograha.base.excel;
+
+import org.apache.poi.ss.usermodel.Row;
+
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+
+public abstract class BaseExcelService extends BaseService {
+
+  private TemplateExcelUtil excel;
+  private String[] bodyHeaderTitles;
+  
+  public Integer getColumsCount() {
+    return bodyHeaderTitles.length;
+  }
+  
+  public Integer getRightColumnIndex() {
+    return bodyHeaderTitles.length - 1;
+  }
+  
+  protected Base64StringEncodedPojo create(String pReportTitle, String pServiceId, String... headerTitles) {
+    bodyHeaderTitles = headerTitles;
+    excel = new TemplateExcelUtil(pReportTitle, pServiceId, headerTitles.length);
+    
+    validasi();
+    throwBatchError();
+    header();
+    filter();
+    bodyHeader();
+    body();
+    footer();
+    
+    return excel.generateAsBase64();
+  }
+  
+  protected Base64StringEncodedPojo create(String pReportTitle, String pServiceId, Integer jumlahKolomData) {
+    
+    excel = new TemplateExcelUtil(pReportTitle, pServiceId, jumlahKolomData);
+    
+    validasi();
+    throwBatchError();
+    header();
+    filter();
+    excel.addEmptyRow();
+    body();
+    footer();
+    
+    return excel.generateAsBase64();
+  }
+  
+  protected abstract void validasi();
+  
+  public Row createRow() {
+    return excel.createRow();
+  }
+  
+  /**
+   * Zero based index 
+   */
+  public Row setRow(Integer indexRow) {
+    return excel.setRow(indexRow);
+  }
+  
+  public Integer getCurrentRowIndex() {
+    return excel.getCurrentRowIndex();
+  }
+  
+  public void setMerge(int startIndexRow, int endIndexRow, int startIndexCol, int endIndexCol, boolean border) {
+    excel.setMerge(startIndexRow, endIndexRow, startIndexCol, endIndexCol, border);    
+  }
+  
+  public void setLineBorder(int startIndexRow, int endIndexRow, int startIndexCol, int endIndexCol, String borderType, boolean borderTop, boolean borderBottom) {
+	  excel.setLineBorder(startIndexRow, endIndexRow, startIndexCol, endIndexCol, borderType, borderTop, borderBottom);
+  }
+  
+  /**
+   * menentukan row
+   */
+  public void addCell(int indexRow, Integer indexColumn, Object cellValue) {
+	  excel.addCell(indexRow, indexColumn, cellValue);
+  }
+  
+  /**
+   * Custom cell dengan menentukan row - setting font dan align
+   */
+  public void addCell(int indexRow, Integer indexColumn, Object cellValue, boolean bold, boolean italic, boolean underline, boolean border, boolean custom, String hAlign, String vAlign ) {
+	  excel.addCell(indexRow, indexColumn, cellValue, bold, italic, underline, border, custom, hAlign, vAlign);
+  }
+  
+  /**
+   * Custom cell dengan menentukan row - setting font, border, align
+   */
+  public void addCustomCell(int indexRow, Integer indexColumn, Object cellValue, boolean bold, boolean italic, boolean underline, String borderType, boolean borderTop, boolean borderBottom, boolean borderLeft, boolean borderRight, String hAlign, String vAlign ) {
+	  excel.addCustomCellWithRow(indexRow, indexColumn, cellValue, bold, italic, underline, false, borderType, borderTop, borderBottom, borderLeft, borderRight, true, hAlign, vAlign);
+  }
+  
+  /**
+   * Custom cell - setting font, border, align
+   */
+  public void addCustomCell(Integer indexColumn, Object cellValue, boolean bold, boolean italic, boolean underline, String borderType, boolean borderTop, boolean borderBottom, boolean borderLeft, boolean borderRight, String hAlign, String vAlign ) {
+	  excel.addCustomCell(indexColumn, cellValue, bold, italic, underline, false, borderType, borderTop, borderBottom, borderLeft, borderRight, true, hAlign, vAlign);
+  }
+  
+  
+  /**
+   * Custom cell - setting font dan align
+   */
+  public void addCell(Integer indexColumn, Object cellValue, boolean bold, boolean italic, boolean underline, boolean border, boolean custom, String hAlign, String vAlign ) {
+	  excel.addCell(indexColumn, cellValue, bold, italic, underline, border, custom, hAlign, vAlign);
+  }
+  
+  /**
+   * cell dengan setiingan font
+   * @param bold
+   * @param italic
+   * @param underline
+   */
+  public void addCell(Integer indexColumn, Object cellValue, boolean bold, boolean italic, boolean underline) {
+	  excel.addCell(indexColumn, cellValue, bold, italic, underline, false, false, "", "");
+  }
+  
+  public void addCell(Integer indexColumn, Object cellValue) {
+    excel.addCell(indexColumn, cellValue);
+  }
+  
+  public void addCellHeader(Integer index, Object cellValue) {
+    excel.addCell(index, cellValue, true, true, true);
+  }
+  
+  public void addCell(Integer index, Object cellValue, boolean bold) {
+    excel.addCell(index, cellValue, bold);
+  }
+  
+  public void addCell(Integer index, Object cellValue, boolean bold, boolean border) {
+    excel.addCell(index, cellValue, bold, border, border, border, border);
+  }
+  
+  public void addCell(Integer index, Object cellValue, boolean bold, boolean borderTop, boolean borderRight, boolean borderBottom, boolean borderLeft) {
+    excel.addCell(index, cellValue, bold, borderTop, borderRight, borderBottom, borderLeft);
+  }
+  
+  public void addEmptyRow() {
+	  excel.addEmptyRow();	  
+  }
+  
+  public void bodyHeader() {
+    excel.addStandardColumnHeaders(bodyHeaderTitles);
+  }
+  
+  protected void header() {
+    excel.addStandardReportHeader();
+  }
+  protected abstract void filter();
+  protected abstract void body();
+  protected void footer() {
+    excel.addStandardReportFooter();
+  };
+}

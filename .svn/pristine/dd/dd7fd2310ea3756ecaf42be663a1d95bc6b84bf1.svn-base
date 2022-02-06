@@ -1,0 +1,184 @@
+package co.id.sofcograha.base.master.usercompany.services;
+
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.master.usercompany.entities.EUserCompany;
+import co.id.sofcograha.base.master.usercompany.repositories.UserCompanyRepository;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+
+//import id.co.sofcograha.gajiidapi.base.exceptions.BusinessException;
+//import id.co.sofcograha.gajiidapi.base.extendables.BaseService;
+//import id.co.sofcograha.gajiidapi.base.mst.company.entities.Company;
+//import id.co.sofcograha.gajiidapi.base.mst.company.services.CompanyService;
+//import id.co.sofcograha.gajiidapi.base.mst.user.entities.User;
+//import id.co.sofcograha.gajiidapi.base.mst.user.services.UserService;
+//import id.co.sofcograha.gajiidapi.base.mst.usercompany.entities.UserCompany;
+//import id.co.sofcograha.gajiidapi.base.mst.usercompany.repositories.UserCompanyRepository;
+//import id.co.sofcograha.gajiidapi.base.search.SearchParameter;
+//import id.co.sofcograha.gajiidapi.base.search.SearchResult;
+//import id.co.sofcograha.gajiidapi.base.utils.OptionalConsumerUtil;
+
+@Service
+public class UserCompanyService extends BaseService {
+    
+    @Autowired
+    private LocalErrors errorManager;
+  
+	@Autowired
+	private UserService userService;
+
+	@Autowired
+	private CompanyService companyService;
+
+	@Autowired
+	private UserCompanyRepository userCompanyRepository;
+
+/*
+	@Override
+	protected void defineDefaultValuesOnAdd(UserCompany entity) {
+	}
+
+	@Override
+	protected void defineEditableValues(UserCompany newValues, UserCompany toBeSaved) {
+		toBeSaved.setUser(newValues.getUser());
+		toBeSaved.setCompany(newValues.getCompany());
+		toBeSaved.setStartDate(newValues.getStartDate());
+		toBeSaved.setEndDate(newValues.getEndDate());
+		toBeSaved.setSuperUser(newValues.getSuperUser());
+	}
+
+	@Override
+	protected void valRequiredValues(UserCompany entity) {
+		valRequiredReference(entity.getUser(), "userCompany.user.required");
+		valRequiredReference(entity.getCompany(), "userCompany.company.required");
+		valRequiredDate(entity.getStartDate(), "userCompany.startDate.required");
+		valRequiredDate(entity.getEndDate(), "userCompany.endDate.required");
+		valRequiredBoolean(entity.getSuperUser(), "userCompany.superUser.required");
+	}
+	
+	@Override
+	protected void valValid(UserCompany entity) {
+	}
+
+	@Override
+	protected void manageMinMaxValues(UserCompany entity) {
+		valMaxDate(entity.getStartDate(), entity.getEndDate(), "userCompany.startDate.max.length");
+		valMinDate(entity.getEndDate(), entity.getStartDate(), "userCompany.endDate.min.length");
+	}
+
+	@Override
+	protected void manageReferences(UserCompany entity) {
+		OptionalConsumerUtil.of(userService.find(entity.getUser().getId())).ifPresent(user -> {
+			if (user.getActive()) {
+				entity.setUser(user);
+			} else {
+				batchError("userCompany.user.not.active");
+			}
+		}).ifNotPresent(() -> {
+			batchError("userCompany.user.not.found");
+		});
+		OptionalConsumerUtil.of(companyService.find(entity.getCompany().getId())).ifPresent(company -> {
+			if (company.getActive()) {
+				entity.setCompany(company);
+			} else {
+				batchError("userCompany.company.not.active");
+			}
+		}).ifNotPresent(() -> {
+			batchError("userCompany.company.not.found");
+		});
+	}
+
+	@Override
+	protected void valAdd(UserCompany entity) {
+	}
+
+	@Override
+	protected void valEdit(UserCompany entity, UserCompany fromDb) {
+	}
+
+	@Override
+	protected void valDelete(UserCompany toBeDeleted) {
+	}
+
+	@Override
+	protected void valUniquenessOnAdd(UserCompany addedEntity) {
+		OptionalConsumerUtil.of(findByBk(addedEntity.getUser(), addedEntity.getCompany())).ifPresent(fromDb -> {
+			throw new BusinessException("userCompany.bk", addedEntity.getUser(), addedEntity.getCompany());
+		});
+	}
+
+	@Override
+	protected void valUniquenessOnEdit(UserCompany editedEntity) {
+		OptionalConsumerUtil.of(findByBk(editedEntity.getUser(), editedEntity.getCompany())).ifPresent(fromDb -> {
+			if (!editedEntity.getId().equals(fromDb.getId())) {
+				throw new BusinessException("userCompany.bk", editedEntity.getUser(), editedEntity.getCompany());
+			}
+		});
+	}
+*/	
+	public EUserCompany findByUser(EUser user) {
+		return userCompanyRepository.findByUser(user);
+	}
+
+	public EUserCompany findByBk(EUser user, ECompany company) {
+		return userCompanyRepository.findByBK(user, company);
+	}
+	
+	public List<EUserCompany> getSuperUserByCompany(ECompany company, Boolean superUser) {
+		return userCompanyRepository.getSuperUserByCompany(company, superUser);
+	}
+
+	public SearchResult<EUserCompany> search(SearchParameter searchParameter) {
+		return userCompanyRepository.search(searchParameter);
+	}
+	
+	@Transactional
+	public EUserCompany add(EUser pEUser, ECompany pECompany) {
+	  // persiapan/perhitungan (bila ada)
+	  
+	  // validasi-validasi (bila ada)
+	  EUserCompany eUserCompany = userCompanyRepository.findByBK(pEUser, pECompany);
+	  if (eUserCompany != null) {
+	    errorManager.addError("User Company sudah ada");
+	    errorManager.throwBatchError();
+	  }
+	  
+	  EUserCompany eUserCompanyToBeAdded = new EUserCompany();
+	  eUserCompanyToBeAdded.setUser(pEUser);
+	  eUserCompanyToBeAdded.setCompany(pECompany);
+	  eUserCompanyToBeAdded.setStartDate(new Date());
+      eUserCompanyToBeAdded.setEndDate(new Date(253402214400000L));
+	  eUserCompanyToBeAdded.setSuperUser(false);
+	  eUserCompanyToBeAdded.setVersion(1);
+	  eUserCompanyToBeAdded.setUserCreate(CurrentUser.getUserId());
+	  eUserCompanyToBeAdded.setCretionTime(new Date());
+	  eUserCompanyToBeAdded.setUserModify(CurrentUser.getUserId());
+	  eUserCompanyToBeAdded.setModificationTime(new Date());
+	  
+	  // update saldo (bila ada)
+	  return userCompanyRepository.save(eUserCompanyToBeAdded);
+	}
+	
+    @Transactional
+    public void delete (EUser pEUser) {
+        // persiapan/perhitungan (bila ada)
+        // validasi-validasi (bila ada)
+        // update saldo (bila ada)
+        EUserCompany eUserCompany = userCompanyRepository.findByUser(pEUser);
+        userCompanyRepository.delete(eUserCompany);
+    }
+	
+}

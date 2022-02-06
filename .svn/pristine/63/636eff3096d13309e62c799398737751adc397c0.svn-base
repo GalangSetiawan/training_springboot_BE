@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.admin.upload.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.EAdminUploadDetail;
+
+@Repository
+public class EAdminUploadDetailRepository extends SimpleJpaRepository<EAdminUploadDetail, String> {
+
+	protected final EntityManager em;
+
+	public EAdminUploadDetailRepository(EntityManager em) {
+		super(EAdminUploadDetail.class, em);
+		this.em = em;
+	}
+	
+	public EAdminUploadDetail findByBK(String idAi001, String fversi) {
+		
+		String query = "SELECT e FROM EAdminUploadDetail e " + 
+                       "WHERE e.header.id = :idAi001 And " +
+		                     "e.fversi = :fversi";
+		
+		try {
+			return em.createQuery(query, EAdminUploadDetail.class)
+					 .setParameter("idAi001", idAi001)
+					 .setParameter("fversi", fversi)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EAdminUploadDetail getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EAdminUploadDetail> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EAdminUploadDetail> search = new HqlSimpleSearchBuilder<>(EAdminUploadDetail.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EAdminUploadDetail add(EAdminUploadDetail entity) {
+		return save(entity);
+	}
+
+	public EAdminUploadDetail edit(EAdminUploadDetail entity) {
+		return save(entity);
+	}
+}

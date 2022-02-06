@@ -1,0 +1,95 @@
+package co.id.sofcograha.base.master.customer.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.customer.entities.ECustomer;
+import co.id.sofcograha.base.master.customer.repositories.CustomerRepository;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+//import id.co.sofcograha.gajiidapi.base.exceptions.BusinessException;
+//import id.co.sofcograha.gajiidapi.base.extendables.BaseService;
+//import id.co.sofcograha.gajiidapi.base.mst.customer.entities.Customer;
+//import id.co.sofcograha.gajiidapi.base.mst.customer.repositories.CustomerRepository;
+//import id.co.sofcograha.gajiidapi.base.search.SearchParameter;
+//import id.co.sofcograha.gajiidapi.base.search.SearchResult;
+//import id.co.sofcograha.gajiidapi.base.utils.OptionalConsumerUtil;
+
+@Service
+public class CustomerService extends BaseService {
+
+	@Autowired
+	private CustomerRepository customerRepository;
+	
+/*
+	protected void defineDefaultValuesOnAdd(ECustomer entity) {
+		if (entity.getActive() == null) entity.setActive(true);
+	}
+
+	protected void defineEditableValues(Customer newValues, Customer toBeSaved) {
+		toBeSaved.setName(newValues.getName());
+		toBeSaved.setActive(newValues.getActive());
+	}
+
+	@Override
+	protected void valRequiredValues(Customer entity) {
+		valRequiredString(entity.getName(), "customer.name.required");
+		valRequiredBoolean(entity.getActive(), "customer.active.required");
+	}
+	
+	@Override
+	protected void valValid(Customer entity) {
+	}
+
+	@Override
+	protected void manageMinMaxValues(Customer entity) {
+		valMaxString(entity.getName(), 50, "customer.name.max.length");
+	}
+
+	@Override
+	protected void manageReferences(Customer entity) {
+	}
+
+	@Override
+	protected void valAdd(Customer entity) {
+	}
+
+	@Override
+	protected void valEdit(Customer entity, Customer fromDb) {
+	}
+
+	@Override
+	protected void valDelete(Customer toBeDeleted) {
+	}
+
+	@Override
+	protected void valUniquenessOnAdd(Customer addedEntity) {
+		OptionalConsumerUtil.of(findByBk(addedEntity.getName())).ifPresent(fromDb -> {
+			throw new BusinessException("customer.bk", addedEntity.getName());
+		});
+	}
+
+	@Override
+	protected void valUniquenessOnEdit(Customer editedEntity) {
+		OptionalConsumerUtil.of(findByBk(editedEntity.getName())).ifPresent(fromDb -> {
+			if (!editedEntity.getId().equals(fromDb.getId())) {
+				throw new BusinessException("customer.bk", editedEntity.getName());
+			}
+		});
+	}
+*/
+	
+	public ECustomer find(String id) {
+		return customerRepository.getOne(id);
+	}
+	
+	public ECustomer findByBk(String name) {
+		return customerRepository.findByBK(name);
+	}
+
+	public SearchResult<ECustomer> search(SearchParameter searchParameter) {
+		return customerRepository.search(searchParameter);
+	}
+}

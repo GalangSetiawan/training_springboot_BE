@@ -1,0 +1,302 @@
+package co.id.sofcograha.domain.invoicing.saldo.live.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.services.CustomerGajiIdService;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.services.ProdukService;
+import co.id.sofcograha.domain.invoicing.saldo.live.entities.ESaldoLive;
+import co.id.sofcograha.domain.invoicing.saldo.live.pojos.SaldoLive;
+import co.id.sofcograha.domain.invoicing.saldo.live.repositories.ESaldoLiveRepository;
+import co.id.sofcograha.domain.invoicing.transaksi.berhenti.entities.ETrxBerhenti;
+import co.id.sofcograha.domain.invoicing.transaksi.berhenti.services.TrxBerhentiService;
+import co.id.sofcograha.domain.invoicing.transaksi.live.entities.ETrxLive;
+import co.id.sofcograha.domain.invoicing.transaksi.live.services.TrxLiveService;
+
+@Service("saldoLiveService")
+public class SaldoLiveService extends BaseService {
+	
+	@Autowired private ESaldoLiveRepository repo;
+	@Autowired private CustomerGajiIdService customerGajiIdService;
+	@Autowired private ProdukService produkService;
+	@Autowired private TrxLiveService trxLiveService;
+	@Autowired private TrxBerhentiService trxBerhentiService;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public SaldoLive findByBk(String idMi010, String idMi001, String tglive) {
+		return SaldoLive.fromEntity(repo.findByBK(idMi010, idMi001, tglive));
+	}
+	
+	public SearchResult<ESaldoLive> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	public List<ESaldoLive> getCustomerLiveDataBelumUpload(String tahun, String bulan) {
+		return repo.getCustomerLiveDataBelumUpload(tahun, bulan);
+	}
+	
+	public SaldoLive findLiveCustomerProduk(String idMi010, String idMi001) {
+		return SaldoLive.fromEntity(repo.findLiveCustomerProduk(idMi010, idMi001));
+	}
+	
+	public List<ESaldoLive> getCustomerLiveSiklusPeriodik() {
+		return repo.getCustomerLiveSiklusPeriodik();
+	}
+
+	@Transactional
+	public ESaldoLive add(ESaldoLive entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		ESaldoLive addedEntity = repo.add(entity);
+		postAdd(addedEntity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+	
+	@Transactional
+	public ESaldoLive edit(ESaldoLive entity) {
+				
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		ESaldoLive toBeSaved = repo.getOne(entity.getId());
+		ESaldoLive oldEntity = (ESaldoLive) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, ESaldoLive.class.getSimpleName());
+		throwBatchError();
+		
+		ESaldoLive toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		throwBatchError();
+		
+	}
+	
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ESaldoLive dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(ESaldoLive entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(ESaldoLive newValues, ESaldoLive toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setTglive(newValues.getTglive());
+			toBeSaved.setTgstop(newValues.getTgstop());
+			toBeSaved.setFlproi(newValues.getFlproi());
+			toBeSaved.setFluplo(newValues.getFluplo());
+			toBeSaved.setTrxBerhenti(newValues.getTrxBerhenti());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(ESaldoLive entity) {
+	}
+	
+	protected void manageMinMaxValues(ESaldoLive entity) {
+		valMaxString(entity.getTglive(), 8, "saldo.live.header.tglive.max.length");
+		valMaxString(entity.getTgstop(), 8, "saldo.live.header.tgstop.max.length");
+		valMaxString(entity.getFlproi(), 1, "saldo.live.header.flproi.max.length");
+		valMaxString(entity.getFluplo(), 1, "saldo.live.header.uplo.max.length");
+	}
+
+	protected void manageReferences(ESaldoLive entity) {
+		if (entity.getCustomer() != null) {
+			ECustomerGajiId eFromDb = customerGajiIdService.get(entity.getCustomer().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setCustomer(eFromDb);
+				} else {
+					batchError("customerGajiId.not.active");
+				}
+			} else {
+				batchError("customerGajiId.not.found");
+			}			
+		}		
+
+		if (entity.getProduk() != null) {
+			EProduk eFromDb = produkService.get(entity.getProduk().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setProduk(eFromDb);
+				} else {
+					batchError("produk.not.active");
+				}
+			} else {
+				batchError("produk.not.found");
+			}			
+		}		
+
+		if (entity.getTrxLive() != null) {
+			ETrxLive eFromDb = trxLiveService.get(entity.getTrxLive().getId());
+			if (eFromDb == null) {
+				batchError("trx.live.not.found");
+			} else {
+				entity.setTrxLive(eFromDb);
+			}
+		}		
+
+		if (entity.getTrxBerhenti() != null) {
+			ETrxBerhenti eFromDb = trxBerhentiService.get(entity.getTrxBerhenti().getId());
+			if (eFromDb == null) {
+				batchError("trx.berhenti.not.found");
+			} else {
+				entity.setTrxBerhenti(eFromDb);				
+			}
+		}		
+	}
+
+	protected void valDelete(ESaldoLive toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(ESaldoLive addedEntity) {
+		ESaldoLive entityFromDb = repo.findByBK(addedEntity.getCustomer().getId(), addedEntity.getProduk().getId(), addedEntity.getTglive());
+		if (entityFromDb != null) {
+			throw new BusinessException("saldo.live.header.bk");
+		}
+	}
+
+	protected void valUniquenessOnEdit(ESaldoLive editedEntity) {
+		ESaldoLive entityFromDb = repo.findByBK(editedEntity.getCustomer().getId(), editedEntity.getProduk().getId(), editedEntity.getTglive());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("saldo.live.header.bk");
+			}
+		}
+	}
+	
+	protected void preAdd(ESaldoLive entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(ESaldoLive entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(ESaldoLive toBeSaved, ESaldoLive oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(ESaldoLive toBeSaved, ESaldoLive oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(ESaldoLive entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(ESaldoLive entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+	
+	public ESaldoLive get(String id) {
+		return repo.getOne(id);
+	}
+	
+}

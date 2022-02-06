@@ -1,0 +1,104 @@
+package co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifDetail;
+
+@Repository
+public class ECustomerProdukTarifDetailRepository extends SimpleJpaRepository<ECustomerProdukTarifDetail, String> {
+
+	protected final EntityManager em;
+
+	public ECustomerProdukTarifDetailRepository(EntityManager em) {
+		super(ECustomerProdukTarifDetail.class, em);
+		this.em = em;
+	}
+	
+	public ECustomerProdukTarifDetail findByBK(String idMi011, Integer nourut) {
+		
+		String query = "SELECT e FROM ECustomerProdukTarifDetail e " + 
+                       "WHERE e.header.id = :idMi011 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, ECustomerProdukTarifDetail.class)
+					 .setParameter("idMi011", idMi011)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ECustomerProdukTarifDetail getByCustProdukAndJenisTarifTanpaRange(String idMi010, String idMi001, String jnstrf) {
+		
+		String query = "SELECT e FROM ECustomerProdukTarifDetail e " + 
+                       "WHERE e.header.customer.id = :idMi010 And " +
+                             "e.header.produk.id = :idMi001 And " +
+  	                         "TRIM(e.jnstrf) = :jnstrf And " +
+                             "(e.header.tglstart is null And e.header.tglstop is null) And " +
+                             "(e.tglstart is null And e.tglstop is null)";
+		
+		try {
+			return em.createQuery(query, ECustomerProdukTarifDetail.class)
+					 .setParameter("idMi010", idMi010)
+					 .setParameter("idMi001", idMi001)
+					 .setParameter("jnstrf", jnstrf)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ECustomerProdukTarifDetail getByCustProdukAndJenisTarifDgnRange(String idMi010, String idMi001, String jnstrf, String tanggal) {
+		
+		String query = "SELECT e FROM ECustomerProdukTarifDetail e " + 
+                       "WHERE e.header.customer.id = :idMi010 And " +
+                             "e.header.produk.id = :idMi001 And " +
+  	                         "TRIM(e.jnstrf) = :jnstrf And " +
+                             "((:tanggal between e.header.tglstart And e.header.tglstop) Or (:tanggal >= e.header.tglstart and e.header.tglstop is null)) And " +
+                             "((:tanggal between e.tglstart And e.tglstop) Or (:tanggal >= e.tglstart and e.tglstop is null))";
+		
+		try {
+			return em.createQuery(query, ECustomerProdukTarifDetail.class)
+					 .setParameter("idMi010", idMi010)
+					 .setParameter("idMi001", idMi001)
+					 .setParameter("jnstrf", jnstrf)
+					 .setParameter("tanggal", tanggal)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ECustomerProdukTarifDetail getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<ECustomerProdukTarifDetail> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ECustomerProdukTarifDetail> search = new HqlSimpleSearchBuilder<>(ECustomerProdukTarifDetail.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ECustomerProdukTarifDetail add(ECustomerProdukTarifDetail entity) {
+		return save(entity);
+	}
+
+	public ECustomerProdukTarifDetail edit(ECustomerProdukTarifDetail entity) {
+		return save(entity);
+	}
+}

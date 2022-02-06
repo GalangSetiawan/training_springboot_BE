@@ -1,0 +1,48 @@
+package co.id.sofcograha.base.master.kamus.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.kamus.entities.EStdKamus;
+import co.id.sofcograha.base.master.kamus.pojos.StdKamus;
+import co.id.sofcograha.base.master.kamus.repositories.EStdKamusRepository;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Service("stdKamusService")
+public class StdKamusService extends BaseService {
+	
+	@Autowired private EStdKamusRepository eStdKamusRepository;
+	
+	public StdKamus findByBk(String bahasa, String key) {
+		return StdKamus.fromEntity(eStdKamusRepository.findByBK(bahasa, key));
+	}
+
+	public SearchResult<EStdKamus> search(SearchParameter searchParameter) {
+		return eStdKamusRepository.search(searchParameter);
+	}
+		
+	public String translateLabel(String bahasa, String label) {
+		EStdKamus eStdKamus = eStdKamusRepository.findByBK(bahasa, label);
+		
+		if (eStdKamus != null) {
+			return eStdKamus.getValue();
+		} else {
+			return "not found";
+		}
+		
+	}
+
+	public String translateLabelFormattedReport(String bahasa, String label) {
+		EStdKamus eStdKamus = eStdKamusRepository.findByBK(bahasa, label);
+		
+		if (eStdKamus != null) {
+			return eStdKamus.getValue();
+		} else {
+			return label;
+		}
+		
+	}
+
+}

@@ -1,0 +1,1305 @@
+package co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+import co.id.sofcograha.domain.invoicing.admin.diskon.entities.EAdminDiskon;
+import co.id.sofcograha.domain.invoicing.admin.diskon.services.AdminDiskonService;
+import co.id.sofcograha.domain.invoicing.admin.freemonth.services.AdminFreemonthService;
+import co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.entities.EPenggunaanMaster;
+import co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.services.PenggunaanMasterService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifDetail;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifDetailGrupAkumulasi;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifComplete;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifDetail;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifDetailGrupAkumulasi;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.repositories.ECustomerProdukTarifHeaderRepository;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.entities.EMappingCustomerProduk;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.pojos.MappingCustomerProduk;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.services.MappingCustomerProdukService;
+import co.id.sofcograha.domain.invoicing.masters.mappingExcludeCustomerProduk.entities.EMappingExcludeCustomerProduk;
+import co.id.sofcograha.domain.invoicing.masters.mappingExcludeCustomerProduk.pojos.MappingExcludeCustomerProduk;
+import co.id.sofcograha.domain.invoicing.masters.mappingExcludeCustomerProduk.services.MappingExcludeCustomerProdukService;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.transaksi.berhenti.entities.ETrxBerhenti;
+import co.id.sofcograha.domain.invoicing.transaksi.live.entities.ETrxLive;
+
+@Service("customerProdukTarifCompleteService")
+public class CustomerProdukTarifCompleteService extends BaseService {
+	
+	@Autowired private CustomerProdukTarifHeaderService customerProdukTarifHeaderService;
+	@Autowired private CustomerProdukTarifDetailService customerProdukTarifDetailService;
+	@Autowired private CustomerProdukTarifDetailGrupAkumulasiService customerProdukTarifDetailGrupAkumulasiService;
+	@Autowired private MappingCustomerProdukService mappingCustomerProdukService;
+	@Autowired private PenggunaanMasterService penggunaanMasterService;
+	@Autowired private AdminDiskonService adminDiskonService;
+	@Autowired private AdminFreemonthService adminFreemonthService;
+	@Autowired private MappingExcludeCustomerProdukService mappingExcludeCustomerProdukService;
+
+	@Autowired private ECustomerProdukTarifHeaderRepository eCustomerProdukTarifHeaderRepository;
+	
+	private boolean isErrorDetail = false;
+	private boolean isErrorSubDetail = false;
+	
+	public CustomerProdukTarifComplete findByBk(String idMi010, String idMi001) {
+		return CustomerProdukTarifComplete.setFromEntity(eCustomerProdukTarifHeaderRepository.findByBK(idMi010, idMi001));
+	}
+
+	public SearchResult<ECustomerProdukTarifHeader> search(SearchParameter searchParameter) {
+		return eCustomerProdukTarifHeaderRepository.search(searchParameter);
+	}
+	
+	public List<EProduk> getProdukByCustomer(String idMi010, String nama) {
+		return eCustomerProdukTarifHeaderRepository.getProdukByCustomer(idMi010, nama);
+	}
+	
+	public Date getTglJatuhTempo(String idMi010, String idMi001, Date tanggal) {
+		Date result = null;
+		
+		CustomerProdukTarifHeader pojo = CustomerProdukTarifHeader.fromEntity(eCustomerProdukTarifHeaderRepository.findByBK(idMi010, idMi001));
+		
+		if (pojo != null) {			
+			result = TimeUtil.addDays(tanggal, pojo.jthtemp);
+		}
+
+		return result;
+	}
+	
+	public void tandaiSudahDigunakan(CustomerProdukTarifComplete data) {
+		
+		for (CustomerProdukTarifDetail detail : data.details) {
+			detail.isUsed = penggunaanMasterService.isUsed(detail);
+		}
+		
+		for (CustomerProdukTarifDetailGrupAkumulasi detail : data.detailGrupAkumulasi) {
+			detail.isUsed = penggunaanMasterService.isUsed(detail);
+		}
+	}
+
+	@Transactional
+	public void updateLive(ETrxLive eTrxLive) {
+		CustomerProdukTarifComplete customerProdukTarifComplete = findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId());
+
+		// update tanggal start di header dengan tanggal live
+		customerProdukTarifComplete.header.tglstart = TimeUtil.getDate(eTrxLive.getTglive());
+		customerProdukTarifComplete.header.tglstop = null;
+		
+		// NB: customerProdukTarifComplete.details secara relasi sudah diurutkan berdasarkan jnstrf dan nourut
+		//     jadi seharusnya tinggal di loop saja
+		
+		List<CustomerProdukTarifDetail> details = customerProdukTarifComplete.details;
+
+		String jnstrf = "";
+		Date tglAwalBerjalan = null;
+		String tglStop = null;
+		for (int i = 0; i < details.size(); ++i) {
+			CustomerProdukTarifDetail detail = details.get(i);
+			
+			if (!jnstrf.equals(detail.jnstrf)) {
+
+				// ini adalah row pertama untuk suatu jenis tarif
+				// set tanggal awal berjalan dengan tanggal live
+				tglAwalBerjalan = TimeUtil.getDate(eTrxLive.getTglive());
+				
+				jnstrf = detail.jnstrf;
+			} else {
+				// berarti ini jenis tarifnya sama dengan sebelumnya,
+				// set tanggal awal dengan tanggal awal berjalan
+				// hitung tgl stop berdasar durasi
+				// set tanggal stop
+				
+				// set tanggal awal berjalan dengan tanggal stop + 1
+			}
+
+			if (detail.tglstart == null) {
+				if (!jnstrf.equals("FREEM")) {
+					// hitung tanggal stop dari durasi yang ada, lalu set tangal stop dengan hasil perhitungan
+					int bulan = 0;
+					if (detail.satdur.equals("BULAN")) {
+						bulan = detail.jumdur;
+					} else if (detail.satdur.equals("TAHUN")) {
+						bulan = 12 * detail.jumdur;
+					}
+					bulan = (bulan - 1 < 0) ? 0 : bulan - 1;
+
+					if (i + 1 <= details.size() - 1) {
+						// ini bukan data terakhir
+						
+						if (details.get(i + 1).jnstrf.equals(detail.jnstrf)) {
+							// data berikutnya masih di jenis tarif yang sama, jadi tanggal stop harus ada isinya
+							
+							tglStop = TimeUtil.convertDateToYyyyMmDd(TimeUtil.getLastDateInMonth(TimeUtil.addMonths(tglAwalBerjalan, bulan)));
+							
+						} else {
+							//tglStop = null;
+							// 13 Agustus 2021
+							// khusus untuk diskon, tanggal stop utk data terakhir diisi saja dengan tanggal stop berdasar durasi
+							// pertimbangan : untuk yang diskon durasi 1 bulan, kebanyakan ya berakhirnya 1 bulan hanya kasus tertentu
+							//                yang berlaku selamanya, jadi dibalik, kalau berlaku selamanya baru user nya update
+							tglStop = TimeUtil.convertDateToYyyyMmDd(TimeUtil.getLastDateInMonth(TimeUtil.addMonths(tglAwalBerjalan, bulan)));								
+						}
+						
+					} else {
+						// ini adalah data terakhir, tanggal stop tidak perlu diisi, 
+						// di null kan saja
+						//tglStop = null;
+						// 13 Agustus 2021
+						// tanggal stop utk data terakhir diisi saja dengan tanggal stop berdasar durasi
+						// pertimbangan : untuk yang diskon durasi 1 bulan, kebanyakan ya berakhirnya 1 bulan hanya kasus tertentu
+						//                yang berlaku selamanya, jadi dibalik, kalau berlaku selamanya baru user nya update
+						if (detail.jnstrf.equals("PCTDIS") || detail.jnstrf.equals("NILDIS")) {
+							tglStop = TimeUtil.convertDateToYyyyMmDd(TimeUtil.getLastDateInMonth(TimeUtil.addMonths(tglAwalBerjalan, bulan)));								
+						} else {
+							tglStop = null;
+						}
+					}
+
+					System.out.println("tglStop " + tglStop);
+					detail.tglstart = tglAwalBerjalan;
+					detail.tglstop = TimeUtil.getDate(tglStop);
+					
+					// set tanggal awal berjalan dengan tanggal stop + 1
+					tglAwalBerjalan = TimeUtil.addDays(TimeUtil.getDate(tglStop), 1);						
+					
+					System.out.println(detail.jnstrf + " " + detail.jumdur + " " + detail.satdur + " " + detail.tglstart + " - " + detail.tglstop);				
+				} else {
+					
+					// hitung tanggal stop dari siklus tagihan + jumlah freemonth - 1
+					
+					int jumBulanPeriode = customerProdukTarifComplete.header.jumsiklus;
+					if (customerProdukTarifComplete.header.satsiklus.equals("TAHUN")) {
+						jumBulanPeriode = jumBulanPeriode * 12;
+					}
+					
+					jumBulanPeriode = jumBulanPeriode + detail.freemo - 1;
+
+					// untuk freemonth, meskipun data terakhir tetap diberi tanggal stop
+					tglStop = TimeUtil.convertDateToYyyyMmDd(TimeUtil.getLastDateInMonth(TimeUtil.addMonths(tglAwalBerjalan, jumBulanPeriode)));
+
+					System.out.println("tglStop " + tglStop);
+					detail.tglstart = tglAwalBerjalan;
+					detail.tglstop = TimeUtil.getDate(tglStop);
+					
+					// set tanggal awal berjalan dengan tanggal stop + 1
+					tglAwalBerjalan = TimeUtil.addDays(TimeUtil.getDate(tglStop), 1);						
+					
+					System.out.println(detail.jnstrf + " " + detail.jumdur + " " + detail.satdur + " " + detail.tglstart + " - " + detail.tglstop);
+					
+				}				
+			}
+		}
+		
+		
+		List<CustomerProdukTarifDetailGrupAkumulasi> detailGrupAkumulasi = customerProdukTarifComplete.detailGrupAkumulasi;
+
+		tglAwalBerjalan = TimeUtil.getDate(eTrxLive.getTglive());
+		tglStop = null;
+		for (int i = 0; i < detailGrupAkumulasi.size(); ++i) {
+			CustomerProdukTarifDetailGrupAkumulasi detail = detailGrupAkumulasi.get(i);
+
+			if (detail.tglstart == null) {
+				// hitung tanggal stop dari durasi yang ada, lalu set tangal stop dengan hasil perhitungan
+
+				if (i + 1 <= details.size() - 1) {
+					// ini bukan data terakhir
+						
+					tglStop = TimeUtil.convertDateToYyyyMmDd(TimeUtil.addDays(tglAwalBerjalan, 1));
+					
+				} else {
+						// ini adalah data terakhir, tanggal stop tidak perlu diisi, 
+						// di null kan saja
+					tglStop = null;
+				}
+
+				detail.tglstart = tglAwalBerjalan;
+				detail.tglstop = TimeUtil.getDate(tglStop);
+					
+				// set tanggal awal berjalan dengan tanggal stop + 1
+				tglAwalBerjalan = TimeUtil.addDays(TimeUtil.getDate(tglStop), 1);						
+					
+			}
+		}
+
+		edit(customerProdukTarifComplete);
+	}
+	
+	@Transactional
+	public void cancelUpdateLive(ETrxLive eTrxLive) {
+		CustomerProdukTarifComplete customerProdukTarifComplete = findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId());
+
+		// update tanggal start di header menjadi null
+		customerProdukTarifComplete.header.tglstart = null;
+		
+		// NB: customerProdukTarifComplete.details secara relasi sudah diurutkan berdasarkan jnstrf dan nourut
+		//     jadi seharusnya tinggal di loop saja
+		
+		List<CustomerProdukTarifDetail> details = customerProdukTarifComplete.details;
+
+		Date tglive = TimeUtil.getDate(eTrxLive.getTglive());
+		for (int i = 0; i < details.size(); ++i) {
+			CustomerProdukTarifDetail detail = details.get(i);
+			
+			if (TimeUtil.isAfterOrEqual(detail.tglstart, tglive)) {
+				detail.tglstart = null;
+				detail.tglstop = null;				
+			}			
+		}
+		
+		List<CustomerProdukTarifDetailGrupAkumulasi> detailGrupAkumulasi = customerProdukTarifComplete.detailGrupAkumulasi;
+
+		tglive = TimeUtil.getDate(eTrxLive.getTglive());
+		for (int i = 0; i < detailGrupAkumulasi.size(); ++i) {
+			CustomerProdukTarifDetailGrupAkumulasi detail = detailGrupAkumulasi.get(i);
+			
+			if (TimeUtil.isAfterOrEqual(detail.tglstart, tglive)) {
+				detail.tglstart = null;
+				detail.tglstop = null;				
+			}			
+		}
+		
+		edit(customerProdukTarifComplete);
+	}
+	
+	@Transactional
+	public void updateStop(ETrxBerhenti eTrxBerhenti) {
+		
+		CustomerProdukTarifHeader customerProdukTarifHeader = customerProdukTarifHeaderService.findByBk(eTrxBerhenti.getCustomer().getId(), eTrxBerhenti.getProduk().getId());
+		
+		ECustomerProdukTarifHeader eCustomerProdukTarifHeader = customerProdukTarifHeader.toEntity();
+		eCustomerProdukTarifHeader.setTglstop(eTrxBerhenti.getTgstop());
+
+		customerProdukTarifHeaderService.edit(eCustomerProdukTarifHeader);
+	}
+	
+	@Transactional
+	public void cancelStop(ETrxBerhenti eTrxBerhenti) {
+		
+		CustomerProdukTarifHeader customerProdukTarifHeader = customerProdukTarifHeaderService.findByBk(eTrxBerhenti.getCustomer().getId(), eTrxBerhenti.getProduk().getId());
+		
+		ECustomerProdukTarifHeader eCustomerProdukTarifHeader = customerProdukTarifHeader.toEntity();
+		eCustomerProdukTarifHeader.setTglstop(null);
+
+		customerProdukTarifHeaderService.edit(eCustomerProdukTarifHeader);
+	}
+	
+	@Transactional
+	public ECustomerProdukTarifHeader add(CustomerProdukTarifComplete pojo) {
+		
+		ECustomerProdukTarifHeader entityHeader = pojo.getEntityHeader();
+		
+		valAdaData(entityHeader);
+		valDetailNotEmpty(pojo.details);
+		throwBatchError();
+		
+		ECustomerProdukTarifHeader eSkemaHargaHeader = customerProdukTarifHeaderService.add(entityHeader);
+		throwBatchError();
+		
+		isErrorDetail = false;
+		isErrorSubDetail = false;
+		
+		addDetails(eSkemaHargaHeader, pojo);
+		addDetailMappings(eSkemaHargaHeader, pojo);
+		addDetailGrupAkumulasi(eSkemaHargaHeader, pojo);
+		addDetailMappingsExclude(eSkemaHargaHeader, pojo);
+
+		if (isErrorDetail) {
+			batchErrorWithData("customerProdukTarif.komplit.error.in.detail", pojo);
+		}
+		if (isErrorSubDetail) {
+			batchErrorWithData("customerProdukTarif.komplit.error.in.subdetail", pojo);
+		}
+		throwBatchError();
+		
+		return eSkemaHargaHeader;
+
+	}
+	
+	private void valAdaData(ECustomerProdukTarifHeader entity) {
+		if (entity == null) {
+			batchError("customerProdukTarif.komplit.no.data");
+		}
+	}
+	
+	private void valDetailNotEmpty(List<CustomerProdukTarifDetail> detailList) {
+		if (detailList == null || detailList.isEmpty()) {
+			batchError("customerProdukTarif.komplit.no.detail");
+		}
+	}
+	
+	private void addDetails(ECustomerProdukTarifHeader eSkemaHargaHeader, CustomerProdukTarifComplete pojo) {
+		
+		List<CustomerProdukTarifDetail> details = pojo.details;
+		
+		//boolean isErrorDetail = false;
+		//boolean isErrorSubDetail = false;
+		
+		for (CustomerProdukTarifDetail detail: details) {
+			
+			if (!detail.isSelect) {
+				// hanya simpan untuk yang tidak dicentang hapus
+				
+				boolean isValid = true;
+				if (detail.jnstrf.equals("PCTDIS") || detail.jnstrf.equals("NILDIS")) {
+					
+					isValid = valDurasiDiskonValid(eSkemaHargaHeader.getCustomer().getId(), eSkemaHargaHeader.getProduk().getId(), detail);
+					
+					isValid = valPeriodeDiskonValid(eSkemaHargaHeader.getCustomer().getId(), eSkemaHargaHeader.getProduk().getId(), detail);						
+				}
+
+				if (detail.jnstrf.equals("SKEMA")) {
+					isValid = valPeriodeSkemaValid(eSkemaHargaHeader.getCustomer().getId(), eSkemaHargaHeader.getProduk().getId(), detail);						
+				}
+
+				if (isValid) {
+					ECustomerProdukTarifDetail eSkemaHargaDetail = detail.toEntity();
+					
+					eSkemaHargaDetail.setHeader(eSkemaHargaHeader);
+					
+					// method .add di detail ini tanpa ada throwBatchError(), supaya batchError nya terkumpul dan tidak serta merta di
+					// throw exception
+					eSkemaHargaDetail = customerProdukTarifDetailService.add(eSkemaHargaDetail);
+					
+					// Sinkronisasi dengan admin diskon
+					adminDiskonService.updateNextAdmin(eSkemaHargaHeader.getCustomer(), eSkemaHargaHeader.getProduk(), eSkemaHargaDetail);
+				}
+				
+				if (isAnyBatchErrors()) {
+					isErrorDetail = true;
+					
+					// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+					
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+						
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+						
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+			
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+						
+						if (detail.errorMsg == null) {
+							detail.errorMsg = new ArrayList<Message>();
+						}
+			
+						detail.errorMsg.clear();
+						detail.errorMsg.add(message);					
+					}
+					
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();
+					
+					continue;
+					// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
+					// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
+					// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik 
+					// satu satu sampai anak ter dalam
+				}
+										
+			}			
+		}
+		
+		// untuk error di grid
+		//if (isErrorDetail) {
+		//	batchErrorWithData("customerProdukTarif.komplit.error.in.detail", pojo);
+		//}
+		//if (isErrorSubDetail) {
+		//	batchErrorWithData("customerProdukTarif.komplit.error.in.subdetail", pojo);
+		//}
+	}	
+	
+	private void addDetailMappings(ECustomerProdukTarifHeader eSkemaHargaHeader, CustomerProdukTarifComplete pojo) {
+		
+		List<MappingCustomerProduk> details = pojo.detailMappings;
+		
+		//boolean isErrorDetail = false;
+		//boolean isErrorSubDetail = false;
+		
+		for (MappingCustomerProduk detail: details) {
+			
+			if (!detail.isSelect) {
+				// hanya simpan untuk yang tidak dicentang hapus
+				
+				EMappingCustomerProduk eMappingCustomerProduk = detail.toEntity();
+				
+				eMappingCustomerProduk.setHeader(eSkemaHargaHeader);
+				
+				// method .add di detail ini tanpa ada throwBatchError(), supaya batchError nya terkumpul dan tidak serta merta di
+				// throw exception
+				eMappingCustomerProduk = mappingCustomerProdukService.add(eMappingCustomerProduk);
+				
+				if (isAnyBatchErrors()) {
+					isErrorDetail = true;
+					
+					// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+					
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+						
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+						
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+			
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+						
+						if (detail.errorMsg == null) {
+							detail.errorMsg = new ArrayList<Message>();
+						}
+			
+						detail.errorMsg.clear();
+						detail.errorMsg.add(message);					
+					}
+					
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();
+					
+					continue;
+					// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
+					// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
+					// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik 
+					// satu satu sampai anak ter dalam
+				}
+										
+			}			
+		}
+		
+		// untuk error di grid
+		//if (isErrorDetail) {
+		//	batchErrorWithData("customerProdukTarif.komplit.error.in.detail", pojo);
+		//}
+		//if (isErrorSubDetail) {
+		//	batchErrorWithData("customerProdukTarif.komplit.error.in.subdetail", pojo);
+		//}
+	}	
+	
+	private void addDetailMappingsExclude(ECustomerProdukTarifHeader eSkemaHargaHeader, CustomerProdukTarifComplete pojo) {
+		
+		List<MappingExcludeCustomerProduk> details = pojo.detailMappingsExclude;
+		
+		for (MappingExcludeCustomerProduk detail: details) {
+			
+			if (!detail.isSelect) {
+				// hanya simpan untuk yang tidak dicentang hapus
+				
+				EMappingExcludeCustomerProduk eMappingExcludeCustomerProduk = detail.toEntity();
+				
+				eMappingExcludeCustomerProduk.setHeader(eSkemaHargaHeader);
+				
+				// method .add di detail ini tanpa ada throwBatchError(), supaya batchError nya terkumpul dan tidak serta merta di
+				// throw exception
+				eMappingExcludeCustomerProduk = mappingExcludeCustomerProdukService.add(eMappingExcludeCustomerProduk);
+				
+				if (isAnyBatchErrors()) {
+					isErrorDetail = true;
+					
+					// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+					
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+						
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+						
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+			
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+						
+						if (detail.errorMsg == null) {
+							detail.errorMsg = new ArrayList<Message>();
+						}
+			
+						detail.errorMsg.clear();
+						detail.errorMsg.add(message);					
+					}
+					
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();
+					
+					continue;
+					// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
+					// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
+					// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik 
+					// satu satu sampai anak ter dalam
+				}
+										
+			}			
+		}
+		
+	}	
+	
+	private void addDetailGrupAkumulasi(ECustomerProdukTarifHeader eSkemaHargaHeader, CustomerProdukTarifComplete pojo) {
+		
+		List<CustomerProdukTarifDetailGrupAkumulasi> details = pojo.detailGrupAkumulasi;
+		
+		for (CustomerProdukTarifDetailGrupAkumulasi detail: details) {
+			
+			if (!detail.isSelect) {
+				// hanya simpan untuk yang tidak dicentang hapus
+				
+				boolean isValid = valPeriodeGrupAkumulasiValid(eSkemaHargaHeader.getCustomer().getId(), eSkemaHargaHeader.getProduk().getId(), detail);						
+
+				if (isValid) {
+					ECustomerProdukTarifDetailGrupAkumulasi eSkemaHargaDetail = detail.toEntity();
+					
+					eSkemaHargaDetail.setHeader(eSkemaHargaHeader);
+					
+					// method .add di detail ini tanpa ada throwBatchError(), supaya batchError nya terkumpul dan tidak serta merta di
+					// throw exception
+					eSkemaHargaDetail = customerProdukTarifDetailGrupAkumulasiService.add(eSkemaHargaDetail);
+					
+				}
+				
+				if (isAnyBatchErrors()) {
+					isErrorDetail = true;
+					
+					// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+					
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+						
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+						
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+			
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+						
+						if (detail.errorMsg == null) {
+							detail.errorMsg = new ArrayList<Message>();
+						}
+			
+						detail.errorMsg.clear();
+						detail.errorMsg.add(message);					
+					}
+					
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();
+					
+					continue;
+					// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
+					// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
+					// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik 
+					// satu satu sampai anak ter dalam
+				}
+										
+			}			
+		}
+		
+	}	
+		
+	@Transactional
+	public ECustomerProdukTarifHeader edit(CustomerProdukTarifComplete pojo) {
+		
+		ECustomerProdukTarifHeader entityHeader = pojo.getEntityHeader();
+		
+		valAdaData(entityHeader);
+		valDetailNotEmpty(pojo.details);
+		throwBatchError();
+		
+		ECustomerProdukTarifHeader newETransaksiJurnalHeader = customerProdukTarifHeaderService.get(entityHeader.getId());
+		
+		isErrorDetail = false;
+		isErrorSubDetail = false;
+		
+		editDetails(newETransaksiJurnalHeader, pojo);
+		editDetailMappings(newETransaksiJurnalHeader, pojo);
+		editDetailGrupAkumulasi(newETransaksiJurnalHeader, pojo);
+		editDetailMappingsExclude(newETransaksiJurnalHeader, pojo);
+
+		if (isErrorDetail) {
+			batchErrorWithData("customerProdukTarif.komplit.error.in.detail", pojo);
+		}
+		if (isErrorSubDetail) {
+			batchErrorWithData("customerProdukTarif.komplit.error.in.subdetail", pojo);
+		}
+		throwBatchError();
+
+		newETransaksiJurnalHeader = customerProdukTarifHeaderService.edit(entityHeader);
+		throwBatchError();
+		
+		return newETransaksiJurnalHeader;
+	}
+	
+	private void editDetails(ECustomerProdukTarifHeader eTransaksiJurnalHeader, CustomerProdukTarifComplete pojo) {
+		
+		List<CustomerProdukTarifDetail> detailJurnals = pojo.details;
+		for (CustomerProdukTarifDetail detailJurnal: detailJurnals) {
+			
+			boolean isValid = true;
+			if (detailJurnal.id != null && !detailJurnal.id.equals("")) {
+
+				if (!detailJurnal.isSelect) {
+					// EDIT DATA YANG SUDAH ADA
+					
+					// Validasi
+					if (detailJurnal.jnstrf.equals("PCTDIS") || detailJurnal.jnstrf.equals("NILDIS")) {
+						isValid = valDurasiDiskonValid(eTransaksiJurnalHeader.getCustomer().getId(), eTransaksiJurnalHeader.getProduk().getId(), detailJurnal);
+						
+						isValid = valPeriodeDiskonValid(eTransaksiJurnalHeader.getCustomer().getId(), eTransaksiJurnalHeader.getProduk().getId(), detailJurnal);
+					}
+					
+					if (detailJurnal.jnstrf.equals("SKEMA")) {
+						isValid = valPeriodeSkemaValid(eTransaksiJurnalHeader.getCustomer().getId(), eTransaksiJurnalHeader.getProduk().getId(), detailJurnal);						
+					}
+
+					if (detailJurnal.jnstrf.equals("FREEM")) {
+						isValid = valJumFreemonthVsAdminValid(eTransaksiJurnalHeader.getCustomer().getId(), eTransaksiJurnalHeader.getProduk().getId(), detailJurnal);						
+					}
+					
+					if (isValid) {
+
+						ECustomerProdukTarifDetail eSkemaHargaDetail = customerProdukTarifDetailService.edit(detailJurnal.toEntity());						
+
+						// Sinkronisasi dengan admin diskon
+						adminDiskonService.updateNextAdmin(eTransaksiJurnalHeader.getCustomer(), eTransaksiJurnalHeader.getProduk(), eSkemaHargaDetail);
+					}
+				} else {
+					if (detailJurnal.jnstrf.equals("PCTDIS") || detailJurnal.jnstrf.equals("NILDIS")) {
+						isValid = valDiskonBelumDigunakan(detailJurnal);						
+					}
+					
+					if (detailJurnal.jnstrf.equals("SKEMA")) {
+						isValid = valSkemaBelumDigunakan(detailJurnal);						
+					}
+					
+					if (detailJurnal.jnstrf.equals("FREEM")) {
+						isValid = valFreemonthBelumDigunakan(detailJurnal);						
+					}
+
+					if (isValid) {
+
+						// Sinkronisasi dengan admin diskon
+						adminDiskonService.deleteNextAdmin(eTransaksiJurnalHeader.getCustomer(), eTransaksiJurnalHeader.getProduk(), detailJurnal);
+
+						customerProdukTarifDetailService.delete(detailJurnal.id, detailJurnal.version);						
+					}
+				}
+			} else {
+				if (!detailJurnal.isSelect) {
+					// tambah data untuk yang tidak dicentang hapus
+					
+					if (detailJurnal.jnstrf.equals("PCTDIS") || detailJurnal.jnstrf.equals("NILDIS")) {
+						
+						isValid = valDurasiDiskonValid(eTransaksiJurnalHeader.getCustomer().getId(), eTransaksiJurnalHeader.getProduk().getId(), detailJurnal);
+						
+						isValid = valPeriodeDiskonValid(eTransaksiJurnalHeader.getCustomer().getId(), eTransaksiJurnalHeader.getProduk().getId(), detailJurnal);						
+					}
+
+					if (detailJurnal.jnstrf.equals("SKEMA")) {
+						isValid = valPeriodeSkemaValid(eTransaksiJurnalHeader.getCustomer().getId(), eTransaksiJurnalHeader.getProduk().getId(), detailJurnal);						
+					}
+
+					if (isValid) {
+						ECustomerProdukTarifDetail eSkemaHargaDetail = detailJurnal.toEntity();
+						
+						eSkemaHargaDetail.setHeader(eTransaksiJurnalHeader);
+						
+						eSkemaHargaDetail = customerProdukTarifDetailService.add(eSkemaHargaDetail);						
+
+						// Sinkronisasi dengan admin diskon
+						adminDiskonService.updateNextAdmin(eTransaksiJurnalHeader.getCustomer(), eTransaksiJurnalHeader.getProduk(), eSkemaHargaDetail);
+					}
+				}
+			}
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detailJurnal.errorMsg == null) {
+						detailJurnal.errorMsg = new ArrayList<Message>();
+					}
+		
+					detailJurnal.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+		// untuk error di grid
+		//if (isErrorDetail) {
+		//	batchErrorWithData("customerProdukTarif.komplit.error.in.detail", pojo);
+		//}
+		//throwBatchError();		
+		
+//		if (!isErrorDetail) {
+//			addDetails(eTransaksiJurnalHeader, pojo);
+//		}
+	}
+	
+	private void editDetailGrupAkumulasi(ECustomerProdukTarifHeader eTransaksiJurnalHeader, CustomerProdukTarifComplete pojo) {
+		
+		List<CustomerProdukTarifDetailGrupAkumulasi> detailJurnals = pojo.detailGrupAkumulasi;
+		for (CustomerProdukTarifDetailGrupAkumulasi detailJurnal: detailJurnals) {
+			
+			boolean isValid = true;
+			if (detailJurnal.id != null && !detailJurnal.id.equals("")) {
+
+				if (!detailJurnal.isSelect) {
+					// EDIT DATA YANG SUDAH ADA
+					
+					// Validasi
+					isValid = valPeriodeGrupAkumulasiValid(eTransaksiJurnalHeader.getCustomer().getId(), eTransaksiJurnalHeader.getProduk().getId(), detailJurnal);						
+
+					if (isValid) {
+
+						customerProdukTarifDetailGrupAkumulasiService.edit(detailJurnal.toEntity());						
+
+					}
+				} else {
+					isValid = valGrupAkumulasiBelumDigunakan(detailJurnal);						
+
+					if (isValid) {
+
+						customerProdukTarifDetailGrupAkumulasiService.delete(detailJurnal.id, detailJurnal.version);						
+					}
+				}
+			} else {
+				if (!detailJurnal.isSelect) {
+					// tambah data untuk yang tidak dicentang hapus
+					
+					isValid = valPeriodeGrupAkumulasiValid(eTransaksiJurnalHeader.getCustomer().getId(), eTransaksiJurnalHeader.getProduk().getId(), detailJurnal);						
+
+					if (isValid) {
+						ECustomerProdukTarifDetailGrupAkumulasi eSkemaHargaDetail = detailJurnal.toEntity();
+						
+						eSkemaHargaDetail.setHeader(eTransaksiJurnalHeader);
+						
+						eSkemaHargaDetail = customerProdukTarifDetailGrupAkumulasiService.add(eSkemaHargaDetail);						
+
+					}
+				}
+			}
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detailJurnal.errorMsg == null) {
+						detailJurnal.errorMsg = new ArrayList<Message>();
+					}
+		
+					detailJurnal.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+	}
+	
+	private boolean valDurasiDiskonValid(String idMi010, String idMi001, CustomerProdukTarifDetail detailTarif) {
+		
+		EAdminDiskon eAdminDiskon = adminDiskonService.getMaxDisTerakhirBdskNourutMaster(idMi010, idMi001, detailTarif.jnstrf, detailTarif.nourut);
+		
+		if (eAdminDiskon != null) {
+			
+			int diskeDetailTarif = detailTarif.jumdur;
+			if (detailTarif.satdur.equals("TAHUN")) {
+				diskeDetailTarif = diskeDetailTarif * 12;
+			}
+			
+			if (diskeDetailTarif < eAdminDiskon.getDiske()) {
+				batchError("customerProdukTarif.komplit.durasi.diskon.overlap.admin");
+				return false;
+			}
+		}
+		return true;
+	}
+		
+	private boolean valPeriodeDiskonValid(String idMi010, String idMi001, CustomerProdukTarifDetail detailTarif) {
+		
+		EAdminDiskon eAdminDiskon = adminDiskonService.getMaxDisTerakhirBdskNourutMaster(idMi010, idMi001, detailTarif.jnstrf, detailTarif.nourut);
+		
+		if (eAdminDiskon != null) {
+			
+			if (detailTarif.tglstop != null && !detailTarif.tglstop.equals("")) {
+				int tahunBulanDetailTarif = Integer.valueOf(TimeUtil.convertDateToYyyyMmDd(detailTarif.tglstop).substring(0, 6));
+				int tahunBulanAdmin       = Integer.valueOf(eAdminDiskon.getTahun() + eAdminDiskon.getBulan());
+				
+				if (tahunBulanDetailTarif < tahunBulanAdmin) {
+					batchError("customerProdukTarif.komplit.periode.diskon.overlap.admin");
+					return false;
+				}				
+			}
+		}
+		return true;
+	}
+		
+	private boolean valPeriodeGrupAkumulasiValid(String idMi010, String idMi001, CustomerProdukTarifDetailGrupAkumulasi detailGrupAkumulasi) {
+		
+		EPenggunaanMaster ePenggunaanMaster = penggunaanMasterService.getMaxSkemaTerakhirBdskNourutMaster(idMi010, idMi001, detailGrupAkumulasi.nourut, "GRPAKUM", "GRPAKUM");
+		
+		if (ePenggunaanMaster != null) {
+			
+			if (detailGrupAkumulasi.tglstop != null && !detailGrupAkumulasi.tglstop.equals("")) {
+				int tahunBulanDetailTarif = Integer.valueOf(TimeUtil.convertDateToYyyyMmDd(detailGrupAkumulasi.tglstop).substring(0, 6));
+				int tahunBulanAdmin       = Integer.valueOf(ePenggunaanMaster.getTahun() + ePenggunaanMaster.getBulan());
+				
+				if (tahunBulanDetailTarif < tahunBulanAdmin) {
+					batchError("customerProdukTarif.komplit.periode.grup.akumulasi.overlap.admin");
+					return false;
+				}				
+			}
+		}
+		return true;
+	}
+		
+	private boolean valPeriodeSkemaValid(String idMi010, String idMi001, CustomerProdukTarifDetail detailTarif) {
+		
+		EPenggunaanMaster ePenggunaanMaster = penggunaanMasterService.getMaxSkemaTerakhirBdskNourutMaster(idMi010, idMi001, detailTarif.nourut, detailTarif.jnstrf, detailTarif.jnstrf);
+		
+		if (ePenggunaanMaster != null) {
+			
+			if (detailTarif.tglstop != null && !detailTarif.tglstop.equals("")) {
+				int tahunBulanDetailTarif = Integer.valueOf(TimeUtil.convertDateToYyyyMmDd(detailTarif.tglstop).substring(0, 6));
+				int tahunBulanAdmin       = Integer.valueOf(ePenggunaanMaster.getTahun() + ePenggunaanMaster.getBulan());
+				
+				if (tahunBulanDetailTarif < tahunBulanAdmin) {
+					batchError("customerProdukTarif.komplit.periode.skema.overlap.admin");
+					return false;
+				}				
+			}
+		}
+		return true;
+	}
+		
+	private boolean valJumFreemonthVsAdminValid(String idMi010, String idMi001, CustomerProdukTarifDetail detailTarif) {
+		
+		Integer jumAdminFreemonth = adminFreemonthService.getJumFreemonthBdskNourutMaster(idMi010, idMi001, detailTarif.nourut);
+		
+		if (jumAdminFreemonth != null) {
+			
+			if (detailTarif.freemo < jumAdminFreemonth) {
+				batchError("customerProdukTarif.komplit.freemonth.melebihi.admin");
+				return false;
+			}
+		}
+		return true;
+	}
+		
+	private boolean valDiskonBelumDigunakan(CustomerProdukTarifDetail detailTarif) {
+		
+		if (penggunaanMasterService.isUsed(detailTarif)) {
+			batchError("customerProdukTarif.komplit.diskon.sudah.digunakan");
+			return false;			
+		}
+
+		return true;
+	}
+		
+	private boolean valGrupAkumulasiBelumDigunakan(CustomerProdukTarifDetailGrupAkumulasi detailGrupAkumulasi) {
+		
+		if (penggunaanMasterService.isUsed(detailGrupAkumulasi)) {
+			batchError("customerProdukTarif.komplit.grup.akumulasi.sudah.digunakan");
+			return false;			
+		}
+
+		return true;
+	}
+		
+	private boolean valSkemaBelumDigunakan(CustomerProdukTarifDetail detailTarif) {
+		
+		if (penggunaanMasterService.isUsed(detailTarif)) {
+			batchError("customerProdukTarif.komplit.diskon.sudah.digunakan");
+			return false;			
+		}
+
+		return true;
+	}
+		
+	private boolean valFreemonthBelumDigunakan(CustomerProdukTarifDetail detailTarif) {
+
+		if (adminFreemonthService.isUsed(detailTarif)) {
+			batchError("customerProdukTarif.komplit.freemonth.sudah.digunakan");
+			return false;			
+		}
+
+		return true;
+	}
+		
+	private void editDetailMappings(ECustomerProdukTarifHeader eTransaksiJurnalHeader, CustomerProdukTarifComplete pojo) {
+
+		// edit detail mapping punya cara yang sedikit beda
+		// karena mapping ini bila sudah live kelak akan ber relasi ke admin upload data (ai001)
+		// sedangkan master tarif tetap dapat diupdate meski sudah live, maka untuk detil mapping
+		// mekanisme edit bukan delete lalu add, tapi benar benar edit
+		
+		List<MappingCustomerProduk> detailJurnals = pojo.detailMappings;
+		for (MappingCustomerProduk detailJurnal: detailJurnals) {
+			
+			if (detailJurnal.id != null && !detailJurnal.id.equals("")) {
+				//mappingCustomerProdukService.delete(detailJurnal.id, detailJurnal.version);				
+				if (!detailJurnal.isSelect) {
+					mappingCustomerProdukService.edit(detailJurnal.toEntity());
+				} else {
+					mappingCustomerProdukService.delete(detailJurnal.id, detailJurnal.version);					
+				}
+			} else {
+				if (!detailJurnal.isSelect) {
+					// tambah data untuk yang tidak dicentang hapus
+					
+					EMappingCustomerProduk eMappingCustomerProduk = detailJurnal.toEntity();
+					
+					eMappingCustomerProduk.setHeader(eTransaksiJurnalHeader);
+					
+					eMappingCustomerProduk = mappingCustomerProdukService.add(eMappingCustomerProduk);
+				}
+			}
+
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detailJurnal.errorMsg == null) {
+						detailJurnal.errorMsg = new ArrayList<Message>();
+					}
+		
+					detailJurnal.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+//		if (!isErrorDetail) {
+//			addDetailMappings(eTransaksiJurnalHeader, pojo);
+//		}
+	}
+	
+	private void editDetailMappingsExclude(ECustomerProdukTarifHeader eTransaksiJurnalHeader, CustomerProdukTarifComplete pojo) {
+
+		List<MappingExcludeCustomerProduk> detailJurnals = pojo.detailMappingsExclude;
+		for (MappingExcludeCustomerProduk detailJurnal: detailJurnals) {
+			
+			if (detailJurnal.id != null && !detailJurnal.id.equals("")) {
+				if (!detailJurnal.isSelect) {
+					mappingExcludeCustomerProdukService.edit(detailJurnal.toEntity());
+				} else {
+					mappingExcludeCustomerProdukService.delete(detailJurnal.id, detailJurnal.version);					
+				}
+			} else {
+				if (!detailJurnal.isSelect) {
+					// tambah data untuk yang tidak dicentang hapus
+					
+					EMappingExcludeCustomerProduk eMappingExcludeCustomerProduk = detailJurnal.toEntity();
+					
+					eMappingExcludeCustomerProduk.setHeader(eTransaksiJurnalHeader);
+					
+					eMappingExcludeCustomerProduk = mappingExcludeCustomerProdukService.add(eMappingExcludeCustomerProduk);
+				}
+			}
+
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detailJurnal.errorMsg == null) {
+						detailJurnal.errorMsg = new ArrayList<Message>();
+					}
+		
+					detailJurnal.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}		
+	}
+	
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valRootVersion(id, version);
+		throwBatchError();
+		
+		ECustomerProdukTarifHeader eTransaksiJurnalHeader = customerProdukTarifHeaderService.get(id);
+				
+		CustomerProdukTarifComplete pojo = CustomerProdukTarifComplete.setFromEntity(eTransaksiJurnalHeader);
+		
+		// validasi tidak boleh ada satupun detail yang sudah digunakan di transaksi invoice
+		valDetailBelumDigunakan(pojo);
+		throwBatchError();		
+		
+		//boolean isErrorDetail = false;
+		isErrorDetail = false;
+		
+		// delete detail
+		for (CustomerProdukTarifDetail detailJurnal: pojo.details) {
+
+			boolean isValid = true;
+			if (detailJurnal.jnstrf.equals("PCTDIS") || detailJurnal.jnstrf.equals("NILDIS")) {
+				isValid = valDiskonBelumDigunakan(detailJurnal);						
+			}
+			
+			if (detailJurnal.jnstrf.equals("SKEMA")) {
+				isValid = valSkemaBelumDigunakan(detailJurnal);						
+			}
+			
+			if (detailJurnal.jnstrf.equals("FREEM")) {
+				isValid = valFreemonthBelumDigunakan(detailJurnal);						
+			}
+
+			if (isValid) {
+				customerProdukTarifDetailService.delete(detailJurnal.id, detailJurnal.version);				
+			}
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detailJurnal.errorMsg == null) {
+						detailJurnal.errorMsg = new ArrayList<Message>();
+					}
+		
+					detailJurnal.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+
+		// detail mapping
+		for (MappingCustomerProduk detailJurnal: pojo.detailMappings) {
+			
+			mappingCustomerProdukService.delete(detailJurnal.id, detailJurnal.version);
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detailJurnal.errorMsg == null) {
+						detailJurnal.errorMsg = new ArrayList<Message>();
+					}
+		
+					detailJurnal.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+		// detail mapping exclude
+		for (MappingExcludeCustomerProduk detailJurnal: pojo.detailMappingsExclude) {
+			
+			mappingExcludeCustomerProdukService.delete(detailJurnal.id, detailJurnal.version);
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detailJurnal.errorMsg == null) {
+						detailJurnal.errorMsg = new ArrayList<Message>();
+					}
+		
+					detailJurnal.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+		// delete detail grup akumulasi
+		for (CustomerProdukTarifDetailGrupAkumulasi detailJurnal: pojo.detailGrupAkumulasi) {
+
+			boolean isValid = true;
+			isValid = valGrupAkumulasiBelumDigunakan(detailJurnal);						
+			
+			if (isValid) {
+				customerProdukTarifDetailGrupAkumulasiService.delete(detailJurnal.id, detailJurnal.version);				
+			}
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detailJurnal.errorMsg == null) {
+						detailJurnal.errorMsg = new ArrayList<Message>();
+					}
+		
+					detailJurnal.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+
+		// untuk error di grid
+		if (isErrorDetail) {
+			batchErrorWithData("customerProdukTarif.komplit.error.in.detail", pojo);
+		}
+		throwBatchError();		
+		
+		// delete trx header
+		customerProdukTarifHeaderService.delete(id, version);
+	}
+	
+	protected void valRootVersion(String id, Long version) {
+		valEntityExists(id);
+		ECustomerProdukTarifHeader dbEntity = customerProdukTarifHeaderService.get(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id) {
+		if (customerProdukTarifHeaderService.get(id) == null) {
+			throw new BusinessException("data.not.found", id);
+		}
+	}
+	
+	private void valDetailBelumDigunakan(CustomerProdukTarifComplete pojo) {
+		
+		for (CustomerProdukTarifDetail detail : pojo.details) {
+			if (penggunaanMasterService.isUsed(detail)) {
+				throw new BusinessException("customerProdukTarif.komplit.detail.sudah.dipakai");
+			}
+		}
+
+		for (CustomerProdukTarifDetailGrupAkumulasi detail : pojo.detailGrupAkumulasi) {
+			if (penggunaanMasterService.isUsed(detail)) {
+				throw new BusinessException("customerProdukTarif.komplit.detail.grup.akumulasi.sudah.dipakai");
+			}
+		}
+	}
+	
+}

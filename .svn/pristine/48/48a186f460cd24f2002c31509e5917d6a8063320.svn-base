@@ -1,0 +1,2616 @@
+package co.id.sofcograha.domain.invoicing.kelola.invoice.services;
+
+import java.awt.Color;
+import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.List;
+import java.util.Locale;
+
+import org.postgresql.util.Base64;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
+import org.springframework.stereotype.Service;
+
+import com.lowagie.text.BadElementException;
+import com.lowagie.text.Document;
+import com.lowagie.text.Element;
+import com.lowagie.text.Font;
+import com.lowagie.text.FontFactory;
+import com.lowagie.text.Image;
+import com.lowagie.text.Phrase;
+import com.lowagie.text.pdf.PdfCell;
+import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfWriter;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.company.pojos.CompanyLogoPojo;
+import co.id.sofcograha.base.master.company.services.CompanyLogoService;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+import co.id.sofcograha.base.utils.PDFUtilService;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.pojos.Setting;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.services.SettingService;
+import co.id.sofcograha.domain.invoicing.kelola.invoice.pojos.InvoiceComplete;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailAdj;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailHslPro;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailImplementasi;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailInitial;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailLainLain;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailTraining;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceSubDetailAdjPerincian;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceSubDetailHslProDiskon;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceSubDetailHslProSkemaTarif;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceSubDetailPerhitunganDiskon;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceSubDetailPerhitunganSkemaTarif;
+
+@Service
+public class KelolaInvoiceExportPdfService extends BaseService {
+	
+	// ini menciptakan pdf di folder lalu hasilnya dikirim ke FE
+	
+	// Logo perusahaan tidak dapat ambil dari file image fisik, karena logo perusahaan kan didapat dari
+	// tabel
+	//@Value("${sofcograha.smi.logo.file.location}")
+	//public String SMI_LOGO;
+
+	private float TITLE1_SIZE = 14;
+	private float TITLE2_SIZE = 11;
+	private float ALAMAT_SIZE = 12;
+	private float CONTENT_SIZE = 9;
+	private float NOTE_SIZE = 8;
+	private Font TITLE1_FONT = FontFactory.getFont(FontFactory.HELVETICA_BOLD, TITLE1_SIZE);
+	private Font TITLE_NORMAL = FontFactory.getFont(FontFactory.HELVETICA_BOLD, TITLE2_SIZE);
+	private Font TITLE_ALAMAT = FontFactory.getFont(FontFactory.HELVETICA, ALAMAT_SIZE);
+	private Font TITLE_ALAMAT_BOLD = FontFactory.getFont(FontFactory.HELVETICA_BOLD, ALAMAT_SIZE);
+	private Font CONTENT = FontFactory.getFont(FontFactory.HELVETICA, CONTENT_SIZE);
+	private Font CONTENT_BOLD = FontFactory.getFont(FontFactory.HELVETICA_BOLD, CONTENT_SIZE);
+	private Font NOTE = FontFactory.getFont(FontFactory.HELVETICA, NOTE_SIZE);
+
+	private float PAGE_WIDTH;
+
+	private float headerTotalHeight;
+	private float footerTotalHeight;
+
+	@Autowired private SettingService settingService;	
+	//@Autowired private CompanyService companyService;
+	@Autowired private CompanyLogoService companyLogoService;
+	
+	// untuk mengambil logo sofco di folder resource
+	@Autowired ResourceLoader resourceLoader;
+	
+	@Autowired
+	private KelolaInvoiceCompleteService kelolaInvoiceCompleteService;
+	
+	private Document document;
+	private PdfWriter writer;
+	
+	private float[] bodyColumWidth = new float[] { 3, 24, 6, 10, 12, 5, 9, 12 };
+
+	private InvoiceComplete invoiceComplete;
+	//private CompanyPojo company;
+	private CompanyLogoPojo companyLogo;
+	
+	private Image logoPerusahaan;
+	private Image logoSofco;
+	
+	private DecimalFormat decimalFormatDouble;
+	private DecimalFormat decimalFormatInteger;
+	private String localeCode;
+	
+	private Color mainRowColor = new Color(235, 235, 235);
+	
+	public Base64StringEncodedPojo pdfReport(String nomor) {
+
+		// ambil setting untuk localization
+		Setting setting = Setting.fromEntity(settingService.getData());
+		localeCode = setting.bahasa;
+
+		// ambil data company dan company logo
+		//company = CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId()));
+		companyLogo = CompanyLogoPojo.fromEntity(companyLogoService.findByCompanyId(CurrentUser.getCompanyId()));
+		
+		// ambil image company dan image sofco
+		Resource resource = resourceLoader.getResource("classpath:logo/sofcograha_logo.png");
+
+		logoPerusahaan = null;
+		logoSofco = null;
+		try {
+			logoSofco = Image.getInstance(resource.getURL());
+			logoSofco.scaleAbsolute(130f, 50f);
+			
+			String base64Data = companyLogo.file.substring(companyLogo.file.indexOf(",") + 1);
+			logoPerusahaan = Image.getInstance(Base64.decode(base64Data));
+			logoPerusahaan.scaleAbsolute(190f, 70f);
+		} catch (BadElementException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		// digunakan untuk memformat numeric
+		Locale locale  = new Locale(localeCode, localeCode.toUpperCase());
+		//String pattern = "###,###.00";
+
+		decimalFormatDouble = (DecimalFormat) NumberFormat.getNumberInstance(locale);
+//		decimalFormat.applyPattern(pattern);
+		decimalFormatDouble.setMinimumFractionDigits(2);
+		decimalFormatDouble.setMaximumFractionDigits(2);
+
+		decimalFormatInteger = (DecimalFormat) NumberFormat.getNumberInstance(locale);
+		
+		invoiceComplete = kelolaInvoiceCompleteService.findByBk(nomor);
+		
+		PDFUtilService pdfUtilService = new PDFUtilService(false);
+		document = pdfUtilService.getDocument();
+		writer = pdfUtilService.getWriter();
+		PAGE_WIDTH = document.getPageSize().getWidth() - document.leftMargin() - document.rightMargin();
+		
+		pdfUtilService.setDefaultPadding(0);
+		setPageHeader(pdfUtilService.getHeaderTable(), pdfUtilService.getDefaultPadding());
+		//pdfUtilService.setCustomPagination(480f, 762f, "", "dari", CONTENT, 9f);
+		pdfUtilService.setCustomPagination(510f, 35f, "Hal.", " / ", CONTENT, 9f);
+
+		setPageFooter(pdfUtilService.getFooterTable(), pdfUtilService.getDefaultPadding());
+		
+		document.open();
+
+//		System.out.println("0 " + (document.getPageSize().getHeight() - document.topMargin() - document.bottomMargin()));
+		
+		setDitujukan();
+//		System.out.println("1 " + writer.getVerticalPosition(true));
+		
+		setHeaderTable();
+//		System.out.println("1 " + writer.getVerticalPosition(true));
+		
+		setBody();
+//		System.out.println("1 " + writer.getVerticalPosition(true));
+
+		setTotal();
+		
+		setGrandTotal();
+//		System.out.println("1 " + writer.getVerticalPosition(true));
+
+		setNotePembayaran();
+		System.out.println("0 " + nomor);
+		System.out.println("1 " + writer.getVerticalPosition(true));
+		System.out.println("2 " + document.topMargin());
+		System.out.println("3 " + document.bottomMargin());
+
+		float minimumAreaForHormatKami = 108f + document.bottomMargin() + document.topMargin();
+		if (writer.getVerticalPosition(true) <= minimumAreaForHormatKami) {
+			document.newPage();
+		}
+
+		setHormatKami();
+//		System.out.println("1 " + writer.getVerticalPosition(true));
+
+		setCatatan();
+//		System.out.println("1 " + writer.getVerticalPosition(true));
+		
+		document.close();
+
+		return pdfUtilService.generatePdfReport();
+	}
+
+	public void setPageHeader(final PdfPTable headerTable, final float padding) {
+		PdfPTable tableContainer = new PdfPTable(1);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+
+		setHeader(tableContainer);
+
+		PdfPCell cell = new PdfPCell(tableContainer);
+		cell.setBorder(PdfCell.NO_BORDER);
+		headerTable.addCell(cell);
+
+		headerTotalHeight = headerTable.getTotalHeight();
+		document.setMargins(document.leftMargin(), document.rightMargin(),
+				document.topMargin() + headerTotalHeight + padding, document.bottomMargin());
+	}
+
+	private void setHeader(final PdfPTable tableContainer) {
+
+		InvoiceHeader header = invoiceComplete.header;
+		
+//		PdfPTable tableTemp = new PdfPTable(new float[] { 17f, 43f, 20f, 20f });
+		PdfPTable tableTemp = new PdfPTable(new float[] { 50f, 50f });
+		tableTemp.setTotalWidth(PAGE_WIDTH);
+		tableTemp.setLockedWidth(true);
+
+		PdfPCell cell = new PdfPCell();
+		
+		cell = new PdfPCell(logoPerusahaan);
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		//cell.setRowspan(3);
+		cell.setRowspan(4);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+		
+		cell = new PdfPCell(new Phrase(" ", TITLE_NORMAL));
+		cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setFixedHeight(45f);
+//		cell.setRowspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("INVOICE # " + header.nomor, TITLE1_FONT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+//		cell.setRowspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("Tanggal Invoice : " + TimeUtil.getDateFormWithIndonesianMonthName(header.tgtrn), TITLE_NORMAL));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+//		cell.setRowspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("Tanggal Jatuh Tempo : " + TimeUtil.getDateFormWithIndonesianMonthName(header.tgjtemp), TITLE_NORMAL));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+//		cell.setRowspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+		
+		// baris kosong
+		cell = new PdfPCell(new Phrase("", TITLE_NORMAL));
+		cell.setColspan(4);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+
+		// Baris Kosong
+		cell = new PdfPCell(new Phrase("", TITLE_NORMAL));
+		cell.setColspan(4);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+		
+		/*
+		cell = new PdfPCell(new Phrase("Ditujukan kepada :", TITLE_ALAMAT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setColspan(4);
+//		cell.setRowspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+
+		// Baris Kosong
+		cell = new PdfPCell(new Phrase(" ", TITLE_NORMAL));
+		cell.setColspan(4);
+		cell.setBorder(PdfCell.NO_BORDER);
+		cell.setFixedHeight(10f);
+		tableTemp.addCell(cell);
+
+		// Baris I
+		cell = new PdfPCell(new Phrase(header.nama, TITLE_ALAMAT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setColspan(4);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+
+		// Baris II
+		cell = new PdfPCell(new Phrase(header.alamat, TITLE_ALAMAT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setColspan(4);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+		
+		// Baris Kosong
+		cell = new PdfPCell(new Phrase(" ", TITLE_NORMAL));
+		cell.setColspan(4);
+		cell.setBorder(PdfCell.NO_BORDER);
+		cell.setFixedHeight(10f);
+		tableTemp.addCell(cell);
+		*/
+
+		cell = new PdfPCell(tableTemp);
+		cell.setPadding(0);
+		cell.setBorder(PdfCell.NO_BORDER);
+
+		tableContainer.addCell(cell);
+		
+	}
+
+	public void setPageFooter(final PdfPTable footerTable, final float padding) {
+		PdfPTable tableContainer = new PdfPTable(1);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+
+		setFooter(tableContainer);
+
+		PdfPCell cell = new PdfPCell(tableContainer);
+		cell.setBorder(PdfCell.NO_BORDER);
+		footerTable.addCell(cell);
+
+		footerTotalHeight = footerTable.getTotalHeight();
+		document.setMargins(document.leftMargin(), document.rightMargin(),
+				document.topMargin(), document.bottomMargin() + footerTotalHeight + padding);
+	}
+	
+	private void bodyLineFeed(PdfPCell cell, PdfPTable tableContainer) {
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(8);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+	}
+	
+	private void bodyLineFeedWithLine(PdfPCell cell, PdfPTable tableContainer) {
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(8);
+		cell.setBorder(PdfCell.BOTTOM);		
+		tableContainer.addCell(cell);		
+	}
+	
+	private void garisPemisahNilaiNilaiTotal(PdfPCell cell, PdfPTable tableContainer) {
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(7);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.BOTTOM);		
+		tableContainer.addCell(cell);		
+	}
+
+	private void setDitujukan() {
+		
+		InvoiceHeader header = invoiceComplete.header;
+		
+		PdfPTable tableTemp = new PdfPTable(new float[] { 50f, 50f });
+		tableTemp.setTotalWidth(PAGE_WIDTH);
+		tableTemp.setLockedWidth(true);
+		PdfPCell cell = new PdfPCell();
+		
+		// linefeed
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableTemp.addCell(cell);		
+
+		cell = new PdfPCell(new Phrase("Ditujukan kepada :", TITLE_ALAMAT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+//		cell.setColspan(4);
+		cell.setColspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+
+		// Baris Kosong
+		cell = new PdfPCell(new Phrase(" ", TITLE_NORMAL));
+//		cell.setColspan(4);
+		cell.setColspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);
+		cell.setFixedHeight(10f);
+		tableTemp.addCell(cell);
+
+		// Baris I
+		cell = new PdfPCell(new Phrase(header.nama, TITLE_ALAMAT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+//		cell.setColspan(4);
+		cell.setColspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+
+		// Baris II
+		cell = new PdfPCell(new Phrase(header.nmcust, TITLE_ALAMAT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+//		cell.setColspan(4);
+		cell.setColspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+
+		// Baris III
+		cell = new PdfPCell(new Phrase(header.alamat, TITLE_ALAMAT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+//		cell.setColspan(4);
+		cell.setColspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableTemp.addCell(cell);
+		
+		// Baris Kosong
+		cell = new PdfPCell(new Phrase(" ", TITLE_NORMAL));
+//		cell.setColspan(4);
+		cell.setColspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);
+		cell.setFixedHeight(10f);
+		tableTemp.addCell(cell);
+		
+		document.add(tableTemp);
+	}
+	
+	private void setHeaderTable() {
+		
+		PdfPTable tableContainer = new PdfPTable(5);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+
+//		tableContainer = new PdfPTable(new float[] { 3, 20, 7, 10, 12, 7, 10, 12 });
+		tableContainer = new PdfPTable(bodyColumWidth);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+		PdfPCell cell = new PdfPCell();
+
+		bodyLineFeedWithLine(cell, tableContainer);
+		
+		cell = new PdfPCell(new Phrase("No", CONTENT_BOLD));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setBorder(PdfCell.NO_BORDER);
+		cell.setRowspan(2);
+		tableContainer.addCell(cell);
+		
+		cell = new PdfPCell(new Phrase("Keterangan", CONTENT_BOLD));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		cell.setRowspan(2);
+		tableContainer.addCell(cell);
+		
+		cell = new PdfPCell(new Phrase("Jumlah", CONTENT_BOLD));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		cell.setRowspan(2);
+		tableContainer.addCell(cell);
+		
+		cell = new PdfPCell(new Phrase("Harga", CONTENT_BOLD));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		cell.setRowspan(2);
+		tableContainer.addCell(cell);
+		
+		cell = new PdfPCell(new Phrase("Nilai Bruto", CONTENT_BOLD));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		cell.setRowspan(2);
+		tableContainer.addCell(cell);
+		
+		cell = new PdfPCell(new Phrase("Discount", CONTENT_BOLD));
+		cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+		cell.setBorder(PdfCell.BOTTOM);
+		cell.setColspan(2);
+		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("Nilai Netto", CONTENT_BOLD));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setBorder(PdfCell.NO_BORDER);
+		cell.setRowspan(2);
+		tableContainer.addCell(cell);
+		
+		cell = new PdfPCell(new Phrase("%", CONTENT_BOLD));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+		
+		cell = new PdfPCell(new Phrase("Nilai", CONTENT_BOLD));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+		
+		
+		bodyLineFeedWithLine(cell, tableContainer);
+		
+		document.add(tableContainer);
+	}
+	
+	private void perincianHargaHslPro(InvoiceDetailHslPro detail, List<InvoiceSubDetailHslProSkemaTarif> listSkemaTarif, PdfPCell cell, PdfPTable tableContainer) {
+		
+		PdfPTable innerTableContainer = new PdfPTable(new float[] { 2, 24, 3, 13, 3, 12, 9, 3, 13, 20 });
+		
+		innerTableContainer.setTotalWidth(PAGE_WIDTH - 25);
+		innerTableContainer.setLockedWidth(true);
+		PdfPCell innerCell = new PdfPCell();
+
+		// INNER TABLE
+		if (listSkemaTarif.size() > 0) {
+
+			bodyLineFeed(cell, tableContainer);
+			
+			// kolom pertama di table bapaknya
+			cell = new PdfPCell(new Phrase(" ", CONTENT));
+			cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			cell.setBorder(PdfCell.NO_BORDER);		
+			tableContainer.addCell(cell);
+			
+			// Judul Perincian harga
+			String strJumkar = "";
+			if (detail.jumkar != null && detail.jumkar > 0) {
+				strJumkar = decimalFormatInteger.format(detail.jumkar) + " karyawan"; 
+			}
+			String strNonJumkar = "";
+			if (detail.jumnkar != null && detail.jumnkar > 0) {
+				strNonJumkar = decimalFormatInteger.format(detail.jumnkar) + " non karyawan"; 
+			}
+						
+			innerCell = new PdfPCell(new Phrase("Perincian Harga (" + strJumkar + " " + strNonJumkar + "):", CONTENT));
+			innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(10);
+			innerTableContainer.addCell(innerCell);
+			
+			Double total = 0.0;
+			for (InvoiceSubDetailHslProSkemaTarif pojo : listSkemaTarif) {
+
+				innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);
+				
+				if (pojo.jnstrf.equals("OVERH")) {
+					innerCell = new PdfPCell(new Phrase(pojo.keterangan, CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);
+				} else {
+					String nilai = decimalFormatDouble.format(pojo.harga);
+
+					innerCell = new PdfPCell(new Phrase(pojo.jumlah.toString() + " x " + nilai, CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);
+				}
+				
+				innerCell = new PdfPCell(new Phrase("=", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);
+				
+				String nilai = decimalFormatDouble.format(pojo.bruto);
+				innerCell = new PdfPCell(new Phrase(nilai, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+				
+				innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerCell.setColspan(6);
+				innerTableContainer.addCell(innerCell);		
+				
+				total = total + pojo.bruto;
+				
+			}
+
+			// Total
+			//Font contentFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, CONTENT_SIZE);
+			Font contentFont = FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, CONTENT_SIZE);
+			
+			innerCell = new PdfPCell(new Phrase("Total Harga", contentFont));
+			innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(3);
+			innerTableContainer.addCell(innerCell);
+			
+			String nilai = decimalFormatDouble.format(total);
+			innerCell = new PdfPCell(new Phrase(nilai, contentFont));
+			innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			innerCell.setBorder(PdfCell.TOP);		
+			innerTableContainer.addCell(innerCell);					
+
+			innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+			innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(6);
+			innerTableContainer.addCell(innerCell);		
+			
+		}
+		
+		cell = new PdfPCell(innerTableContainer);
+		cell.setColspan(7);
+		cell.setBorder(PdfCell.NO_BORDER);		
+        tableContainer.addCell(cell);		
+        
+	}
+	
+	private void perincianDiskonHslPro(List<InvoiceSubDetailHslProDiskon> listDiskon, PdfPCell cell, PdfPTable tableContainer) {
+		
+		PdfPTable innerTableContainer = new PdfPTable(new float[] { 2, 24, 3, 13, 3, 12, 9, 3, 13, 20 });
+		
+		innerTableContainer.setTotalWidth(PAGE_WIDTH - 25);
+		innerTableContainer.setLockedWidth(true);
+		PdfPCell innerCell = new PdfPCell();
+
+		// INNER TABLE
+		if (listDiskon.size() > 0) {
+			
+			bodyLineFeed(cell, tableContainer);
+			
+			// kolom pertama di table bapaknya
+			cell = new PdfPCell(new Phrase(" ", CONTENT));
+			cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			cell.setBorder(PdfCell.NO_BORDER);		
+			tableContainer.addCell(cell);
+			
+			// Judul Perincian harga
+			innerCell = new PdfPCell(new Phrase("Perincian Diskon :", CONTENT));
+			innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(10);
+			innerTableContainer.addCell(innerCell);
+			
+			double total = 0.0;
+			for (InvoiceSubDetailHslProDiskon pojo : listDiskon) {
+
+				innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);
+				
+				String keterangan = "";
+				if (pojo.jenis.equals("PRODIS")) {
+					keterangan = "Diskon (" + decimalFormatDouble.format(pojo.pctdisc) + " %)"; 
+				}
+				if (pojo.jenis.equals("NILDIS")) {
+					keterangan = "Diskon (" + decimalFormatDouble.format(pojo.nildisc) + ")"; 
+				}
+				if (pojo.jenis.equals("GRPPRODIS")) {
+					keterangan = "Diskon Grup (" + decimalFormatDouble.format(pojo.pctdisc) + " %)"; 
+				}
+				if (pojo.jenis.equals("GRPNILDIS")) {
+					keterangan = "Diskon Grup (" + decimalFormatDouble.format(pojo.nildisc) + ")"; 
+				}
+				if (pojo.jenis.equals("SPCPRODIS")) {
+					keterangan = "Diskon Khusus (" + decimalFormatDouble.format(pojo.pctdisc) + " %)"; 
+				}
+				if (pojo.jenis.equals("SPCNILDIS")) {
+					keterangan = "Diskon Khusus (" + decimalFormatDouble.format(pojo.nildisc) + ")"; 
+				}
+
+				innerCell = new PdfPCell(new Phrase(keterangan, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);
+				
+				innerCell = new PdfPCell(new Phrase("=", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);
+				
+				String nilai = decimalFormatDouble.format(pojo.nildasar);
+				innerCell = new PdfPCell(new Phrase(nilai, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+				
+				innerCell = new PdfPCell(new Phrase("-", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+
+				nilai = decimalFormatDouble.format(pojo.nildisc);
+				innerCell = new PdfPCell(new Phrase(nilai, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+
+				keterangan = "   ";
+				if (pojo.jenis.equals("PRODIS")) {
+					keterangan = " (" + decimalFormatDouble.format(pojo.pctdisc) + " %)"; 
+				}
+				if (pojo.jenis.equals("GRPPRODIS")) {
+					keterangan = " (" + decimalFormatDouble.format(pojo.pctdisc) + " %)"; 
+				}
+				if (pojo.jenis.equals("SPCPRODIS")) {
+					keterangan = " (" + decimalFormatDouble.format(pojo.pctdisc) + " %)"; 
+				}
+
+				innerCell = new PdfPCell(new Phrase(keterangan, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+				
+				innerCell = new PdfPCell(new Phrase("=", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+				
+				nilai = decimalFormatDouble.format(pojo.netto);
+				innerCell = new PdfPCell(new Phrase(nilai, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+
+				innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);		
+				
+				total = total + pojo.nildisc;
+			}
+			
+			// Total
+			//Font contentFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, CONTENT_SIZE);
+			Font contentFont = FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, CONTENT_SIZE);
+			
+			innerCell = new PdfPCell(new Phrase("Total Diskon", contentFont));
+			innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(5);
+			innerTableContainer.addCell(innerCell);
+			
+			String nilai = decimalFormatDouble.format(total);
+			innerCell = new PdfPCell(new Phrase(nilai, contentFont));
+			innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			innerCell.setBorder(PdfCell.TOP);		
+			innerTableContainer.addCell(innerCell);					
+
+			innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+			innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(4);
+			innerTableContainer.addCell(innerCell);		
+			
+		}
+		
+		cell = new PdfPCell(innerTableContainer);
+		cell.setColspan(7);
+		cell.setBorder(PdfCell.NO_BORDER);		
+        tableContainer.addCell(cell);		
+	}
+	
+	private void perincianAdj(List<InvoiceSubDetailAdjPerincian> listAdj, PdfPCell cell, PdfPTable tableContainer) {
+		
+		//PdfPTable innerTableContainer = new PdfPTable(new float[] { 2, 24, 3, 13, 3, 12, 9, 3, 13, 20 });
+		PdfPTable innerTableContainer = new PdfPTable(new float[] { 2, 12, 3, 6, 3, 12, 3, 12, 3, 12, 3, 12, 20 });
+		
+		innerTableContainer.setTotalWidth(PAGE_WIDTH - 25);
+		innerTableContainer.setLockedWidth(true);
+		PdfPCell innerCell = new PdfPCell();
+
+		// INNER TABLE
+		if (listAdj.size() > 0) {
+			
+			bodyLineFeed(cell, tableContainer);
+			
+			// kolom pertama di table bapaknya
+			cell = new PdfPCell(new Phrase(" ", CONTENT));
+			cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			cell.setBorder(PdfCell.NO_BORDER);		
+			tableContainer.addCell(cell);
+			
+			// Judul Perincian harga
+			innerCell = new PdfPCell(new Phrase("Perincian Adjustment :", CONTENT));
+			innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(13);
+			innerTableContainer.addCell(innerCell);
+			
+			double totalNetto = 0.0;
+			double totalBruto = 0.0;
+			double totalDisc  = 0.0;
+			for (InvoiceSubDetailAdjPerincian pojo : listAdj) {
+
+				innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);
+				
+				String keterangan = pojo.tahun + " - " + pojo.bulan;
+				innerCell = new PdfPCell(new Phrase(keterangan, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);
+				
+				innerCell = new PdfPCell(new Phrase(":", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);
+				
+				Integer totkar = pojo.seljkbullalu + pojo.seljnkbullalu;
+				String strTotkar = decimalFormatInteger.format(totkar);
+				innerCell = new PdfPCell(new Phrase(strTotkar, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+				
+				String tanda = "";
+				if (pojo.subSubDetailSkemaTarif != null && !pojo.subSubDetailSkemaTarif.isEmpty()) {
+					if (pojo.subSubDetailSkemaTarif.get(0).jnstrf.equals("OVERH")) {
+						//tanda = tanda + "\u27A4";
+						tanda = tanda + "=";
+					} else {
+						tanda = tanda + "x";
+					}
+				}
+				innerCell = new PdfPCell(new Phrase(tanda, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+
+				String harga = decimalFormatDouble.format(pojo.harga);
+				innerCell = new PdfPCell(new Phrase(harga, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+
+				innerCell = new PdfPCell(new Phrase("=", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+				
+				String bruto = decimalFormatDouble.format(pojo.bruto);
+				innerCell = new PdfPCell(new Phrase(bruto, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+
+				String nildisc = "";
+				String tandaDiskon = "";
+				if (pojo.nildisc != 0.0) {
+					tandaDiskon = "-";
+					nildisc = decimalFormatDouble.format(pojo.nildisc);
+					
+					innerCell = new PdfPCell(new Phrase(tandaDiskon, CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);		
+					
+					innerCell = new PdfPCell(new Phrase(nildisc, CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);					
+
+					innerCell = new PdfPCell(new Phrase("=", CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);		
+					
+					String netto = decimalFormatDouble.format(pojo.netto);
+					innerCell = new PdfPCell(new Phrase(netto, CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);					
+
+					innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);
+				} else {
+					innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);		
+					
+					innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);					
+
+					innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);		
+					
+					innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);					
+
+					innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);					
+				}
+				
+				totalBruto = totalBruto + pojo.bruto;
+				totalDisc  = totalDisc + pojo.nildisc;
+				totalNetto = totalNetto + pojo.netto;
+			}
+			
+			// Total
+			//Font contentFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, CONTENT_SIZE);
+			Font contentFont = FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, CONTENT_SIZE);
+			
+			innerCell = new PdfPCell(new Phrase("Total", contentFont));
+			innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(6);
+			innerTableContainer.addCell(innerCell);
+
+			innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+			innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerTableContainer.addCell(innerCell);		
+			
+			String strTotalBruto = decimalFormatDouble.format(totalBruto);
+			innerCell = new PdfPCell(new Phrase(strTotalBruto, contentFont));
+			innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			innerCell.setBorder(PdfCell.TOP);		
+			innerTableContainer.addCell(innerCell);					
+
+			innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+			innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerTableContainer.addCell(innerCell);		
+
+			String strTotalDisc = "";
+			if (totalDisc != 0.0) {
+				strTotalDisc = decimalFormatDouble.format(totalDisc);	
+				
+				innerCell = new PdfPCell(new Phrase(strTotalDisc, contentFont));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				if (!strTotalDisc.equals("")) {
+					innerCell.setBorder(PdfCell.TOP);						
+				} else {
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+				}
+				innerTableContainer.addCell(innerCell);					
+				
+				innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);		
+
+				String strTotalNetto = decimalFormatDouble.format(totalNetto);
+				innerCell = new PdfPCell(new Phrase(strTotalNetto, contentFont));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.TOP);		
+				innerTableContainer.addCell(innerCell);					
+				
+				innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);		
+			} else {
+				innerCell = new PdfPCell(new Phrase(" ", contentFont));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+				
+				innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);		
+
+				innerCell = new PdfPCell(new Phrase(" ", contentFont));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+				
+				innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);						
+			}
+
+			
+		}
+		
+		cell = new PdfPCell(innerTableContainer);
+		cell.setColspan(7);
+		cell.setBorder(PdfCell.NO_BORDER);		
+        tableContainer.addCell(cell);		
+	}
+	
+	private void perincianHargaInitial(List<InvoiceSubDetailPerhitunganSkemaTarif> listSkemaTarif, Integer jumkar, PdfPCell cell, PdfPTable tableContainer) {
+		
+		PdfPTable innerTableContainer = new PdfPTable(new float[] { 2, 24, 3, 13, 3, 12, 9, 3, 13, 20 });
+		
+		innerTableContainer.setTotalWidth(PAGE_WIDTH - 25);
+		innerTableContainer.setLockedWidth(true);
+		PdfPCell innerCell = new PdfPCell();
+
+		// INNER TABLE
+		if (listSkemaTarif.size() > 0) {
+
+			bodyLineFeed(cell, tableContainer);
+			
+			// kolom pertama di table bapaknya
+			cell = new PdfPCell(new Phrase(" ", CONTENT));
+			cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			cell.setBorder(PdfCell.NO_BORDER);		
+			tableContainer.addCell(cell);
+			
+			// Judul Perincian harga
+			String strJumkar = decimalFormatInteger.format(jumkar);			
+			innerCell = new PdfPCell(new Phrase("Perincian Harga (" + strJumkar + " orang):", CONTENT));
+			innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(10);
+			innerTableContainer.addCell(innerCell);
+			
+			Double total = 0.0;
+			for (InvoiceSubDetailPerhitunganSkemaTarif pojo : listSkemaTarif) {
+
+				innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);
+				
+				if (pojo.jnstrf.equals("OVERH")) {
+					innerCell = new PdfPCell(new Phrase(pojo.keterangan, CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);
+				} else {
+					String nilai = decimalFormatDouble.format(pojo.harga);
+
+					innerCell = new PdfPCell(new Phrase(pojo.jumlah.toString() + " x " + nilai, CONTENT));
+					innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+					innerCell.setBorder(PdfCell.NO_BORDER);		
+					innerTableContainer.addCell(innerCell);
+				}
+				
+				innerCell = new PdfPCell(new Phrase("=", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);
+				
+				String nilai = decimalFormatDouble.format(pojo.bruto);
+				innerCell = new PdfPCell(new Phrase(nilai, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+				
+				innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerCell.setColspan(6);
+				innerTableContainer.addCell(innerCell);		
+				
+				total = total + pojo.bruto;
+				
+			}
+
+			// Total
+			//Font contentFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, CONTENT_SIZE);
+			Font contentFont = FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, CONTENT_SIZE);
+			
+			innerCell = new PdfPCell(new Phrase("Total Harga", contentFont));
+			innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(3);
+			innerTableContainer.addCell(innerCell);
+			
+			String nilai = decimalFormatDouble.format(total);
+			innerCell = new PdfPCell(new Phrase(nilai, contentFont));
+			innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			innerCell.setBorder(PdfCell.TOP);		
+			innerTableContainer.addCell(innerCell);					
+
+			innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+			innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(6);
+			innerTableContainer.addCell(innerCell);		
+			
+		}
+		
+		cell = new PdfPCell(innerTableContainer);
+		cell.setColspan(7);
+		cell.setBorder(PdfCell.NO_BORDER);		
+        tableContainer.addCell(cell);		
+        
+	}
+	
+	private void perincianDiskonInitial(List<InvoiceSubDetailPerhitunganDiskon> listDiskon, PdfPCell cell, PdfPTable tableContainer) {
+		
+		PdfPTable innerTableContainer = new PdfPTable(new float[] { 2, 24, 3, 13, 3, 12, 9, 3, 13, 20 });
+		
+		innerTableContainer.setTotalWidth(PAGE_WIDTH - 25);
+		innerTableContainer.setLockedWidth(true);
+		PdfPCell innerCell = new PdfPCell();
+
+		// INNER TABLE
+		if (listDiskon.size() > 0) {
+			
+			bodyLineFeed(cell, tableContainer);
+			
+			// kolom pertama di table bapaknya
+			cell = new PdfPCell(new Phrase(" ", CONTENT));
+			cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			cell.setBorder(PdfCell.NO_BORDER);		
+			tableContainer.addCell(cell);
+			
+			// Judul Perincian harga
+			innerCell = new PdfPCell(new Phrase("Perincian Diskon :", CONTENT));
+			innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(10);
+			innerTableContainer.addCell(innerCell);
+			
+			double total = 0.0;
+			for (InvoiceSubDetailPerhitunganDiskon pojo : listDiskon) {
+
+				innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);
+				
+				String keterangan = "";
+				if (pojo.jenis.equals("PRODIS")) {
+					keterangan = "Diskon (" + decimalFormatDouble.format(pojo.pctdisc) + " %)"; 
+				}
+				if (pojo.jenis.equals("NILDIS")) {
+					keterangan = "Diskon (" + decimalFormatDouble.format(pojo.nildisc) + ")"; 
+				}
+				if (pojo.jenis.equals("GRPPRODIS")) {
+					keterangan = "Diskon Grup (" + decimalFormatDouble.format(pojo.pctdisc) + " %)"; 
+				}
+				if (pojo.jenis.equals("GRPNILDIS")) {
+					keterangan = "Diskon Grup (" + decimalFormatDouble.format(pojo.nildisc) + ")"; 
+				}
+				if (pojo.jenis.equals("SPCPRODIS")) {
+					keterangan = "Diskon Khusus (" + decimalFormatDouble.format(pojo.pctdisc) + " %)"; 
+				}
+				if (pojo.jenis.equals("SPCNILDIS")) {
+					keterangan = "Diskon Khusus (" + decimalFormatDouble.format(pojo.nildisc) + ")"; 
+				}
+
+				innerCell = new PdfPCell(new Phrase(keterangan, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);
+				
+				innerCell = new PdfPCell(new Phrase("=", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);
+				
+				String nilai = decimalFormatDouble.format(pojo.nildasar);
+				innerCell = new PdfPCell(new Phrase(nilai, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+				
+				innerCell = new PdfPCell(new Phrase("-", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+
+				nilai = decimalFormatDouble.format(pojo.nildisc);
+				innerCell = new PdfPCell(new Phrase(nilai, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+
+				keterangan = "   ";
+				if (pojo.jenis.equals("PRODIS")) {
+					keterangan = " (" + decimalFormatDouble.format(pojo.pctdisc) + " %)"; 
+				}
+				if (pojo.jenis.equals("GRPPRODIS")) {
+					keterangan = " (" + decimalFormatDouble.format(pojo.pctdisc) + " %)"; 
+				}
+				if (pojo.jenis.equals("SPCPRODIS")) {
+					keterangan = " (" + decimalFormatDouble.format(pojo.pctdisc) + " %)"; 
+				}
+
+				innerCell = new PdfPCell(new Phrase(keterangan, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+				
+				innerCell = new PdfPCell(new Phrase("=", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+				
+				nilai = decimalFormatDouble.format(pojo.netto);
+				innerCell = new PdfPCell(new Phrase(nilai, CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);					
+
+				innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+				innerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+				innerCell.setBorder(PdfCell.NO_BORDER);		
+				innerTableContainer.addCell(innerCell);		
+				
+				total = total + pojo.nildisc;
+			}
+			
+			// Total
+			//Font contentFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, CONTENT_SIZE);
+			Font contentFont = FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, CONTENT_SIZE);
+			
+			innerCell = new PdfPCell(new Phrase("Total Diskon", contentFont));
+			innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(5);
+			innerTableContainer.addCell(innerCell);
+			
+			String nilai = decimalFormatDouble.format(total);
+			innerCell = new PdfPCell(new Phrase(nilai, contentFont));
+			innerCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			innerCell.setBorder(PdfCell.TOP);		
+			innerTableContainer.addCell(innerCell);					
+
+			innerCell = new PdfPCell(new Phrase(" ", CONTENT));
+			innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(4);
+			innerTableContainer.addCell(innerCell);		
+			
+		}
+		
+		cell = new PdfPCell(innerTableContainer);
+		cell.setColspan(7);
+		cell.setBorder(PdfCell.NO_BORDER);		
+        tableContainer.addCell(cell);		
+	}
+	
+	private void keteranganMasukDeposit(PdfPCell cell, PdfPTable tableContainer) {
+		
+		PdfPTable innerTableContainer = new PdfPTable(new float[] { 2, 24, 3, 13, 3, 12, 9, 3, 13, 20 });
+		
+		innerTableContainer.setTotalWidth(PAGE_WIDTH - 25);
+		innerTableContainer.setLockedWidth(true);
+		PdfPCell innerCell = new PdfPCell();
+
+		// INNER TABLE
+		if (invoiceComplete.header.nildep > 0.0) {
+			bodyLineFeed(cell, tableContainer);
+			
+			String jumbul = "";
+			String jumSiklus = "";
+			String satSiklus = "";
+			if (invoiceComplete.detailInitial.size() > 0) {
+				jumbul = decimalFormatInteger.format(invoiceComplete.detailInitial.get(0).jumbul);
+				jumSiklus = decimalFormatInteger.format(invoiceComplete.detailInitial.get(0).jumsiklus);
+				
+				if (invoiceComplete.detailInitial.get(0).satsiklus.equals("TAHUN")) {
+					satSiklus = "Tahun";
+				}
+				if (invoiceComplete.detailInitial.get(0).satsiklus.equals("BULAN")) {
+					satSiklus = "Bulan";					
+				}
+			}
+			String nilai = decimalFormatDouble.format(invoiceComplete.header.nildep);
+			//String keterangan = "Deposit untuk " + jumbul + " x ( " + jumSiklus + " " + satSiklus + " ) : " + nilai;
+			String keterangan = "Masuk deposit sejumlah : " + nilai;			
+			
+			// kolom pertama di table bapaknya
+			cell = new PdfPCell(new Phrase(" ", CONTENT));
+			cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			cell.setBorder(PdfCell.NO_BORDER);		
+			tableContainer.addCell(cell);
+			
+			// Judul Perincian harga
+			Font contentFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, CONTENT_SIZE);
+
+			innerCell = new PdfPCell(new Phrase(keterangan, contentFont));
+			innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(10);
+			innerTableContainer.addCell(innerCell);
+			
+			// memberi jarak antara keterangan ini dengan baris sesudahnya
+			innerCell = new PdfPCell(new Phrase(" ", contentFont));
+			innerCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+			innerCell.setBorder(PdfCell.NO_BORDER);		
+			innerCell.setColspan(10);
+			innerTableContainer.addCell(innerCell);			
+		}
+		
+		cell = new PdfPCell(innerTableContainer);
+		cell.setColspan(7);
+		cell.setBorder(PdfCell.NO_BORDER);		
+        tableContainer.addCell(cell);		
+	}
+	
+	private void setBody() {
+		PdfPTable tableContainer = new PdfPTable(5);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+
+//		tableContainer = new PdfPTable(new float[] { 3, 20, 7, 10, 12, 7, 10, 12 });
+		tableContainer = new PdfPTable(bodyColumWidth);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+		PdfPCell cell = new PdfPCell();
+
+		bodyLineFeed(cell, tableContainer);
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setColspan(8);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+		
+		// nomor urut item
+		Integer noUrut = 1;
+		
+		// detail hasil proses
+		List<InvoiceDetailHslPro> listHslPro = invoiceComplete.detailHasilProses;
+		
+		if (listHslPro.size() > 0) {
+			for (InvoiceDetailHslPro pojo : listHslPro) {
+
+				cell = new PdfPCell(new Phrase(noUrut.toString() + ".", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);
+
+				cell = new PdfPCell(new Phrase(pojo.keterangan.toString(), CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);
+
+				String jumbul = decimalFormatInteger.format(pojo.totjumkar);
+				cell = new PdfPCell(new Phrase(jumbul, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);
+
+				String harga = decimalFormatDouble.format(pojo.harga);
+				cell = new PdfPCell(new Phrase(harga, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);
+
+				String bruto = decimalFormatDouble.format(pojo.bruto);
+				cell = new PdfPCell(new Phrase(bruto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);
+
+				// Khusus invoice initial, diskon dijelaskan di bawah perincian harga
+				// karena bisa bertingkat, tapi totalnya tetap ditampilkan di kolom di atas
+				
+				/*
+				if (pojo.pctdisc > 0.0) {
+					String pctdisc = decimalFormat.format(pojo.pctdisc);
+					cell = new PdfPCell(new Phrase(pctdisc + " %", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				} else {
+					cell = new PdfPCell(new Phrase(" ", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				}
+				*/
+				cell = new PdfPCell(new Phrase(" ", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);					
+
+				if (pojo.nilpctdisc > 0.0 || pojo.nildisc > 0.0) {
+					String nildisc = decimalFormatDouble.format(pojo.nildisc);
+					cell = new PdfPCell(new Phrase(nildisc, CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					cell.setBackgroundColor(mainRowColor);
+					tableContainer.addCell(cell);					
+				} else {
+					cell = new PdfPCell(new Phrase(" ", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					cell.setBackgroundColor(mainRowColor);
+					tableContainer.addCell(cell);										
+				}
+				/*
+				cell = new PdfPCell(new Phrase(" ", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);					
+				*/
+
+				String netto = decimalFormatDouble.format(pojo.netto);
+				cell = new PdfPCell(new Phrase(netto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);
+
+				/*
+				cell = new PdfPCell(new Phrase(bruto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+				*/
+				
+				noUrut = noUrut + 1;
+				
+				perincianHargaHslPro(pojo, pojo.subDetailSkemaTarif, cell, tableContainer);
+				
+				perincianDiskonHslPro(pojo.subDetailDiskon, cell, tableContainer);
+				
+			}
+
+			bodyLineFeed(cell, tableContainer);
+
+		}
+						
+		// detail adjustment
+		List<InvoiceDetailAdj> listAdjustment = invoiceComplete.detailAdjustment;
+		
+		if (listAdjustment.size() > 0) {
+			for (InvoiceDetailAdj pojo : listAdjustment) {
+
+				cell = new PdfPCell(new Phrase(noUrut.toString() + ".", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);
+
+				cell = new PdfPCell(new Phrase(pojo.keterangan.toString(), CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);
+
+				String jumbul = decimalFormatInteger.format(pojo.totjumkar);
+				cell = new PdfPCell(new Phrase(jumbul, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);
+
+				cell = new PdfPCell(new Phrase(" ", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);
+
+				String bruto = decimalFormatDouble.format(pojo.bruto);
+				cell = new PdfPCell(new Phrase(bruto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);
+
+				/*
+				if (pojo.nildisc > 0.0) {
+					String nildisc = decimalFormatDouble.format(pojo.nildisc);
+					cell = new PdfPCell(new Phrase(nildisc, CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				} else {
+					cell = new PdfPCell(new Phrase(" ", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				}
+				*/
+				cell = new PdfPCell(new Phrase(" ", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);
+
+				if (pojo.nildisc > 0.0) {
+					String nildisc = decimalFormatDouble.format(pojo.nildisc);
+					cell = new PdfPCell(new Phrase(nildisc, CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					cell.setBackgroundColor(mainRowColor);
+					tableContainer.addCell(cell);					
+				} else {
+					cell = new PdfPCell(new Phrase(" ", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					cell.setBackgroundColor(mainRowColor);
+					tableContainer.addCell(cell);										
+				}
+				/*
+				cell = new PdfPCell(new Phrase(" ", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);					
+				*/
+
+				String netto = decimalFormatDouble.format(pojo.netto);
+				cell = new PdfPCell(new Phrase(netto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				cell.setBackgroundColor(mainRowColor);
+				tableContainer.addCell(cell);
+
+				/*
+				cell = new PdfPCell(new Phrase(bruto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+				*/
+				
+				noUrut = noUrut + 1;
+				
+				perincianAdj(pojo.subDetailPerincian, cell, tableContainer);
+				
+			}
+
+			bodyLineFeed(cell, tableContainer);
+
+		}
+		
+		// detail invoice initial
+		List<InvoiceDetailInitial> listInitial = invoiceComplete.detailInitial;
+		
+		if (listInitial.size() > 0) {
+			for (InvoiceDetailInitial pojo : listInitial) {
+
+				cell = new PdfPCell(new Phrase(noUrut.toString() + ".", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				cell = new PdfPCell(new Phrase(pojo.keterangan.toString(), CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				String jumbul = decimalFormatInteger.format(pojo.jumbul);
+				cell = new PdfPCell(new Phrase(jumbul, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				String harga = decimalFormatDouble.format(pojo.harga);
+				cell = new PdfPCell(new Phrase(harga, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				String bruto = decimalFormatDouble.format(pojo.bruto);
+				cell = new PdfPCell(new Phrase(bruto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				// Khusus invoice initial, diskon dijelaskan di bawah perincian harga
+				// karena bisa bertingkat, tapi totalnya tetap ditampilkan di kolom di atas
+				
+				/*
+				if (pojo.pctdisc > 0.0) {
+					String pctdisc = decimalFormat.format(pojo.pctdisc);
+					cell = new PdfPCell(new Phrase(pctdisc + " %", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				} else {
+					cell = new PdfPCell(new Phrase(" ", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				}
+				*/
+				cell = new PdfPCell(new Phrase(" ", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);					
+
+				if (pojo.nilpctdisc > 0.0 || pojo.nildisc > 0.0) {
+					String nildisc = decimalFormatDouble.format(pojo.nildisc);
+					cell = new PdfPCell(new Phrase(nildisc, CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				} else {
+					cell = new PdfPCell(new Phrase(" ", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);										
+				}
+				/*
+				cell = new PdfPCell(new Phrase(" ", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);					
+				*/
+
+				String netto = decimalFormatDouble.format(pojo.netto);
+				cell = new PdfPCell(new Phrase(netto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				/*
+				cell = new PdfPCell(new Phrase(bruto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+				*/
+				
+				noUrut = noUrut + 1;
+				
+				perincianHargaInitial(pojo.subDetailSkemaTarif, pojo.jumkar, cell, tableContainer);
+				
+				perincianDiskonInitial(pojo.subDetailDiskon, cell, tableContainer);
+				
+			}
+
+			bodyLineFeed(cell, tableContainer);
+			
+		}
+						
+		//bila flag deposit = Y tuliskan baris keterangan deposit dengan kolom kolom sama seperti perincian Diskon
+		if (invoiceComplete.header.fltodep) {
+			keteranganMasukDeposit(cell, tableContainer);			
+
+			bodyLineFeed(cell, tableContainer);			
+		}
+		
+		// detail invoice implementasi
+		List<InvoiceDetailImplementasi> listImplementasi = invoiceComplete.detailImplementasi;
+		
+		if (listImplementasi.size() > 0) {
+			for (InvoiceDetailImplementasi pojo : listImplementasi) {
+
+				cell = new PdfPCell(new Phrase(noUrut.toString() + ".", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				cell = new PdfPCell(new Phrase(pojo.keterangan.toString(), CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				cell = new PdfPCell(new Phrase(pojo.jumlah.toString(), CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				String harga = decimalFormatDouble.format(pojo.harga);
+				cell = new PdfPCell(new Phrase(harga, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				String bruto = decimalFormatDouble.format(pojo.bruto);
+				cell = new PdfPCell(new Phrase(bruto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				if (pojo.pctdisc > 0.0) {
+					String pctdisc = decimalFormatDouble.format(pojo.pctdisc);
+					cell = new PdfPCell(new Phrase(pctdisc + " %", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				} else {
+					cell = new PdfPCell(new Phrase(" ", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				}
+
+				if (pojo.nilpctdisc > 0.0 || pojo.nildisc > 0.0) {
+					String nilpctdisc = decimalFormatDouble.format(pojo.nilpctdisc + pojo.nildisc);
+					cell = new PdfPCell(new Phrase(nilpctdisc, CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				} else {
+					cell = new PdfPCell(new Phrase(" ", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);										
+				}
+				
+//				if (pojo.nilpctdisc > 0.0) {
+//					cell = new PdfPCell(new Phrase(pojo.nilpctdisc.toString(), CONTENT));
+//					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//					cell.setBorder(PdfCell.NO_BORDER);		
+//					tableContainer.addCell(cell);					
+//				} else {
+//					cell = new PdfPCell(new Phrase(pojo.nildisc.toString(), CONTENT));
+//					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//					cell.setBorder(PdfCell.NO_BORDER);		
+//					tableContainer.addCell(cell);					
+//				}
+
+				String netto = decimalFormatDouble.format(pojo.netto);
+				cell = new PdfPCell(new Phrase(netto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+				
+				noUrut = noUrut + 1;
+			}
+
+			bodyLineFeed(cell, tableContainer);
+
+		}
+//		else {
+//			tableContainer.setTotalWidth(PAGE_WIDTH);
+//			tableContainer.setLockedWidth(true);
+//			tableContainer.setHeaderRows(6);
+//
+//			setHeader(tableContainer);
+//			printDataKosong(tableContainer);
+//		}
+				
+		// detail invoice training
+		List<InvoiceDetailTraining> listTraining = invoiceComplete.detailTraining;
+		
+		if (listTraining.size() > 0) {
+			for (InvoiceDetailTraining pojo : listTraining) {
+
+				cell = new PdfPCell(new Phrase(noUrut.toString() + ".", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				cell = new PdfPCell(new Phrase(pojo.keterangan.toString(), CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				cell = new PdfPCell(new Phrase(pojo.jumlah.toString(), CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				String harga = decimalFormatDouble.format(pojo.harga);
+				cell = new PdfPCell(new Phrase(harga, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				String bruto = decimalFormatDouble.format(pojo.bruto);
+				cell = new PdfPCell(new Phrase(bruto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				if (pojo.pctdisc > 0.0) {
+					String pctdisc = decimalFormatDouble.format(pojo.pctdisc);
+					cell = new PdfPCell(new Phrase(pctdisc + " %", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				} else {
+					cell = new PdfPCell(new Phrase(" ", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				}
+
+				if (pojo.nilpctdisc > 0.0 || pojo.nildisc > 0.0) {
+					String nilpctdisc = decimalFormatDouble.format(pojo.nilpctdisc + pojo.nildisc);
+					cell = new PdfPCell(new Phrase(nilpctdisc, CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				} else {
+					cell = new PdfPCell(new Phrase(" ", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				}
+						
+
+				String netto = decimalFormatDouble.format(pojo.netto);
+				cell = new PdfPCell(new Phrase(netto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				noUrut = noUrut + 1;
+			}
+
+			bodyLineFeed(cell, tableContainer);
+
+		}
+//		else {
+//			tableContainer.setTotalWidth(PAGE_WIDTH);
+//			tableContainer.setLockedWidth(true);
+//			tableContainer.setHeaderRows(6);
+//
+//			setHeader(tableContainer);
+//			printDataKosong(tableContainer);
+//		}
+				
+		// detail invoice lain-lain
+		List<InvoiceDetailLainLain> listLainLain = invoiceComplete.detailLainLain;
+		
+		if (listLainLain.size() > 0) {
+			for (InvoiceDetailLainLain pojo : listLainLain) {
+
+				cell = new PdfPCell(new Phrase(noUrut.toString() + ".", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				cell = new PdfPCell(new Phrase(pojo.keterangan.toString(), CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				cell = new PdfPCell(new Phrase("", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				cell = new PdfPCell(new Phrase("", CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				String harga = decimalFormatDouble.format(pojo.harga);
+				cell = new PdfPCell(new Phrase(harga, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				if (pojo.pctdisc > 0.0) {
+					String pctdisc = decimalFormatDouble.format(pojo.pctdisc);
+					cell = new PdfPCell(new Phrase(pctdisc + " %", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				} else {
+					cell = new PdfPCell(new Phrase(" ", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				}
+
+				if (pojo.nilpctdisc > 0.0 || pojo.nildisc > 0.0) {
+					String nilpctdisc = decimalFormatDouble.format(pojo.nilpctdisc + pojo.nildisc);
+					cell = new PdfPCell(new Phrase(nilpctdisc, CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				} else {
+					cell = new PdfPCell(new Phrase(" ", CONTENT));
+					cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+					cell.setBorder(PdfCell.NO_BORDER);		
+					tableContainer.addCell(cell);					
+				}
+
+				String netto = decimalFormatDouble.format(pojo.netto);
+				cell = new PdfPCell(new Phrase(netto, CONTENT));
+				cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+				cell.setBorder(PdfCell.NO_BORDER);		
+				tableContainer.addCell(cell);
+
+				noUrut = noUrut + 1;
+			}
+
+		}
+//		else {
+//			tableContainer.setTotalWidth(PAGE_WIDTH);
+//			tableContainer.setLockedWidth(true);
+//			tableContainer.setHeaderRows(6);
+//
+//			setHeader(tableContainer);
+//			printDataKosong(tableContainer);
+//		}
+		
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(8);
+		cell.setBorder(PdfCell.BOTTOM);		
+		tableContainer.addCell(cell);		
+		
+		document.add(tableContainer);
+	}
+
+	private void setTotal() {
+		PdfPTable tableContainer = new PdfPTable(5);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+
+		tableContainer = new PdfPTable(bodyColumWidth);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+		PdfPCell cell = new PdfPCell();
+
+		bodyLineFeed(cell, tableContainer);
+		
+		Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, CONTENT_SIZE);
+		
+		cell = new PdfPCell(new Phrase(" ", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase(" ", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+//		cell = new PdfPCell(new Phrase(" ", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase(" ", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+		cell = new PdfPCell(new Phrase("Total ", boldFont));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		String totalBruto = decimalFormatDouble.format(invoiceComplete.header.bruto);
+		cell = new PdfPCell(new Phrase(totalBruto, boldFont));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase(" ", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);					
+
+
+		if (invoiceComplete.header.totdisc > 0.0) {
+			String totdisc = decimalFormatDouble.format(invoiceComplete.header.totdisc);
+			cell = new PdfPCell(new Phrase(totdisc, boldFont));
+			cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			cell.setBorder(PdfCell.NO_BORDER);		
+			tableContainer.addCell(cell);					
+		} else {
+			cell = new PdfPCell(new Phrase(" ", CONTENT));
+			cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			cell.setBorder(PdfCell.NO_BORDER);		
+			tableContainer.addCell(cell);										
+		}
+
+		String dpp = decimalFormatDouble.format(invoiceComplete.header.dpp);
+		cell = new PdfPCell(new Phrase(dpp, boldFont));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+						
+		bodyLineFeed(cell, tableContainer);		
+
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(8);
+		cell.setBorder(PdfCell.BOTTOM);		
+		tableContainer.addCell(cell);		
+		
+		document.add(tableContainer);
+	}
+
+	private void setGrandTotal() {
+		
+		PdfPTable tableContainer = new PdfPTable(5);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+
+//		tableContainer = new PdfPTable(new float[] { 3, 20, 7, 10, 12, 7, 10, 12 });
+		tableContainer = new PdfPTable(bodyColumWidth);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+		PdfPCell cell = new PdfPCell();
+
+		InvoiceHeader pojo = invoiceComplete.header;
+
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(8);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+		
+		// gross total
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(5);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("Total Bruto", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		cell.setColspan(2);
+		tableContainer.addCell(cell);					
+
+		String bruto = decimalFormatDouble.format(pojo.bruto);
+		cell = new PdfPCell(new Phrase(bruto, CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+		
+		// diskon total
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(5);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("Total Diskon", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		cell.setColspan(2);
+		tableContainer.addCell(cell);					
+
+		if (pojo.totdisc > 0.0) {
+			String totdisc = decimalFormatDouble.format(pojo.totdisc);
+			cell = new PdfPCell(new Phrase(totdisc, CONTENT));
+			cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			cell.setBorder(PdfCell.NO_BORDER);		
+			tableContainer.addCell(cell);
+		} else {
+			cell = new PdfPCell(new Phrase(" ", CONTENT));
+			cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			cell.setBorder(PdfCell.NO_BORDER);		
+			tableContainer.addCell(cell);			
+		}
+		
+		// deposit
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(5);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("Deposit Digunakan", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		cell.setColspan(2);
+		tableContainer.addCell(cell);					
+
+		if (pojo.depused > 0.0) {
+			String depused = decimalFormatDouble.format(pojo.depused);
+			cell = new PdfPCell(new Phrase(depused, CONTENT));
+			cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			cell.setBorder(PdfCell.NO_BORDER);		
+			tableContainer.addCell(cell);			
+		} else {
+			cell = new PdfPCell(new Phrase(" ", CONTENT));
+			cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+			cell.setBorder(PdfCell.NO_BORDER);		
+			tableContainer.addCell(cell);			
+		}
+
+		garisPemisahNilaiNilaiTotal(cell, tableContainer);
+		
+		bodyLineFeed(cell, tableContainer);
+
+		// dpp
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(5);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("DPP", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		cell.setColspan(2);
+		tableContainer.addCell(cell);					
+
+		String dpp = decimalFormatDouble.format(pojo.dpp);
+		cell = new PdfPCell(new Phrase(dpp, CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		// ppn
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(5);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("PPN", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		cell.setColspan(2);
+		tableContainer.addCell(cell);					
+
+		String ppn = decimalFormatDouble.format(pojo.ppn);
+		cell = new PdfPCell(new Phrase(ppn, CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		garisPemisahNilaiNilaiTotal(cell, tableContainer);
+
+		bodyLineFeed(cell, tableContainer);
+
+		// jumlah tagihan
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(5);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+//
+//		cell = new PdfPCell(new Phrase("", CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+
+		Font contentFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, CONTENT_SIZE);
+						
+		cell = new PdfPCell(new Phrase("JUMLAH TAGIHAN", contentFont));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		cell.setColspan(2);
+		tableContainer.addCell(cell);					
+
+		String netto = decimalFormatDouble.format(pojo.netto);
+		cell = new PdfPCell(new Phrase(netto, contentFont));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+		
+		bodyLineFeed(cell, tableContainer);
+
+        		
+//		cell = new PdfPCell(new Phrase(TimeUtil.convertDateToString(TimeUtil.getSystemDateTime(), BaseConstants.DATE_FORMAT_DISPLAY_LONG), CONTENT));
+//		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+//		cell.setColspan(4);
+//		cell.setBorder(PdfCell.NO_BORDER);		
+//		tableContainer.addCell(cell);
+		
+		document.add(tableContainer);
+		
+	}
+	
+	private void setNotePembayaran() {
+		
+		PdfPTable tableContainer = new PdfPTable(5);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+
+		tableContainer = new PdfPTable(bodyColumWidth);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+		PdfPCell cell = new PdfPCell();
+
+		InvoiceHeader pojo = invoiceComplete.header;
+
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(8);
+		cell.setFixedHeight(15f);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+		
+		// keterangan 
+		cell = new PdfPCell(new Phrase("Pembayaran dapat dilakukan melalui Virtual Account Bank BCA sbb:", TITLE_ALAMAT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setColspan(8);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		// nomor virtual account
+		cell = new PdfPCell(new Phrase(pojo.customer.vabca, TITLE_ALAMAT_BOLD));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setColspan(8);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+		
+		bodyLineFeed(cell, tableContainer);
+
+		document.add(tableContainer);		
+	}
+	
+	private void setHormatKami() {
+		
+		PdfPTable tableContainer = new PdfPTable(5);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+
+		tableContainer = new PdfPTable(bodyColumWidth);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+		PdfPCell cell = new PdfPCell();
+
+		cell = new PdfPCell(new Phrase("", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(8);
+		cell.setFixedHeight(10f);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+		
+		// hormat kami
+		cell = new PdfPCell(new Phrase(" ", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(6);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+
+		cell = new PdfPCell(new Phrase("Hormat kami,", TITLE_ALAMAT));
+		cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+		cell.setColspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		// space tanda tangan
+		cell = new PdfPCell(new Phrase(" ", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(8);
+		cell.setFixedHeight(85f);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+		
+		// nama
+		cell = new PdfPCell(new Phrase(" ", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(6);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+		
+		cell = new PdfPCell(new Phrase("Harry Moeljo", TITLE_ALAMAT));
+		cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+		cell.setColspan(2);
+		cell.setBorder(PdfCell.BOTTOM);		
+		tableContainer.addCell(cell);
+		
+		// jabatan direktur
+		cell = new PdfPCell(new Phrase(" ", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(6);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+		
+		cell = new PdfPCell(new Phrase("Direktur", TITLE_ALAMAT));
+		cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+		cell.setColspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+		
+		bodyLineFeed(cell, tableContainer);
+
+		document.add(tableContainer);		
+	}
+	
+	private void setCatatan() {
+		
+		PdfPTable tableContainer = new PdfPTable(5);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+
+		tableContainer = new PdfPTable(new float[] { 4, 96 });
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+		PdfPCell cell = new PdfPCell();
+
+		cell = new PdfPCell(new Phrase("", NOTE));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(2);
+		cell.setFixedHeight(20f);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		// Catatan
+		cell = new PdfPCell(new Phrase("Catatan : ", NOTE));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setColspan(2);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+
+		// catatan 1
+		cell = new PdfPCell(new Phrase("1.", NOTE));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("Tagihan yang muncul di klikBCA saat pembayaran melalui Virtual Account dapat tercantum nilai tagihan untuk bulan lalu, mohon", NOTE));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase(" ", NOTE));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("abaikan jika anda telah membayar tagihan tersebut dan hanya bayarkan untuk tagihan bulan ini saja.", NOTE));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		// catatan 2
+		cell = new PdfPCell(new Phrase("2.", NOTE));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("Mohon periksa apakah Nama yang muncul di klikBCA saat melakukan pembayaran melalui Virtual Account atau Nama yang ditulis", NOTE));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase(" ", NOTE));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("jika melakukan pembayaran melalui transfer adalah benar seperti nama yang tertera di samping no Virtual Account anda di atas.", NOTE));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		// catatan 3
+		cell = new PdfPCell(new Phrase("3.", NOTE));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		cell = new PdfPCell(new Phrase("Kami lampirkan tata cara untuk pembayaran melalui Virtual Account baik melalui Bank BCA maupun Bank Non BCA", NOTE));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+
+		bodyLineFeed(cell, tableContainer);
+
+		document.add(tableContainer);		
+	}
+	
+	private void setFooter(final PdfPTable tableBodyContainer) {
+		
+	    PdfPTable tableTemp = new PdfPTable(3);
+	    tableTemp.setTotalWidth(PAGE_WIDTH);
+	    tableTemp.setLockedWidth(true);
+	    
+	    PdfPCell cell = new PdfPCell();
+	 
+	    PdfPTable tableContainer = new PdfPTable(new float[] {30f, 70f});
+	    
+		cell = new PdfPCell(logoSofco);
+		cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setRowspan(5);
+		cell.setBorder(PdfCell.NO_BORDER);
+		tableContainer.addCell(cell);
+		
+		cell = new PdfPCell(new Phrase("PT. SOFCO GRAHA", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+
+		cell = new PdfPCell(new Phrase("GRIYA KONIMEX", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+
+		cell = new PdfPCell(new Phrase("JL. K.H WAHID HASYIM NO. 162", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+
+		cell = new PdfPCell(new Phrase("JAKARTA PUSAT 10250", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+
+		cell = new PdfPCell(new Phrase("TELP : +6221 319 228 67", CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+		cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);		
+	    	    
+	    cell = new PdfPCell(tableContainer);
+	    cell.setPadding(0);
+	    cell.setBorder(PdfCell.NO_BORDER);
+	    tableTemp.addCell(cell);
+	   
+	    tableBodyContainer.addCell(cell);
+
+		/*
+		PdfPTable tableContainer = new PdfPTable(5);
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+
+		tableContainer = new PdfPTable(new float[] { 3, 10, 12, 14 });
+		tableContainer.setTotalWidth(PAGE_WIDTH);
+		tableContainer.setLockedWidth(true);
+		PdfPCell cell = new PdfPCell();
+
+		cell = new PdfPCell(new Phrase("Dicetak oleh : " + CurrentUser.getUsername(), CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(4);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+		
+		cell = new PdfPCell(new Phrase(TimeUtil.convertDateToString(TimeUtil.getSystemDateTime(), BaseConstants.DATE_FORMAT_DISPLAY_LONG), CONTENT));
+		cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+		cell.setColspan(4);
+		cell.setBorder(PdfCell.NO_BORDER);		
+		tableContainer.addCell(cell);
+		
+		document.add(tableContainer);
+		*/
+
+//		HeaderFooter footer = new HeaderFooter( new Phrase( footerText, font ), isNumbered );
+//	    footer.setBorder( Rectangle.NO_BORDER );
+//	    footer.setAlignment( Element.ALIGN_RIGHT );
+//	    footer.set
+//	    
+//		document.setFooter(footer);
+	}
+	
+}

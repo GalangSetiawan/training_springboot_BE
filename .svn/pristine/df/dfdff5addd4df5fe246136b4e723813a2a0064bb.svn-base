@@ -1,0 +1,60 @@
+package co.id.sofcograha.domain.invoicing.kelola.invoice.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories.EInvoiceHeaderRepository;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+
+@Service("kelolaInvoiceCompleteService")
+public class KelolaInvoiceCompleteService extends BaseService {
+	
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	@Autowired private EInvoiceHeaderRepository eInvoiceHeaderRepository;
+	
+	public SearchResult<EInvoiceHeader> search(SearchParameter searchParameter) {
+		return eInvoiceHeaderRepository.search(searchParameter);
+	}
+	
+	@Transactional
+	public EInvoiceHeader setBayar(InvoiceHeader pojo) {
+		
+		EInvoiceHeader entityHeader = pojo.toEntity();
+		
+		valDataAda(entityHeader);
+		valInvoiceBelumKirim(entityHeader);
+		throwBatchError();
+		
+		EInvoiceHeader newEInvoiceHeader = invoiceHeaderService.get(entityHeader.getId());
+
+		if (entityHeader.getStatus().equals(BaseConstants.STATUS_INV_BAYAR)) {
+			entityHeader.setStatus(BaseConstants.STATUS_INV_KIRIM);			
+		} else {
+			entityHeader.setStatus(BaseConstants.STATUS_INV_BAYAR);			
+		}
+		
+		newEInvoiceHeader = invoiceHeaderService.edit(entityHeader);
+		throwBatchError();
+		
+		return newEInvoiceHeader;
+	}
+	
+	private void valDataAda(EInvoiceHeader entity) {
+		if (entity == null) {
+			batchError("invoice.general.no.data");
+		}
+	}
+	
+	private void valInvoiceBelumKirim(EInvoiceHeader entity) {
+		if (entity.getStatus().equals(BaseConstants.STATUS_INV_BELUM_KIRIM)) {
+			batchError("invoice.general.belum.kirim");
+		}
+	}
+}

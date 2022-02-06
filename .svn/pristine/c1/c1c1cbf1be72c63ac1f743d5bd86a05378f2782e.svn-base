@@ -1,0 +1,193 @@
+package co.id.sofcograha.domain.invoicing.admin.upload.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.EAdminUploadDetail;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.EAdminUploadHeader;
+
+@JsonInclude(Include.ALWAYS)
+public class AdminUploadDetail {
+	
+	public String id;
+    public String fversi;
+	public Integer jkbulini;
+	public Integer revjkbullalu;
+	public Integer seljkbullalu;
+	public Integer jnkbulini;
+	public Integer revjnkbullalu;
+	public Integer seljnkbullalu;
+	public Long version;  
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+	
+	// untuk keperluan matching error message di front end (bila input di grid)
+	public String keyIn;
+
+	// untuk penanda apakah detail ini tertandai delete (dari front end)
+	public boolean isSelect;
+	
+	public AdminUploadHeader header;
+
+	// Untuk menampung message error di grid
+	public ArrayList<Message> errorMsg;
+	
+	public EAdminUploadDetail toEntity() {
+		
+		EAdminUploadDetail entity = new EAdminUploadDetail();
+		
+		entity.setId(id);
+		entity.setFversi(fversi);
+		entity.setJkbulini(jkbulini);
+		entity.setRevjkbullalu(revjkbullalu);
+		entity.setSeljkbullalu(seljkbullalu);
+		entity.setJnkbulini(jnkbulini);
+		entity.setRevjnkbullalu(revjnkbullalu);
+		entity.setSeljnkbullalu(seljnkbullalu);
+		entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+		
+		if (header != null && !StringUtils.isEmpty(header.id)) {
+			EAdminUploadHeader entityRef = new EAdminUploadHeader();
+		
+			entityRef.setId(header.id);
+			entityRef.setVersion(header.version);
+		
+			entity.setHeader(entityRef);
+		
+		} else {
+			entity.setHeader(null);
+		}
+	  
+		return entity;
+	}
+		
+	public static List<EAdminUploadDetail> toEntities(final List<AdminUploadDetail> pojos) {
+		List<EAdminUploadDetail> entities = new ArrayList<EAdminUploadDetail>();
+		for (AdminUploadDetail pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static AdminUploadDetail fromEntity(EAdminUploadDetail entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static AdminUploadDetail fromEntity(EAdminUploadDetail entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static AdminUploadDetail fromEntity(EAdminUploadDetail entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		AdminUploadDetail pojo = new AdminUploadDetail();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.fversi = entity.getFversi();
+			pojo.jkbulini = entity.getJkbulini();
+			pojo.revjkbullalu = entity.getRevjkbullalu();
+			pojo.seljkbullalu = entity.getSeljkbullalu();
+			pojo.jnkbulini = entity.getJnkbulini();
+			pojo.revjnkbullalu = entity.getRevjnkbullalu();
+			pojo.seljnkbullalu = entity.getSeljnkbullalu();
+			
+			pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+			
+			pojo.header = AdminUploadHeader.fromEntity(entity.getHeader(), depthLevel);
+
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+			}
+			
+			pojo.isSelect = false;
+		}
+				
+		return pojo;
+	}
+	
+	public static List<AdminUploadDetail> fromEntities(List<EAdminUploadDetail> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<AdminUploadDetail> fromEntities(final List<EAdminUploadDetail> entities, int depthLevel) {
+		return fromEntities(entities, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<AdminUploadDetail> fromEntities(List<EAdminUploadDetail> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<AdminUploadDetail> pojos = new ArrayList<>();
+		
+		for (EAdminUploadDetail entity : entities) {
+			pojos.add(AdminUploadDetail.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}

@@ -1,0 +1,28 @@
+package co.id.sofcograha.domain.invoicing.proses.hitung.pojos;
+
+import java.util.ArrayList;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.utils.Message;
+
+@JsonInclude(Include.ALWAYS)
+public class HitungTarifDetailPerhitungan {
+	
+	public Integer nourut;  
+	public Integer jumlah;  
+	public Double harga;
+	public Double bruto;
+	public String keterangan;
+ 
+	// untuk keperluan matching error message di front end (bila input di grid)
+	public String keyIn;
+
+	// untuk penanda apakah detail ini tertandai delete (dari front end)
+	public boolean isSelect;
+	
+	// Untuk menampung message error di grid
+	public ArrayList<Message> errorMsg;
+	
+}

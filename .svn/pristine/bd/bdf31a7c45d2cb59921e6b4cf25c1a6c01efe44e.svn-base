@@ -1,0 +1,231 @@
+package co.id.sofcograha.domain.invoicing.proses.invoiceOtomatis.repositories;
+
+import javax.persistence.EntityManager;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.NativeSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.proses.invoiceOtomatis.entities.EProsesInvoiceDataRpt;
+
+@Repository
+public class ProsesInvoiceDataRptRepository {
+	
+	@Autowired
+	EntityManager em;
+	
+	public ProsesInvoiceDataRptRepository() {
+	}
+	
+	/*
+	public SearchResult<EProsesInvoiceDataRpt> search(SearchParameter searchParameter) {
+		
+		String tahun = (String) searchParameter.getValueFromMappedParam("tahun");
+		String bulan = (String) searchParameter.getValueFromMappedParam("bulan");
+		String idMi001 = (String) searchParameter.getValueFromMappedParam("idMi001");
+		String flproi = (String) searchParameter.getValueFromMappedParam("flproi");
+		
+		String tmp = TimeUtil.getPrevMonth(tahun + bulan);
+		String prevTahun = tmp.substring(0, 4);
+		String prevBulan = tmp.substring(4, 6);
+		
+		StringBuilder queryStringBuilder = new StringBuilder();
+		
+		// data bulan renewal di tahun bulan dipilih
+		queryStringBuilder.append("select public.sys_guid() as id, a.id_ai003 as id_ai003, c.id_mi001 as id_mi001, c.nama as namaproduk, b.id_mi010 as id_mi010, "); 
+		queryStringBuilder.append("       b.nama as namacust, a.flproi as flproi, d.nomor as nomor, a.tahunorg as tahunorg, "); 
+		queryStringBuilder.append("       a.bulanorg as bulanorg, 'T' as flagAdj "); 
+		queryStringBuilder.append("from ai003 a "); 
+		queryStringBuilder.append("left join mi010 b on b.id_mi010 = a.id_mi010 "); 
+		queryStringBuilder.append("left join mi001 c on c.id_mi001 = a.id_mi001 "); 
+		queryStringBuilder.append("left join ti001 d on d.id_ti001 = a.id_ti001 "); 
+		queryStringBuilder.append("where 1 = 1 ");
+		
+	    if (!QueryUtil.isAll(idMi001)) {
+	    	queryStringBuilder.append("and LOWER(a.id_mi001) like LOWER(:idMi001) ");
+	    }
+		
+	    if (flproi != null) {
+	    	queryStringBuilder.append("and LOWER(a.flproi) like LOWER(:flproi) ");
+	    }
+		
+	    if (tahun != null) {
+	    	queryStringBuilder.append("and a.tahun = :tahun ");
+	    }
+		
+	    if (bulan != null) {
+	    	queryStringBuilder.append("and a.bulan = :bulan ");
+	    }
+		
+		queryStringBuilder.append("union all "); 
+
+		// data adjustment untuk yang punya data renewal di bulan ini 
+		queryStringBuilder.append("select public.sys_guid() as id, q.id_ai003 as id_ai003, s.id_mi001 as id_mi001, s.nama as namaproduk, r.id_mi010 as id_mi010, "); 
+		queryStringBuilder.append("       r.nama as namacust, 'Y' as flproi, '' as nomor, q.tahun as tahunorg, "); 
+		queryStringBuilder.append("       q.bulan as bulanorg, 'Y' as flagAdj "); 
+		queryStringBuilder.append("from ai310 p "); 
+		queryStringBuilder.append("left join ai003 q on q.id_ai003 = p.id_ai003 "); 
+		queryStringBuilder.append("left join mi010 r on r.id_mi010 = q.id_mi010 "); 
+		queryStringBuilder.append("left join mi001 s on s.id_mi001 = q.id_mi001 "); 
+		queryStringBuilder.append("where 1 = 1 ");
+
+	    if (!QueryUtil.isAll(idMi001)) {
+	    	queryStringBuilder.append("and LOWER(q.id_mi001) like LOWER(:idMi001) ");
+	    }
+		
+	    if (flproi != null) {
+	    	queryStringBuilder.append("and LOWER(q.flproi) like LOWER(:flproi) ");
+	    	//queryStringBuilder.append("and q.flproi = :flproi ");
+	    }
+		
+	    if (tahun != null) {
+	    	queryStringBuilder.append("and p.tahun = :tahun ");
+	    }
+		
+	    if (bulan != null) {
+	    	queryStringBuilder.append("and p.bulan = :bulan ");
+	    }
+
+		queryStringBuilder.append("union all "); 
+		queryStringBuilder.append("select public.sys_guid() as id, x.id_ai003 as id_ai003, x.id_mi001 as id_mi001, s.nama as namaproduk, x.id_mi010 as id_mi010, ");
+		queryStringBuilder.append("       t.nama as namacust, 'T' as flproi, '' as nomor, x.tahun as tahunorg, ");
+		queryStringBuilder.append("       x.bulan as bulanorg, 'Y' as flagadj ");
+		queryStringBuilder.append("from ai003 x ");
+		queryStringBuilder.append("left join (select a.id_mi010, a.id_mi001, d.nama, b.jumsiklus, b.satsiklus from si004 a ");
+		queryStringBuilder.append("           left join mi011 b on b.id_mi010 = a.id_mi010 and b.id_mi001 = a.id_mi001 ");
+		queryStringBuilder.append("           left join mi010 d on d.id_mi010 = a.id_mi010 ");
+		queryStringBuilder.append("           where b.jumsiklus > 1 or (b.jumsiklus = 1 and b.satsiklus = 'TAHUN')) y on y.id_mi010 = x.id_mi010 and y.id_mi001 = x.id_mi001 ");
+		queryStringBuilder.append("left join ai310 r on r.id_ai003 = x.id_ai003 and r.tahun||r.bulan = :tahunBulanPrev ");
+		queryStringBuilder.append("left join mi001 s on s.id_mi001 = x.id_mi001 ");
+		queryStringBuilder.append("left join mi010 t on t.id_mi010 = x.id_mi010 ");
+		queryStringBuilder.append("left join (select b.id_mi010, b.id_mi001 from ai310 a "); 
+		queryStringBuilder.append("           left join ai003 b on b.id_ai003 = a.id_ai003 "); 
+		queryStringBuilder.append("           where a.tahun||a.bulan = :tahunBulanPrev) u on u.id_mi010 = x.id_mi010 and u.id_mi001 = x.id_mi001 "); 
+		queryStringBuilder.append("where x.tahun||x.bulan >= :tahunBulan and y.id_mi010 is not null and (r.id_ai310 is null and u.id_mi010 is null) "); 		
+//		queryStringBuilder.append("where x.tahun||x.bulan >= :tahunBulan and y.id_mi010 is not null and r.id_ai310 is null ");
+
+	    if (!QueryUtil.isAll(idMi001)) {
+	    	queryStringBuilder.append("and LOWER(x.id_mi001) like LOWER(:idMi001) ");
+	    }
+		
+		queryStringBuilder.append("order by namaproduk, namacust "); 
+
+		NativeSearchBuilder<EProsesInvoiceDataRpt> search = new NativeSearchBuilder<>(EProsesInvoiceDataRpt.class, em);
+
+		search.addParameter("tahun", tahun);
+		search.addParameter("bulan", bulan);
+		search.addParameter("flproi", flproi);
+
+		if (!QueryUtil.isAll(idMi001)) {
+			search.addParameter("idMi001", QueryUtil.formatStringForLikeFilter(idMi001));
+		}
+		
+		search.addParameter("tahunBulanPrev", prevTahun + prevBulan);
+		search.addParameter("tahunBulan", tahun + bulan);
+		
+//		if (!QueryUtil.isAll(idMi001)) {
+//            search.addParameter("idMi001", QueryUtil.formatStringForLikeFilter(idMi001));
+//        }
+		
+		search.setQueryString(queryStringBuilder);
+		search.setPagination(searchParameter.getPagination());
+		search.setSort(searchParameter.getSort());
+
+		return search.getSearchResult();
+	}
+	*/
+	
+	public SearchResult<EProsesInvoiceDataRpt> search(SearchParameter searchParameter) {
+		
+		String tahun = (String) searchParameter.getValueFromMappedParam("tahun");
+		String bulan = (String) searchParameter.getValueFromMappedParam("bulan");
+		String idMi001 = (String) searchParameter.getValueFromMappedParam("idMi001");
+		String flproi = (String) searchParameter.getValueFromMappedParam("flproi");
+		
+		String tmp = TimeUtil.getPrevMonth(tahun + bulan);
+		String prevTahun = tmp.substring(0, 4);
+		String prevBulan = tmp.substring(4, 6);
+		
+		StringBuilder queryStringBuilder = new StringBuilder();
+		
+		// data bulan renewal di tahun bulan dipilih
+		queryStringBuilder.append("select public.sys_guid() as id, a.id_ai003 as id_ai003, c.id_mi001 as id_mi001, c.nama as namaproduk, b.id_mi010 as id_mi010, "); 
+		queryStringBuilder.append("       b.nama as namacust, a.flproi as flproi, d.nomor as nomor, a.tahunorg as tahunorg, "); 
+		queryStringBuilder.append("       a.bulanorg as bulanorg, 'T' as flagAdj "); 
+		queryStringBuilder.append("from ai003 a "); 
+		queryStringBuilder.append("left join mi010 b on b.id_mi010 = a.id_mi010 "); 
+		queryStringBuilder.append("left join mi001 c on c.id_mi001 = a.id_mi001 "); 
+		queryStringBuilder.append("left join ti001 d on d.id_ti001 = a.id_ti001 "); 
+		queryStringBuilder.append("where 1 = 1 ");
+		
+	    if (!QueryUtil.isAll(idMi001)) {
+	    	queryStringBuilder.append("and LOWER(a.id_mi001) like LOWER(:idMi001) ");
+	    }
+		
+	    if (flproi != null) {
+	    	queryStringBuilder.append("and LOWER(a.flproi) like LOWER(:flproi) ");
+	    }
+		
+	    if (tahun != null) {
+	    	queryStringBuilder.append("and a.tahun = :tahun ");
+	    }
+		
+	    if (bulan != null) {
+	    	queryStringBuilder.append("and a.bulan = :bulan ");
+	    }
+		
+		queryStringBuilder.append("union all "); 
+
+		queryStringBuilder.append("select public.sys_guid() as id, a.id_ai003 as id_ai003, a.id_mi001 as id_mi001, g.nama as namaproduk, a.id_mi010 as id_mi010, "); 
+		queryStringBuilder.append("       c.nama as namacust, case "); 
+		queryStringBuilder.append("                              when f.jumkar > 0 and d.id_ai003 is null then 'T' "); 
+		queryStringBuilder.append("                              when f.jumkar > 0 and d.id_ai003 is not null then 'Y' "); 
+		queryStringBuilder.append("                              else 'Y' "); 
+		queryStringBuilder.append("                           end as flproi, '' as nomor, :tahun as tahunorg, "); 
+		queryStringBuilder.append("       :bulan as bulanorg, 'Y' as flagAdj "); 
+		queryStringBuilder.append("from ai003 a "); 
+		queryStringBuilder.append("left join (select id_mi010, id_mi001, min(tahun||bulan) as tahunbulan ");
+		queryStringBuilder.append("           from ai003 where tahun||bulan >= :tahunBulan ");
+		queryStringBuilder.append("           group by id_mi010, id_mi001) b "); 
+		queryStringBuilder.append("   on b.id_mi010 = a.id_mi010 and b.id_mi001 = a.id_mi001 and b.tahunbulan = a.tahun||a.bulan "); 
+		queryStringBuilder.append("left join mi010 c on c.id_mi010 = a.id_mi010 "); 
+		queryStringBuilder.append("left join mi001 g on g.id_mi001 = a.id_mi001 "); 
+		queryStringBuilder.append("left join ai310 d on d.id_ai003 = a.id_ai003 and d.tahun||d.bulan = :tahunBulanPrev "); 
+		queryStringBuilder.append("left join mi011 e on e.id_mi010 = a.id_mi010 and e.id_mi001 = a.id_mi001 "); 
+		queryStringBuilder.append("left join (select d.id_mi010, d.id_mi001, sum(a.seljkbullalu + a.seljnkbullalu) as jumkar from ai002 a "); 
+		queryStringBuilder.append("           left join ai001 b on b.id_ai001 = a.id_ai001 "); 
+		queryStringBuilder.append("           left join mi013 c on c.id_mi013 = b.id_mi013 "); 
+		queryStringBuilder.append("           left join mi011 d on d.id_mi011 = c.id_mi011 "); 
+		queryStringBuilder.append("           where b.tahun||b.bulan = :tahunBulan "); 
+		queryStringBuilder.append("           group by d.id_mi010, d.id_mi001) f on f.id_mi010 = a.id_mi010 and f.id_mi001 = a.id_mi001 "); 
+		queryStringBuilder.append("where b.id_mi010 is not null and ((e.jumsiklus = 1 and e.satsiklus = 'TAHUN') or (e.jumsiklus > 1)) and "); 
+		queryStringBuilder.append("      f.jumkar > 0 ");
+		
+		queryStringBuilder.append("order by namaproduk, namacust "); 
+
+		NativeSearchBuilder<EProsesInvoiceDataRpt> search = new NativeSearchBuilder<>(EProsesInvoiceDataRpt.class, em);
+
+		search.addParameter("tahun", tahun);
+		search.addParameter("bulan", bulan);
+		search.addParameter("flproi", flproi);
+
+		if (!QueryUtil.isAll(idMi001)) {
+			search.addParameter("idMi001", QueryUtil.formatStringForLikeFilter(idMi001));
+		}
+		
+		search.addParameter("tahunBulanPrev", prevTahun + prevBulan);
+		search.addParameter("tahunBulan", tahun + bulan);
+		
+		search.setQueryString(queryStringBuilder);
+		search.setPagination(searchParameter.getPagination());
+		search.setSort(searchParameter.getSort());
+
+		return search.getSearchResult();
+	}
+	
+}
+

@@ -1,0 +1,23 @@
+CREATE OR REPLACE FUNCTION public.add_month_to_str_date(
+    character varying,
+    numeric)
+
+RETURNS character varying
+    LANGUAGE plpgsql
+AS $function$
+
+DECLARE
+    pTglAsal     alias FOR $1;
+	pBulanTambah alias for $2;
+
+    vHasil     varchar;
+    vNumBulan Numeric;
+BEGIN
+    
+    vHasil = to_char(TO_DATE(pTglAsal,'YYYYMMDD') + (pBulanTambah || ' months')::INTERVAL, 'YYYYMMDD');
+
+    RETURN vHasil;
+END;
+$function$
+;
+

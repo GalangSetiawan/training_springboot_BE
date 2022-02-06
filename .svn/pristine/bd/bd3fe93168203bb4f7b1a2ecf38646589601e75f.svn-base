@@ -1,0 +1,120 @@
+package co.id.sofcograha.domain.invoicing.kelola.invoice.controllers;
+
+import java.util.ArrayList;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.kelola.invoice.services.KelolaInvoiceCompleteService;
+import co.id.sofcograha.domain.invoicing.kelola.invoice.services.KelolaInvoiceExportPdfService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+
+@RestController
+@RequestMapping("/api/kelola-invoice")
+public class KelolaInvoiceController {
+	
+	public static final Logger logger = LoggerFactory.getLogger(KelolaInvoiceController.class);
+	
+	@Autowired private KelolaInvoiceCompleteService kelolaInvoiceCompleteService;
+	@Autowired private KelolaInvoiceExportPdfService kelolaInvoiceExportPdfService;
+//	@Autowired private KelolaInvoiceExportManyPdfService kelolaInvoiceExportManyPdfService;
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<EInvoiceHeader> searchResult = kelolaInvoiceCompleteService.search(SearchParameter.generate(searchParameter, 
+				InvoiceHeader.getFieldMappings()));
+		
+		return ApiResponse.dataWithPaging("items", 
+				InvoiceHeader.fromEntities(searchResult.getResult()), 
+				searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@PutMapping(value = "/set-bayar")
+	public ApiResponse setFlagBayar(@RequestBody InvoiceHeader pojo) {
+		
+		EInvoiceHeader header = kelolaInvoiceCompleteService.setBayar(pojo);
+		
+		return ApiResponse.data("item", InvoiceHeader.fromEntity(header));
+	}
+
+	@NoAuth
+	@PutMapping(value = "/set-notes")
+	public ApiResponse setNotes(@RequestBody InvoiceHeader pojo) {
+		
+		EInvoiceHeader header = kelolaInvoiceCompleteService.setNotes(pojo);
+		
+		return ApiResponse.data("item", InvoiceHeader.fromEntity(header));
+	}
+
+	/*
+	@NoAuth
+	@GetMapping("/download-pdfs")
+	public ApiResponse downloadExcelTemplate(@RequestBody String[] invoiceList) {
+		
+		for (String inv : invoiceList) {
+			System.out.println("--- " + inv);
+		}
+		List<String> listNomorInvoice = new ArrayList<String>();
+		listNomorInvoice.add("INV/GJ/00039/II/2021");
+		listNomorInvoice.add("INV/GJ/00039/III/2021");
+		listNomorInvoice.add("INV/GJ/00039/IV/2021");
+		listNomorInvoice.add("INV/GJ/00055/VI/2021");
+		
+		return ApiResponse.data("item", kelolaInvoiceCompleteService.downloaSeveralPdfs(listNomorInvoice));
+	}
+	*/
+
+	@NoAuth
+    @GetMapping("/pdf")
+    public ApiResponse createAndSendPdf(@RequestParam String nomor) {
+		
+	    Base64StringEncodedPojo result = kelolaInvoiceExportPdfService.pdfReport(nomor);
+	    
+	    return ApiResponse.data("item", result);		
+    }
+
+	// ini berupa satu file zip yang berisi banyak pdf
+	@NoAuth
+	@PutMapping("/download-pdfs")
+	public ApiResponse edit(@RequestBody String[] invoiceList) {
+		
+		return ApiResponse.data("item", kelolaInvoiceCompleteService.downloaSeveralPdfs(invoiceList));
+	}
+
+	// ini berupa satu file pdf besar yang berisi banyak invoice di dalamnya
+	@NoAuth
+	@PutMapping("/multi-pdf")
+	public ApiResponse multiPdf(@RequestBody String[] invoiceList) {
+		
+	    Base64StringEncodedPojo result = kelolaInvoiceCompleteService.createPdfContainSeveralPdfs(invoiceList);
+	    
+	    return ApiResponse.data("item", result);		
+	}
+
+	@NoAuth
+	@PutMapping("/send-emails")
+	public ApiResponse sendEmails(@RequestBody ArrayList<InvoiceHeader> invoiceList) {
+		
+		kelolaInvoiceCompleteService.sendEmails(invoiceList);
+		
+		return ApiResponse.ok();
+	}
+	
+}

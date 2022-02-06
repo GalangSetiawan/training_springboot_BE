@@ -1,0 +1,62 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubDetailAdjPerincian;
+
+@Repository
+public class EInvoiceSubDetailAdjPerincianRepository extends SimpleJpaRepository<EInvoiceSubDetailAdjPerincian, String> {
+
+	protected final EntityManager em;
+
+	public EInvoiceSubDetailAdjPerincianRepository(EntityManager em) {
+		super(EInvoiceSubDetailAdjPerincian.class, em);
+		this.em = em;
+	}
+	
+	public EInvoiceSubDetailAdjPerincian findByBK(String idTi120, Integer nourut) {
+		
+		String query = "SELECT e FROM EInvoiceSubDetailAdjPerincian e " + 
+                       "WHERE e.detailAdj.id = :idTi120 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EInvoiceSubDetailAdjPerincian.class)
+					 .setParameter("idTi120", idTi120)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EInvoiceSubDetailAdjPerincian getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EInvoiceSubDetailAdjPerincian> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EInvoiceSubDetailAdjPerincian> search = new HqlSimpleSearchBuilder<>(EInvoiceSubDetailAdjPerincian.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EInvoiceSubDetailAdjPerincian add(EInvoiceSubDetailAdjPerincian entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+
+	public EInvoiceSubDetailAdjPerincian edit(EInvoiceSubDetailAdjPerincian entity) {
+		return save(entity);
+	}
+}

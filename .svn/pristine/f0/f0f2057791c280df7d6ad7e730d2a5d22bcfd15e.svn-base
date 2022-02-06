@@ -1,0 +1,55 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.controllers;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingComponent;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.pojos.AutomaticNumbering;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.services.AutomaticNumberingService;
+
+@RestController
+@RequestMapping(value = "api/automatic-numbering")
+public class AutomaticNumberingController {
+
+	@Autowired
+	private AutomaticNumberingService automaticNumberingService;
+
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String id) {
+//		return ApiResponse.data("item", AutomaticNumbering.fromEntity(automaticNumberingService.get(id)));
+		return ApiResponse.data("items", AutomaticNumbering.fromEntities(automaticNumberingService.getNumberComponentsByTransactionId(id)));
+	}
+
+	@NoAuth
+	@PostMapping
+	public ApiResponse add(@RequestBody AutomaticNumbering pojo) {
+		EAutomaticNumberingComponent entity = automaticNumberingService.add(pojo.toEntity());
+		return ApiResponse.data("item", AutomaticNumbering.fromEntity(entity));
+	}
+
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody AutomaticNumbering pojo) {
+		EAutomaticNumberingComponent entity = automaticNumberingService.edit(pojo.toEntity());
+		return ApiResponse.data("item", AutomaticNumbering.fromEntity(entity));
+	}
+
+	@NoAuth
+	@DeleteMapping(value = BaseConstants.ID)
+	public ApiResponse delete(@PathVariable String id, @RequestParam(required = false) Long version) {
+		automaticNumberingService.delete(id, version);
+		return ApiResponse.ok();
+	}
+}

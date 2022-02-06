@@ -1,0 +1,154 @@
+package co.id.sofcograha.domain.invoicing.saldo.live.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.saldo.live.entities.ESaldoLive;
+import co.id.sofcograha.domain.invoicing.saldo.live.pojos.SaldoLive;
+import co.id.sofcograha.domain.invoicing.saldo.live.repositories.ESaldoLiveRepository;
+import co.id.sofcograha.domain.invoicing.transaksi.berhenti.entities.ETrxBerhenti;
+import co.id.sofcograha.domain.invoicing.transaksi.hold.entities.ETrxHold;
+import co.id.sofcograha.domain.invoicing.transaksi.hold.services.TrxHoldService;
+import co.id.sofcograha.domain.invoicing.transaksi.live.entities.ETrxLive;
+import co.id.sofcograha.domain.invoicing.transaksi.unhold.entities.ETrxUnhold;
+
+@Service("saldoLiveCompleteService")
+public class SaldoLiveCompleteService extends BaseService {
+	
+	@Autowired private SaldoLiveService saldoLiveService;
+	@Autowired private TrxHoldService trxHoldService;
+	
+	@Autowired private ESaldoLiveRepository eSaldoLiveRepository;
+	
+	public SaldoLive findByBk(String idMi010, String idMi001, String tglive) {
+		return SaldoLive.fromEntity(eSaldoLiveRepository.findByBK(idMi010, idMi001, tglive));
+	}
+
+	public SaldoLive findLiveCustomerProduk(String idMi010, String idMi001) {
+		return SaldoLive.fromEntity(eSaldoLiveRepository.findLiveCustomerProduk(idMi010, idMi001));
+	}
+
+	public SaldoLive findCustomerProduk(String idMi010, String idMi001) {
+		return SaldoLive.fromEntity(eSaldoLiveRepository.findCustomerProduk(idMi010, idMi001));
+	}
+
+	public SaldoLive findLiveCustomerProdukByBulan(String idMi010, String idMi001, String tahun, String bulan) {
+		return SaldoLive.fromEntity(eSaldoLiveRepository.findLiveCustomerProdukByBulan(idMi010, idMi001, tahun, bulan));
+	}
+
+	public SearchResult<ESaldoLive> search(SearchParameter searchParameter) {
+		return eSaldoLiveRepository.search(searchParameter);
+	}
+	
+	public List<ESaldoLive> getLiveCustomer(String tahun, String bulan) {
+		return eSaldoLiveRepository.getLiveCustomer(tahun, bulan);
+	}
+	
+	@Transactional
+	public void deleteSaldoLive(ETrxLive eTrxLive) {
+		
+		ESaldoLive eSaldoLive = eSaldoLiveRepository.findByBK(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), eTrxLive.getTglive());
+
+		saldoLiveService.delete(eSaldoLive.getId(), eSaldoLive.getVersion());		
+	}
+	
+	@Transactional
+	public void addSaldoLive(ETrxLive eTrxLive) {
+		
+		ESaldoLive eSaldoLive = new ESaldoLive();
+		eSaldoLive.setCustomer(eTrxLive.getCustomer());
+		eSaldoLive.setProduk(eTrxLive.getProduk());
+		eSaldoLive.setTglive(eTrxLive.getTglive());
+		eSaldoLive.setTrxLive(eTrxLive);
+		saldoLiveService.add(eSaldoLive);		
+	}
+
+	@Transactional
+	public void updateStop(ETrxBerhenti eTrxBerhenti) {
+		
+		SaldoLive saldoLive = saldoLiveService.findByBk(eTrxBerhenti.getCustomer().getId(), eTrxBerhenti.getProduk().getId(), eTrxBerhenti.getTglive());
+		
+		ESaldoLive eSaldoLive = saldoLive.toEntity();
+		eSaldoLive.setTrxBerhenti(eTrxBerhenti);
+		eSaldoLive.setTgstop(eTrxBerhenti.getTgstop());
+		
+		saldoLiveService.edit(eSaldoLive);		
+	}
+
+	@Transactional
+	public void cancelStop(ETrxBerhenti eTrxBerhenti) {
+		
+		SaldoLive saldoLive = saldoLiveService.findByBk(eTrxBerhenti.getCustomer().getId(), eTrxBerhenti.getProduk().getId(), eTrxBerhenti.getTglive());
+		
+		ESaldoLive eSaldoLive = saldoLive.toEntity();
+		eSaldoLive.setTrxBerhenti(null);
+		eSaldoLive.setTgstop(null);
+		
+		saldoLiveService.edit(eSaldoLive);		
+	}
+
+	@Transactional
+	public void updateHold(ETrxHold eTrxHold) {
+		
+		SaldoLive saldoLive = saldoLiveService.findByBk(eTrxHold.getCustomer().getId(), eTrxHold.getProduk().getId(), eTrxHold.getTglive());
+		
+		ESaldoLive eSaldoLive = saldoLive.toEntity();
+		eSaldoLive.setTrxHold(eTrxHold);
+		eSaldoLive.setTghold(eTrxHold.getTghold());
+		
+		saldoLiveService.edit(eSaldoLive);		
+	}
+
+	@Transactional
+	public void cancelHold(ETrxHold eTrxHold) {
+
+		SaldoLive saldoLive = saldoLiveService.findByBk(eTrxHold.getCustomer().getId(), eTrxHold.getProduk().getId(), eTrxHold.getTglive());
+		
+		ESaldoLive eSaldoLive = saldoLive.toEntity();
+		eSaldoLive.setTrxHold(null);
+		eSaldoLive.setTghold(null);
+		
+		saldoLiveService.edit(eSaldoLive);		
+	}
+	
+	@Transactional
+	public void updateUnhold(ETrxUnhold eTrxUnhold) {
+		
+		SaldoLive saldoLive = saldoLiveService.findByBk(eTrxUnhold.getCustomer().getId(), eTrxUnhold.getProduk().getId(), eTrxUnhold.getTglive());
+		
+		ESaldoLive eSaldoLive = saldoLive.toEntity();
+		eSaldoLive.setTrxHold(null);
+		eSaldoLive.setTghold(null);
+		
+		saldoLiveService.edit(eSaldoLive);		
+	}
+
+	@Transactional
+	public void cancelUnhold(ETrxUnhold eTrxUnhold) {
+
+		// ambil transaksi hold terakhir
+		ETrxHold eTrxHold = trxHoldService.getTrxHoldTerakhir(eTrxUnhold.getCustomer().getId(), eTrxUnhold.getProduk().getId());
+		
+		SaldoLive saldoLive = saldoLiveService.findByBk(eTrxUnhold.getCustomer().getId(), eTrxUnhold.getProduk().getId(), eTrxUnhold.getTglive());
+		
+		ESaldoLive eSaldoLive = saldoLive.toEntity();
+		
+		if (eTrxHold != null) {
+			eSaldoLive.setTrxHold(eTrxHold);
+			eSaldoLive.setTghold(eTrxHold.getTghold());			
+		} else {
+			eSaldoLive.setTrxHold(null);
+			eSaldoLive.setTghold(null);			
+		}
+		
+		saldoLiveService.edit(eSaldoLive);		
+	}
+
+}

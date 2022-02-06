@@ -1,0 +1,256 @@
+package co.id.sofcograha.domain.invoicing.report.invoice.service;
+
+import java.text.ParseException;
+import java.util.List;
+
+import org.apache.poi.hssf.usermodel.HSSFDataFormat;
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.excel.BaseExcelService;
+import co.id.sofcograha.base.excel.TemplateExcelUtil;
+import co.id.sofcograha.base.master.company.pojos.CompanyPojo;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+import co.id.sofcograha.domain.invoicing.report.invoice.pojos.RptRekapVirtualAccountPerBulan;
+
+@Service
+public class RekapVirtualAccountPerBulanExportXlsService extends BaseExcelService {
+	
+	@Autowired
+	private RekapInvoiceService rekapInvoiceService;
+	
+	@Autowired
+	private CompanyService companyService;
+  
+	public String judul = "";
+	public String subJudul = "";
+	private int lastCellNumber = 3;
+  
+	private TemplateExcelUtil excel;
+
+	List<RptRekapVirtualAccountPerBulan> data;
+	
+	private String tahun;
+	private String bulan;
+
+	@Transactional
+	public Base64StringEncodedPojo exportExcel(String tahun, String bulan, String idMi001) throws ParseException {
+	  
+		data = rekapInvoiceService.getRekapVirtualAccountPerBulan(idMi001, tahun, bulan);
+		
+		subJudul = "";
+
+		excel = new TemplateExcelUtil(judul, "", 5);
+	      
+		header();
+		body();
+		footer();
+    
+		return excel.generateAsBase64();
+	}
+
+	@Override
+	protected void header() {
+	  
+		CompanyPojo company = CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId()));
+
+		XSSFSheet currSheet = excel.getDefaultSheetByName();
+		
+		currSheet.setColumnWidth(0, 5000); 
+		currSheet.setColumnWidth(1, 14000);
+		currSheet.setColumnWidth(2, 6200);
+		currSheet.setColumnWidth(3, 6200);
+		
+		/* tanpa heading nama perusahaan sebab diperuntukkan untuk diberikan ke bca
+		Row row = excel.createRow();
+		
+		// baris 1
+		XSSFCellStyle cellStyle = excel.getWorkbook().createCellStyle();        
+		cellStyle.setAlignment(HorizontalAlignment.LEFT);
+		cellStyle.setWrapText(false);
+		cellStyle.setShrinkToFit(false);
+
+		Cell cell1 = row.createCell(1);
+		cell1.setCellStyle(cellStyle);
+		cell1.setCellValue(company.name);
+		
+		XSSFCellStyle cellStyle2 = excel.getWorkbook().createCellStyle();        
+		cellStyle2.setAlignment(HorizontalAlignment.RIGHT);
+		cellStyle2.setWrapText(false);
+		cellStyle2.setShrinkToFit(false);
+        
+		Cell cell2 = row.createCell(lastCellNumber);
+		cell2.setCellStyle(cellStyle2);
+		cell2.setCellValue("Tanggal" + " : " + TimeUtil.convertDateToString(new Date(), "dd-MM-yyyy HH:mm:ss"));
+
+		// baris kosong
+		excel.addEmptyRow();
+
+		// baris judul
+		row = excel.createRow();
+		Cell cell3 = row.createCell(1);
+		cell3.setCellStyle(excel.getStyleAlignCenter());
+		cell3.setCellValue(judul);
+		
+		excel.setMerge(3, 3, 1, lastCellNumber, false);
+
+		// baris sub judul 1
+		row = excel.createRow();
+		cell3 = row.createCell(1);
+		cell3.setCellStyle(excel.getStyleAlignCenter());
+		cell3.setCellValue(subJudul);
+		
+		excel.setMerge(4, 4, 1, lastCellNumber, false);
+
+		// baris kosong
+		excel.addEmptyRow();
+		*/
+		
+	}
+  
+	@Override
+	protected void body() {
+		setHeaderTabel();
+        
+		if (data.size() > 0) {
+			for (RptRekapVirtualAccountPerBulan pojo : data) {
+
+				Font font = excel.getWorkbook().createFont();
+			    font.setFontHeightInPoints((short) 10);
+			    font.setFontName("Monospaced");
+				
+				XSSFCellStyle styleAlignRight = excel.getWorkbook().createCellStyle();
+				styleAlignRight.setFont(font);
+				styleAlignRight.setAlignment(HorizontalAlignment.RIGHT);
+				styleAlignRight.setWrapText(true);
+	        	styleAlignRight.setDataFormat(HSSFDataFormat.getBuiltinFormat("#,##0.00")); // english
+				
+				XSSFCellStyle styleAlignLeft = excel.getWorkbook().createCellStyle();
+				styleAlignLeft.setFont(font);
+				styleAlignLeft.setAlignment(HorizontalAlignment.LEFT);
+				styleAlignLeft.setWrapText(true);
+				
+		        Row row = excel.createRow();
+
+		        String prefix = "07429"; 
+		        String noVa = pojo.vabca.substring(prefix.length(), pojo.vabca.length());
+		        		
+				Cell cell = row.createCell(0);
+				cell.setCellValue(noVa);
+				cell.setCellStyle(styleAlignLeft);
+				
+				cell = row.createCell(1);
+				cell.setCellValue(pojo.nama.toString());
+				cell.setCellStyle(styleAlignLeft);
+				
+				if (pojo.nilaiBulanLalu > 0) {
+					cell = row.createCell(2);
+					cell.setCellValue(pojo.nilaiBulanLalu);
+					cell.setCellStyle(styleAlignRight);
+				} else {
+					cell = row.createCell(2);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				if (pojo.nilaiBulanIni > 0) {
+					cell = row.createCell(3);
+					cell.setCellValue(pojo.nilaiBulanIni);
+					cell.setCellStyle(styleAlignRight);
+				} else {
+					cell = row.createCell(3);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+			}			
+		}
+	}
+	
+  
+	private void setHeaderTabel() {
+
+		XSSFCellStyle styleKeterangan = excel.getWorkbook().createCellStyle();
+		XSSFCellStyle styleNilai = excel.getWorkbook().createCellStyle();
+
+		styleKeterangan.setAlignment(HorizontalAlignment.LEFT);
+		styleKeterangan.setFont(excel.getColumnHeaderFont());
+		styleKeterangan.setVerticalAlignment(VerticalAlignment.CENTER);
+		styleKeterangan.setBorderTop(BorderStyle.THIN);
+		styleKeterangan.setBorderRight(BorderStyle.THIN);
+		styleKeterangan.setBorderBottom(BorderStyle.THIN);
+		styleKeterangan.setBorderLeft(BorderStyle.THIN);
+		
+		styleNilai = (XSSFCellStyle) styleKeterangan.clone();
+		styleNilai.setAlignment(HorizontalAlignment.RIGHT);
+		
+		excel.createRow();
+		
+		excel.addCell(0, "No Virtual Account", true, true, true);
+		excel.addCell(1, "Nama Perusahaan", true, true, true);
+		excel.addCell(2, "Tagihan Bulan Lalu", true, true, true);
+		excel.addCell(3, "Tagihan Bulan Ini", true, true, true);
+    
+		// ini untuk melakukan merge
+		Integer currentRowIndex = excel.getCurrentRowIndex();
+		
+		Row row = excel.setRow(currentRowIndex);
+		Cell cell = row.getCell(0);
+		cell.setCellStyle(styleKeterangan);
+
+		cell = row.getCell(1);
+		cell.setCellStyle(styleKeterangan);
+		
+		cell = row.getCell(2);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(3);
+		cell.setCellStyle(styleNilai);
+		
+//		excel.createRow();
+		
+	}
+	
+	@Override
+	protected void footer() {
+		
+		/* tanpa footer karena untuk dilaporkan ke bca
+	    excel.addEmptyRow();
+	    
+	    Row row = excel.createRow();
+		Cell cell = row.createCell(1);
+		cell.setCellStyle(excel.getStyleAlignLeft());
+		cell.setCellValue("Dicetak oleh : " + CurrentUser.getUsername());
+		excel.setMerge(excel.getCurrentRowIndex(), excel.getCurrentRowIndex(), 1, lastCellNumber, false);
+	    
+	    row = excel.createRow();
+		cell = row.createCell(1);
+		cell.setCellStyle(excel.getStyleAlignLeft());
+		cell.setCellValue(TimeUtil.convertDateToString(TimeUtil.getSystemDateTime(), BaseConstants.DATE_FORMAT_DISPLAY_LONG));	    
+		excel.setMerge(excel.getCurrentRowIndex(), excel.getCurrentRowIndex(), 1, lastCellNumber, false);
+		*/
+	}
+
+	@Override
+	protected void validasi() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void filter() {
+		// TODO Auto-generated method stub
+		
+	}
+}

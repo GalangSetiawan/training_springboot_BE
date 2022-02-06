@@ -1,0 +1,153 @@
+package co.id.sofcograha.base.master.user.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.pojos.UserInfo;
+import co.id.sofcograha.base.master.user.repositories.EUserRepository;
+import co.id.sofcograha.base.utils.ImageUtil;
+import co.id.sofcograha.base.utils.PasswordUtil;
+import co.id.sofcograha.base.utils.pojos.PojoUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Service
+public class UserService extends BaseService {
+	
+	@Autowired
+	private EUserRepository eUserRepository;	
+	
+	public EUser findByLoginName(String loginName) {
+		return eUserRepository.findByLoginName(loginName);
+	}
+	
+	public EUser getUserInfo() {
+		return eUserRepository.getOne(CurrentUser.getUserId());
+	}
+	
+	public EUser findById(String id) {
+	  return eUserRepository.getOne(id);
+	}
+
+	@Transactional
+	public EUser saveUserProfile(UserInfo pojo) {
+		
+		// ambil entity untuk user init
+		EUser eUser = eUserRepository.getOne(CurrentUser.getUserId());
+		
+		// bila newPassword1 dan newPassword2 ada isinya dan isinya sama dan tidak sama
+		// dengan oldPassword maka, ini artinya password diganti
+		if (!PasswordUtil.isValidPassword(pojo.oldPassword, eUser.getPassword())) {
+			batchError("Password salah");
+			throwBatchError();
+		}
+		
+		if (!pojo.newPassword1.equals("") || !pojo.newPassword2.equals("")) {
+
+			if (pojo.newPassword1.equals(pojo.newPassword2)) {
+				
+				String password = PasswordUtil.hashPassword(pojo.newPassword1);
+				eUser.setPassword(password);
+				
+			} else {
+				batchError("Password baru satu sama lain tidak sama");
+				throwBatchError();
+			}
+		}
+		
+		eUser.setLoginName(pojo.loginName);
+		eUser.setUserName(pojo.userName);
+		
+		eUser.setFotoExt(pojo.fotoExt);
+		eUser.setFoto(toEntityByteArray(ImageUtil.getBase64RawData(pojo.foto)));
+		
+		eUser.setEmail(pojo.email);
+
+		// simpan
+		return eUserRepository.save(eUser);
+	}
+
+    public SearchResult<EUser> search(SearchParameter searchParameter) {
+	  return eUserRepository.search(searchParameter);
+	}
+	
+	@Transactional
+	public EUser add(EUser entity) {
+	  // persiapan/perhitungan (bila ada)
+	  
+	  // validasi-validasi (bila ada)
+	  valOnAdd(entity);
+	  
+	  EUser eUser = eUserRepository.findByBK(
+	      entity.getLoginName());
+	  if (eUser != null) {
+	    batchError("User sudah ada");
+	    throwBatchError();
+	  }
+	  
+	  String password = PasswordUtil.hashPassword(entity.getPassword());
+	  entity.setPassword(password);
+	  entity.seteCompany(entity.geteCompany());
+	  entity.setActive(true);
+	  entity.setLocked(false);
+	  
+	  // update saldo (bila ada)
+	  return eUserRepository.save(entity);
+	}
+	
+	private void valOnAdd(EUser entity) {
+		//if (!isEmailValid(entity.getLoginName())) {
+		if (!isEmailValid(entity.getEmail())) {
+			batchError("EmailFormatIsNotValid");
+			throwBatchError();
+		}
+	}
+	
+	private boolean isEmailValid(String pLoginName) {
+      String regex = "^[\\w-_\\.+]*[\\w-_\\.]\\@([\\w]+\\.)+[\\w]+[\\w]$";
+      return pLoginName.matches(regex);
+    }
+	
+//	@Transactional
+//	public EUser edit(EUser entity) {
+//	  // persiapan/perhitungan (bila ada)
+//	  
+//	  // validasi-validasi (bila ada)
+//	  EUser eUser = eUserRepository.findByBK(
+//	      entity.getLoginName());
+//	  if (eUser == null) {
+//	    errorManager.addError("User tidak ditemukan");
+//	    errorManager.throwBatchError();
+//	  }
+//	  
+//	  eUser.setUserName(entity.getUserName());
+//	      
+//	  // update saldo (bila ada)
+//	  return eUserRepository.save(eUser);
+//	}
+	
+    @Transactional
+    public void delete (String idUser) {
+      // persiapan/perhitungan (bila ada)
+      // validasi-validasi (bila ada)
+      // update saldo (bila ada)
+      EUser eUser = eUserRepository.getOne(idUser);
+      eUserRepository.delete(eUser);
+    }
+
+	protected Byte[] toEntityByteArray(String val) {
+		return val == null ? null : PojoUtil.string2Base64ByteArray(val);
+	}
+
+	public EUser get(String id) {
+		return eUserRepository.getOne(id);
+	}
+	
+	public EUser find(String id) {
+		return eUserRepository.getOne(id);
+	}
+}

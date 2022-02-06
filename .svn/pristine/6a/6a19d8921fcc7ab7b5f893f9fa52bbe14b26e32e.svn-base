@@ -1,0 +1,133 @@
+contoh pemanggilan : select public.automatic_number ('GLT001', '20210125');
+
+drop function public.automatic_number(character varying, character varying);
+
+CREATE OR REPLACE FUNCTION public.automatic_number(
+	character varying,
+	character varying
+)
+    RETURNS character varying
+    LANGUAGE plpgsql
+AS $function$
+DECLARE
+	pJenisTransaksi alias for $1;
+	pTanggal alias for $2;
+	
+    vAm90Id          character varying;
+    vAm90CodeDisplay character varying;
+    
+    vKomponen_list "am59"[];
+    
+    vTrxNumber       character varying;
+    vCounterWidth    numeric;
+    vCounterValue    numeric;
+    vCounterText     character varying;
+   
+    vKey             character varying;
+    
+BEGIN
+
+	SELECT	id_am90, kode_display
+	INTO	vAm90Id, vAm90CodeDisplay
+	FROM	public.am90
+	WHERE	kode = pJenisTransaksi;
+    
+    -- bila jenis transaksi tidak ada di AM59, maka ambil default nomor otomatis dari default (AM59.id_am90 = '10000')
+    if exists(select 1 from am59 where id_am90 = vAm90Id) then
+      
+       -- ambil daftar komponen nomor otomatis dari tabel setting nomor otomatis untuk id transaksi ybs
+       SELECT array_agg(tbl order by tbl.nourut asc) INTO vKomponen_list FROM am59 tbl where tbl.id_am90 = vAm90Id;
+    
+    else
+
+       -- ambil daftar komponen nomor otomatis dari tabel setting nomor otomatis default
+       SELECT array_agg(tbl order by tbl.nourut asc) INTO vKomponen_list FROM am59 tbl where tbl.id_am90 = '10000';
+    
+    end if;
+    
+    -- generate template nomor otomatis untuk dicari di admin counter
+    vKey = '';
+    FOR i in 1 .. array_upper(vKomponen_list, 1)
+    loop
+        if vKomponen_list[i].jenis = '1' then
+            -- tipe kode transaksi
+            vKey = vKey || trim(vAm90CodeDisplay) || trim(vKomponen_list[i].konektor);
+        elsif vKomponen_list[i].jenis = '2' then
+            -- tipe tahun
+            vKey = vKey || SubStr(Trim(pTanggal), 1, 4) || trim(vKomponen_list[i].konektor);
+        elsif vKomponen_list[i].jenis = '3' then
+            -- tipe bulan
+            vKey = vKey || SubStr(Trim(pTanggal), 5, 2) || trim(vKomponen_list[i].konektor);
+        elsif vKomponen_list[i].jenis = '4' then
+            -- tipe konstanta
+            vKey = vKey || Trim(vKomponen_list[i].konstanta) || trim(vKomponen_list[i].konektor);
+        elsif vKomponen_list[i].jenis = '5' then
+            -- tipe counter
+            vCounterWidth = vKomponen_list[i].width;
+        end if;
+    END LOOP;
+
+    -- ambil counter nomor otomatis terakhir dari admin nomor otomatis
+    select last_count
+    into vCounterValue
+    from am60
+    where key = vKey;
+   
+    if vCounterValue is null then
+       -- tambah data di admin counter nomor otomatis
+       vCounterValue = 1;
+       Insert Into Am60 (id_am60, key, last_count, version)
+       Values (public.sys_guid(), vKey, vCounterValue, 0);
+    else
+       -- update counter menjadi + 1
+       vCounterValue = vCounterValue + 1;
+       update Am60
+       set last_count = vCounterValue
+       where key = vKey;
+    end if;
+   
+    -- generate string counter dengan 0 di depannya
+    vCounterText = '0000000000' || trim(cast(vCounterValue as text));
+    vCounterText = substring(vCounterText from (length(vCounterText) - vCounterWidth + 1)::integer for vCounterWidth::integer);
+    
+    raise notice '%-%', vCounterValue, vCounterText;
+   
+    -- generate nomor transaksi yang sebenarnya
+    vTrxNumber = '';
+    FOR i in 1 .. array_upper(vKomponen_list, 1)
+    loop
+        if vKomponen_list[i].jenis = '1' then
+            -- tipe kode transaksi
+            vTrxNumber = vTrxNumber || trim(vAm90CodeDisplay) || trim(vKomponen_list[i].konektor);
+        elsif vKomponen_list[i].jenis = '2' then
+            -- tipe tahun
+            vTrxNumber = vTrxNumber || SubStr(Trim(pTanggal), 1, 4) || trim(vKomponen_list[i].konektor);
+        elsif vKomponen_list[i].jenis = '3' then
+            -- tipe bulan
+            vTrxNumber = vTrxNumber || SubStr(Trim(pTanggal), 5, 2) || trim(vKomponen_list[i].konektor);
+        elsif vKomponen_list[i].jenis = '4' then
+            -- tipe konstanta
+            vTrxNumber = vTrxNumber || Trim(vKomponen_list[i].konstanta) || trim(vKomponen_list[i].konektor);
+            --vKomponen_list[i].konstanta = Trim(vKomponen_list[i].konstanta) || trim(vKomponen_list[i].konektor);
+        elsif vKomponen_list[i].jenis = '5' then
+            -- tipe counter
+            vTrxNumber = vTrxNumber || vCounterText || vKomponen_list[i].konektor;
+        end if;
+        
+    END LOOP;
+    
+    raise notice '%', vTrxNumber;
+
+    -- loop untuk pemeriksaan ke tabel log nomor otomatis tidak diperlukan karena proses yang memanggil
+    -- function ini selalu melalui queue jadi hanya ada satu proses dalam satu waktu
+    --FOR i in 1 .. 10
+    --loop
+    --   if i = 5 then
+    --      exit;
+    --   end if;
+    --end loop;
+   
+    RETURN vTrxNumber;
+END;
+$function$
+;

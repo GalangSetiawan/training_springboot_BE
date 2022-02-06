@@ -1,0 +1,80 @@
+package co.id.sofcograha.base.authorization;
+
+import java.lang.reflect.Method;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.web.BasicErrorController;
+import org.springframework.stereotype.Component;
+import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
+
+import co.id.sofcograha.base.authorization.annotation.AuthAdd;
+import co.id.sofcograha.base.authorization.annotation.AuthCancelConfirm;
+import co.id.sofcograha.base.authorization.annotation.AuthConfirm;
+import co.id.sofcograha.base.authorization.annotation.AuthDelete;
+import co.id.sofcograha.base.authorization.annotation.AuthEdit;
+import co.id.sofcograha.base.authorization.annotation.AuthRead;
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.enums.AuthType;
+import co.id.sofcograha.base.exceptions.AuthorizationException;
+
+//import id.co.sofcograha.gajiidapi.ExcludeFromTests;
+
+//@ExcludeFromTests
+@Component
+public class AuthorizationInterceptor extends HandlerInterceptorAdapter {
+
+	@Autowired
+	private AuthorizationService authorizationService;
+	
+	@Override
+	public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+			throws Exception {
+		
+		boolean defaultResult = super.preHandle(request, response, handler);
+		if (!(handler instanceof HandlerMethod)) {
+			throw new AuthorizationException("No Authorization!");
+		}
+		Method method = ((HandlerMethod) handler).getMethod();
+		if (method.isAnnotationPresent(NoAuth.class)) {
+			return defaultResult;
+		} else if (method.isAnnotationPresent(AuthRead.class)) {
+			String functionCode = method.getAnnotation(AuthRead.class).value();			
+			authorizationService.validate(functionCode, AuthType.Read);
+			
+			return defaultResult;
+		} else if (method.isAnnotationPresent(AuthAdd.class)) {
+			String functionCode = method.getAnnotation(AuthAdd.class).value();
+			authorizationService.validate(functionCode, AuthType.Add);
+			
+			return defaultResult;
+		} else if (method.isAnnotationPresent(AuthEdit.class)) {
+			String functionCode = method.getAnnotation(AuthEdit.class).value();
+			authorizationService.validate(functionCode, AuthType.Edit);
+			
+			return defaultResult;
+		} else if (method.isAnnotationPresent(AuthDelete.class)) {
+			String functionCode = method.getAnnotation(AuthDelete.class).value();
+			authorizationService.validate(functionCode, AuthType.Delete);
+			
+			return defaultResult;
+		} else if (method.isAnnotationPresent(AuthConfirm.class)) {
+			String functionCode = method.getAnnotation(AuthConfirm.class).value();
+			authorizationService.validate(functionCode, AuthType.Confirm);
+			
+			return defaultResult;
+		} else if (method.isAnnotationPresent(AuthCancelConfirm.class)) {
+			String functionCode = method.getAnnotation(AuthCancelConfirm.class).value();
+			authorizationService.validate(functionCode, AuthType.CancelConfirm);
+			
+			return defaultResult;
+		} else if (BasicErrorController.class.equals(method.getDeclaringClass())) {
+			return defaultResult;
+		} else {
+			throw new AuthorizationException("No Authorization!");
+		}
+	}
+}

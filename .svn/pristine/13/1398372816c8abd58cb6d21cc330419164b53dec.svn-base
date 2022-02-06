@@ -1,0 +1,49 @@
+package co.id.sofcograha.domain.invoicing.proses.hitung.controllers;
+
+import java.text.ParseException;
+import java.util.Date;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifComplete;
+import co.id.sofcograha.domain.invoicing.proses.hitung.pojos.HitungTarifModel;
+import co.id.sofcograha.domain.invoicing.proses.hitung.services.HitungService;
+import co.id.sofcograha.domain.invoicing.proses.upload.services.CompositeUploadService;
+
+@RestController
+@RequestMapping("/api/hitung")
+public class HitungController {
+
+	public static final Logger logger = LoggerFactory.getLogger(HitungController.class);
+
+	@Autowired HitungService hitungService;
+	
+	@NoAuth
+	@GetMapping(value = "/tarif-initial")
+	public ApiResponse get(@RequestParam String idMi010,
+			               @RequestParam String idMi001,
+			               @RequestParam Integer jumkar,
+			               @RequestParam String tanggal) {
+		
+		Date datTanggal = TimeUtil.convertIso8601ToDate(tanggal);
+		//String strTanggal = TimeUtil.convertDateToYyyyMmDd(tanggal);
+		
+		HitungTarifModel data = hitungService.hitungTarifInitialPerCustomerProduk(idMi010, idMi001, jumkar, TimeUtil.convertDateToYyyyMmDd(datTanggal));
+	    
+	    return ApiResponse.data("item", data);
+	}
+}

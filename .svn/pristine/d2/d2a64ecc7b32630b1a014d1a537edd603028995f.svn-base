@@ -1,0 +1,234 @@
+package co.id.sofcograha.domain.invoicing.masters.skemaharga.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.entities.ESkemaHargaHeader;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.pojos.SkemaHargaHeader;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.repositories.ESkemaHargaHeaderRepository;
+
+@Service("skemaHargaHeaderService")
+public class SkemaHargaHeaderService extends BaseService {
+	
+	@Autowired private ESkemaHargaHeaderRepository repo;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public SkemaHargaHeader findByBk(String nama) {
+		return SkemaHargaHeader.fromEntity(repo.findByBK(nama));
+	}
+	
+	public SearchResult<ESkemaHargaHeader> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public ESkemaHargaHeader add(ESkemaHargaHeader entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		ESkemaHargaHeader addedEntity = repo.add(entity);
+		postAdd(addedEntity);
+			
+		throwBatchError();
+		return addedEntity;			
+		
+	}
+	
+	@Transactional
+	public ESkemaHargaHeader edit(ESkemaHargaHeader entity) {
+				
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		ESkemaHargaHeader toBeSaved = repo.getOne(entity.getId());
+		ESkemaHargaHeader oldEntity = (ESkemaHargaHeader) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, ESkemaHargaHeader.class.getSimpleName());
+		throwBatchError();
+		
+		ESkemaHargaHeader toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		throwBatchError();
+		
+	}
+	
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ESkemaHargaHeader dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(ESkemaHargaHeader entity) {
+		if (entity.getFlakt() == null) entity.setFlakt(BaseConstants.YA);
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(ESkemaHargaHeader newValues, ESkemaHargaHeader toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setNama(newValues.getNama());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+			toBeSaved.setFlakt(newValues.getFlakt());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(ESkemaHargaHeader entity) {
+		valRequiredString(entity.getNama(), "skemaharga.header.nama.required");
+		valRequiredString(entity.getKeterangan(), "skemaharga.header.keterangan.required");
+	}
+	
+	protected void manageMinMaxValues(ESkemaHargaHeader entity) {
+		valMaxString(entity.getNama(), 200, "skemaharga.header.nama.max.length");
+		valMaxString(entity.getKeterangan(), 400, "skemaharga.header.keterangan.max.length");
+	}
+
+	protected void manageReferences(ESkemaHargaHeader entity) {
+		
+	}
+
+	protected void valDelete(ESkemaHargaHeader toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(ESkemaHargaHeader addedEntity) {
+		ESkemaHargaHeader entityFromDb = repo.findByBK(addedEntity.getNama());
+		if (entityFromDb != null) {
+			throw new BusinessException("skemaharga.header.bk", addedEntity.getNama());
+		}
+	}
+
+	protected void valUniquenessOnEdit(ESkemaHargaHeader editedEntity) {
+		ESkemaHargaHeader entityFromDb = repo.findByBK(editedEntity.getNama());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("skemaharga.header.bk", editedEntity.getNama());
+			}
+		}
+	}
+	
+	protected void preAdd(ESkemaHargaHeader entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(ESkemaHargaHeader entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(ESkemaHargaHeader toBeSaved, ESkemaHargaHeader oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(ESkemaHargaHeader toBeSaved, ESkemaHargaHeader oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(ESkemaHargaHeader entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(ESkemaHargaHeader entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+	
+	public ESkemaHargaHeader get(String id) {
+		return repo.getOne(id);
+	}
+	
+}

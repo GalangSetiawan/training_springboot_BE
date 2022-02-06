@@ -1,0 +1,121 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.invoiceManual.controllers;
+
+import java.text.ParseException;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.kelola.invoice.services.KelolaInvoiceExportPdfService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.invoiceManual.pojos.InvoiceManualComplete;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.invoiceManual.services.InvoiceManualCompleteService;
+
+@RestController
+@RequestMapping("/api/invoice-manual")
+public class InvoiceManualController {
+	
+	public static final Logger logger = LoggerFactory.getLogger(InvoiceManualController.class);
+	
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	@Autowired private InvoiceManualCompleteService invoiceManualCompleteService;
+	// Cetak invoice sekarang dijadikan satu di kelola invoice
+	//@Autowired private InvoiceManualExportPdfService invoiceManualExportPdfService;
+	@Autowired private KelolaInvoiceExportPdfService kelolaInvoiceExportPdfService;
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<EInvoiceHeader> searchResult = invoiceHeaderService.search(SearchParameter.generate(searchParameter, 
+				InvoiceHeader.getFieldMappings()));
+		
+		return ApiResponse.dataWithPaging("items", 
+				InvoiceHeader.fromEntities(searchResult.getResult()), 
+				searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@GetMapping(value = "/belum-lunas")
+	public ApiResponse belumLunas(@RequestParam String idMi010) {
+		
+		return ApiResponse.data("items", 
+				InvoiceHeader.fromEntities(invoiceHeaderService.getInvoiceBelumLunas(idMi010)));
+	}
+	
+	@NoAuth
+	@GetMapping(value = "/belum-lunas-nomor")
+	public ApiResponse belumLunasByNomor(@RequestParam String idMi010, @RequestParam String nomor) {
+		
+		return ApiResponse.data("items", 
+				InvoiceHeader.fromEntities(invoiceHeaderService.getInvoiceBelumLunasByNomor(idMi010, nomor)));
+	}
+	
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String nomor) throws JsonProcessingException, ParseException {
+		InvoiceManualComplete data = invoiceManualCompleteService.findByBk(nomor);
+	    
+	    return ApiResponse.data("item", data);
+	}
+	
+	//@AuthAdd("TRX_PP")
+	@NoAuth
+	@PostMapping
+	public ApiResponse add(@RequestBody InvoiceManualComplete pojo) {
+
+		
+		EInvoiceHeader header = invoiceManualCompleteService.add(pojo, BaseConstants.JENIS_TRX_INVOICE_MANUAL);
+		
+		return ApiResponse.data("item", InvoiceManualComplete.setFromEntity(header));
+	}
+	
+	//@AuthEdit("TRX_PP")
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody InvoiceManualComplete pojo) {
+		
+		EInvoiceHeader header = invoiceManualCompleteService.edit(pojo);
+		
+		return ApiResponse.data("item", InvoiceManualComplete.setFromEntity(header));
+	}
+
+	//@AuthDelete("TRX_PP")
+	@NoAuth
+	@DeleteMapping
+	public ApiResponse delete(@RequestParam String id, @RequestParam(required = false) Long version) {
+		
+		invoiceManualCompleteService.delete(id, version);
+		
+		return ApiResponse.ok();
+	}
+	
+	@NoAuth
+    @GetMapping("/pdf")
+    public ApiResponse createAndSendPdf(@RequestParam String nomor) throws ParseException {
+		
+	    //Base64StringEncodedPojo result = invoiceManualExportPdfService.pdfReport(nomor);
+	    Base64StringEncodedPojo result = kelolaInvoiceExportPdfService.pdfReport(nomor);
+	    
+	    return ApiResponse.data("item", result);		
+    }
+}

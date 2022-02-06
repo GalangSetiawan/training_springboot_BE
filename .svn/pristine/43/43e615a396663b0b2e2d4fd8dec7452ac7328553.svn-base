@@ -1,0 +1,12 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.pojos;
+
+import java.io.Serializable;
+
+public class UserPassword implements Serializable {
+
+	private static final long serialVersionUID = 901052310247815628L;
+	
+	public String username;
+	public String password;
+    
+}

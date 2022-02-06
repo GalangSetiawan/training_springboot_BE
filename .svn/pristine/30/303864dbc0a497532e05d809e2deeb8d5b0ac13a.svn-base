@@ -1,0 +1,408 @@
+drop function public.spRekapCustomerPerTahun(REFCURSOR, character varying, character varying, character varying);
+
+create or replace function public.spRekapCustomerPerTahun(
+    REFCURSOR,
+	character varying,
+	character varying,
+	character varying)
+	
+RETURNS REFCURSOR
+	language plpgsql
+as $function$
+
+declare
+    PHasil ALIAS FOR $1;
+	pProsesId alias for $2;
+	pTahun alias for $3;
+	pIdMi001 alias for $4;
+
+	VStmt      VARCHAR (100000);
+	vTanggal   VARCHAR(8);
+	vTahunLalu VARCHAR(4); 
+    frec       record;
+    vNilai     numeric;
+	
+begin
+
+    vTanggal = pTahun || '01' || '01';
+    
+    vTahunLalu = trim(to_char(to_number(pTahun, '9999') - 1, '9999'));
+    
+    -- rekap dari saldo live untuk :
+    -- - customer-customer yang sedang live
+    -- - customer-customer yang sedang hold
+    -- - customer-customer yang berhenti di tahun ini
+    insert into rekap_customer_tahun_tmp (process_id, id_mi010,      nama,        tglive,        tgstop,
+                                          status,      
+                                          siklus,        
+                                          tipe,
+                                          jnstgh,
+                                          diskon,     bulan_renewal, last_jumkar, default_nilai, januari,
+                                          pebruari,   maret,         april,       mei,           juni,
+                                          juli,       agustus,       september,   oktober,       november,
+                                          desember)
+    select pProsesId, a.id_mi010, d.nama, a.tglive, a.tgstop,
+          case 
+             when a.tgstop is not null then 'END'
+             when a.tgstop is null and a.tghold is not null then 'HOLD'
+             when a.tgstop is null and a.tghold is null then 'LIVE'
+          end as status,
+          case 
+             when b.jumsiklus = 1 and b.satsiklus = 'BULAN' then 'Bulanan'
+             when b.jumsiklus = 1 and b.satsiklus = 'TAHUN' then 'Tahunan'
+             when b.jumsiklus > 1 and b.satsiklus = 'BULAN' then b.jumsiklus || ' ' || 'Bulanan'
+             when b.jumsiklus > 1 and b.satsiklus = 'TAHUN' then b.jumsiklus || ' ' || 'Tahunan'
+          end as siklus,
+          c.rectxt,
+          case 
+             when b.jnstgh = 'PRA' then 'Pra Bayar'
+             when b.jnstgh = 'PASCA' then 'Pasca Bayar'
+          end as jnstgh,
+          '', a.thpro||a.blpro||'01', b.adjkary, 0, 0,
+          0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0,
+          0          
+    from si004 a
+    left join mi011 b on b.id_mi010 = a.id_mi010 and b.id_mi001 = a.id_mi001
+    left join public.am40 c on c.rectyp = 'TIPETRF' and c.reccode = b.tipe 
+    left join mi010 d on d.id_mi010 = b.id_mi010 
+    where (a.tgstop is null or (a.tgstop is not null and substring(a.tgstop, 1, 4) = pTahun)) and
+          a.id_mi001 = pIdMi001;
+
+    -- siapkan penampung rekap diskon
+    insert into rekap_diskon_customer_tmp (process_id, id_mi010, reg_disc, grup_disc, spc_disc)
+    select pProsesId, id_mi010, '', '', ''
+    from si004 a
+    where a.tgstop is null or (a.tgstop is not null and substring(a.tgstop, 1, 4) = pTahun) and
+          a.id_mi001 = pIdMi001;    
+         
+   -- rekap diskon untuk PCTDIS (hanya prosen)
+   update rekap_diskon_customer_tmp
+   set reg_disc = rekap_diskon_customer_tmp.reg_disc || a.reg_disc
+   from (select
+            f.id_mi010,
+            STRING_AGG (
+	           a.pctdisc ||
+	              '% ' || 
+	              case 
+	                  when a.tglstop is null and a.jumdur = 1 and a.satdur = 'BULAN' then 'tiap' 
+	                  else a.jumdur::varchar
+	              end ||
+	              ' - ' || 
+	              case when a.satdur = 'BULAN' then 'Bulan' when a.satdur = 'TAHUN' then 'Tahun' end,
+               ', '
+               ORDER BY
+               a.nourut
+            ) reg_disc
+         from mi011 f
+         inner join mi012 a USING (id_mi011)
+         where a.jnstrf = 'PCTDIS' and f.id_mi001 = pIdMi001 and
+               ((vTanggal between a.tglstart and a.tglstop) or (vTanggal >= a.tglstart and a.tglstop is null))
+         group by f.id_mi010) a
+   where rekap_diskon_customer_tmp.process_id = pProsesId And 
+         rekap_diskon_customer_tmp.id_mi010 = a.id_mi010;
+
+   -- rekap diskon untuk GRPDIS (hanya prosen)
+   update rekap_diskon_customer_tmp
+   set grup_disc = rekap_diskon_customer_tmp.grup_disc || a.grup_disc
+   from (select
+            f.id_mi010,
+            STRING_AGG (
+	        c.pctdisc || '% ' || c.jumdur_pct || ' - ' || case when c.satdur_pct = 'BULAN' then 'Bulan' when c.satdur_pct = 'TAHUN' then 'Tahun' end,
+            ', '
+            ORDER BY
+            c.nourut
+            ) grup_disc
+         from mi011 f
+         inner join mi012 a on a.id_mi011 = f.id_mi011 
+         inner join mi004 b on b.id_mi004 = a.id_mi004 
+         inner join mi005 c on c.id_mi004 = a.id_mi004 
+         where a.jnstrf = 'GRPDIS' and f.id_mi001 = pIdMi001 and
+               ((vTanggal between a.tglstart and a.tglstop) or (vTanggal >= a.tglstart and a.tglstop is null))
+         group by f.id_mi010) a
+   where rekap_diskon_customer_tmp.process_id = pProsesId And 
+         rekap_diskon_customer_tmp.id_mi010 = a.id_mi010;
+
+   -- rekap diskon untuk SPCDIS (hanya prosen)
+   update rekap_diskon_customer_tmp
+   set spc_disc = rekap_diskon_customer_tmp.spc_disc || a.spc_disc
+   from (select a.id_mi010, (b.pctdisc || '% ' || b.jumdur || ' - ' || 
+                             case when b.satdur = 'BULAN' then 'Bulan' when b.satdur = 'TAHUN' then 'Tahun' end) spc_disc
+         from mi009 a
+         left join mi008
+         b on b.id_mi008 = a.id_mi008 
+         where (('20210101' between b.tglstart and b.tglstop) or ('20210101' >= b.tglstart and b.tglstop is null))) a
+   where rekap_diskon_customer_tmp.process_id = pProsesId And 
+         rekap_diskon_customer_tmp.id_mi010 = a.id_mi010;
+   
+   -- update kolom diskon dengan rekap dari :
+   -- - item-item diskon yang masih berlaku di tahun ini (untuk tipe PCTDIS)
+   -- - diskon dari grup diskon yang masih berlaku
+   -- - diskon khusus yang masih berlaku
+   update rekap_customer_tahun_tmp
+   set diskon = rekap_diskon_customer_tmp.reg_disc ||
+                case when rekap_diskon_customer_tmp.reg_disc <> '' and rekap_diskon_customer_tmp.grup_disc <> '' then chr(10) || rekap_diskon_customer_tmp.grup_disc
+                     when rekap_diskon_customer_tmp.reg_disc = '' and rekap_diskon_customer_tmp.grup_disc <> '' then  rekap_diskon_customer_tmp.reg_disc
+                     else ''
+                end ||
+                case when rekap_diskon_customer_tmp.grup_disc <> '' and rekap_diskon_customer_tmp.spc_disc <> '' then chr(10) || rekap_diskon_customer_tmp.spc_disc
+                     when rekap_diskon_customer_tmp.grup_disc = '' and rekap_diskon_customer_tmp.grup_disc <> '' then  rekap_diskon_customer_tmp.grup_disc
+                     else ''
+                end
+   from rekap_diskon_customer_tmp
+   where rekap_diskon_customer_tmp.process_id = pProsesId and rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_diskon_customer_tmp.id_mi010 = rekap_customer_tahun_tmp.id_mi010;
+
+   -- bulan renewal di laporan ini adalah bulan tagih terakhir berikutnya
+   -- jadi misal di tahun laporan ini tagihan yang sudah dilakukan terakhir misal di bulan Maret, 
+   -- maka bulan renewal (bulan tagihan berikutnya) adalah April
+   -- jadi bulan renewal ini diisi dari admin renewal terakhir (max) milik customer ybs
+   -- SALAH INI ADALAH BULAN TERAKHIR PROSES
+   --update rekap_customer_tahun_tmp
+   --set bulan_renewal = x.tahun||x.bulan||'01'
+   --from (select a.id_mi010, max(tahun) tahun, max(bulan) bulan from ai003 a
+   --      where a.id_mi001 = pIdMi001 and a.flproi = 'T'
+   --      group by a.id_mi010 ) x
+   --where rekap_customer_tahun_tmp.process_id = pProsesId and
+   --      rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+   
+   -- untuk pra bayar yang periodik, ambil dari bulan renewal yang paling besar yg < dari tahun bulan yg sudah proses
+   update rekap_customer_tahun_tmp
+   set bulan_renewal = null
+   from (select a.id_mi010 from mi011 a
+         where a.id_mi001 = pIdMi001 and 
+               (a.satsiklus= 'TAHUN' or (a.satsiklus= 'BULAN' and a.jumsiklus > 1))) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;      
+   
+   update rekap_customer_tahun_tmp
+   set bulan_renewal = x.tahun||x.bulan||'01'
+   from (select a.id_mi010, max(tahun) tahun, max(bulan) bulan from ai003 a
+         left join mi011 b on b.id_mi010 = a.id_mi010 and b.id_mi001 = a.id_mi001
+         left join si004 c on c.id_mi010 = a.id_mi010 and c.id_mi001 = a.id_mi001
+         where a.id_mi001 = pIdMi001 and a.flproi = 'T' and
+               (b.satsiklus= 'TAHUN' or (b.satsiklus= 'BULAN' and b.jumsiklus > 1)) and
+               a.tahun||a.bulan <= c.thpro||c.blpro
+         group by a.id_mi010 ) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;      
+
+   -- untuk pasca bayar, jumlah karywan diambil dari revjkbullalu + revjnkbullalu         
+   update rekap_customer_tahun_tmp
+   set last_jumkar = rekap_customer_tahun_tmp.last_jumkar + x.revjkbullalu + x.revjnkbullalu
+   from (select d.id_mi010, b.tahun, b.bulan, 
+                sum(a.jkbulini) jkbulini, sum(a.revjkbullalu) revjkbullalu, sum(a.seljkbullalu) seljkbullalu, 
+                sum(a.jnkbulini) jnkbulini, sum(a.revjnkbullalu) revjnkbullalu, sum(a.seljnkbullalu) seljnkbullalu
+         from ai002 a
+         left join ai001 b on b.id_ai001 = a.id_ai001 
+         left join mi013 c on c.id_mi013 = b.id_mi013 
+         left join mi011 d on d.id_mi011 = c.id_mi011 
+         left join mi010 e on e.id_mi010 = d.id_mi010 
+         where b.tahun = pTahun and
+               d.jnstgh = 'PASCA' and
+               d.id_mi010||b.tahun||b.bulan in (select d.id_mi010||max(x.tahun)||max(x.bulan) from ai001 x
+                                                left join mi013 c on c.id_mi013 = x.id_mi013  
+                                                left join mi011 d on d.id_mi011 = c.id_mi011 
+                                                where x.tahun = pTahun and d.id_mi001 = pIdMi001
+                                                group by d.id_mi010)
+         group by e.nama, d.id_mi010, b.tahun, b.bulan) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+   
+   -- untuk pra bayar, jumlah karyawan diambil dari jkbulini + revjnkbullalu
+   update rekap_customer_tahun_tmp
+   set last_jumkar = rekap_customer_tahun_tmp.last_jumkar + x.jkbulini + x.revjnkbullalu
+   from (select d.id_mi010, b.tahun, b.bulan, 
+                sum(a.jkbulini) jkbulini, sum(a.revjkbullalu) revjkbullalu, sum(a.seljkbullalu) seljkbullalu, 
+                sum(a.jnkbulini) jnkbulini, sum(a.revjnkbullalu) revjnkbullalu, sum(a.seljnkbullalu) seljnkbullalu
+         from ai002 a
+         left join ai001 b on b.id_ai001 = a.id_ai001 
+         left join mi013 c on c.id_mi013 = b.id_mi013 
+         left join mi011 d on d.id_mi011 = c.id_mi011 
+         left join mi010 e on e.id_mi010 = d.id_mi010 
+         where b.tahun = pTahun and
+               d.jnstgh = 'PRA' and
+               d.id_mi010||b.tahun||b.bulan in (select d.id_mi010||max(x.tahun)||max(x.bulan) from ai001 x
+                                                left join mi013 c on c.id_mi013 = x.id_mi013  
+                                                left join mi011 d on d.id_mi011 = c.id_mi011 
+                                                where x.tahun = pTahun and d.id_mi001 = pIdMi001
+                                                group by d.id_mi010)
+         group by e.nama, d.id_mi010, b.tahun, b.bulan) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+         
+   -- untuk isi kolom default_nilai, harus buat sp hitung tarif (hanya tarif utama tanpa adjustment)
+   for frec in select *
+               from rekap_customer_tahun_tmp
+               where process_id = pProsesId
+    
+   loop 
+      raise notice '%', frec.id_mi010;
+      
+      vNilai = public.spHitungTarif(frec.id_mi010, pIdMi001, frec.bulan_renewal, frec.last_jumkar);
+
+      -- update kolom default_nilai
+      update rekap_customer_tahun_tmp
+      set default_nilai = vNilai
+      where process_id = pProsesId and id_mi010 = frec.id_mi010;
+      
+   end loop;   
+   
+   -- kolom bulan januari diambil dari data invoice (ti001), nilai dpp
+   -- untuk tanggal transaksi di tahun yang dimaksud dan di bulan januari
+   -- lakukan seperti di bawah ini sampai dengan bulan desember
+   update rekap_customer_tahun_tmp
+   set januari = x.dpp
+   from (select a.id_mi010, sum(a.dpp) dpp from ti001 a
+         left join public.am90 b on b.id_am90 = a.id_am90 
+         where substring(a.tgtrn, 1, 6) = pTahun||'01' and a.id_mi001 = pIdMi001 and
+               (b.kode = 'INV001' or b.kode = 'INV005')
+         group by a.id_mi010) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+         
+   update rekap_customer_tahun_tmp
+   set pebruari = x.dpp
+   from (select a.id_mi010, sum(a.dpp) dpp from ti001 a
+         left join public.am90 b on b.id_am90 = a.id_am90 
+         where substring(a.tgtrn, 1, 6) = pTahun||'02' and a.id_mi001 = pIdMi001 and
+               (b.kode = 'INV001' or b.kode = 'INV005')
+         group by a.id_mi010) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+
+   update rekap_customer_tahun_tmp
+   set maret = x.dpp
+   from (select a.id_mi010, sum(a.dpp) dpp from ti001 a
+         left join public.am90 b on b.id_am90 = a.id_am90 
+         where substring(a.tgtrn, 1, 6) = pTahun||'03' and a.id_mi001 = pIdMi001 and
+               (b.kode = 'INV001' or b.kode = 'INV005')
+         group by a.id_mi010) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+
+   update rekap_customer_tahun_tmp
+   set april = x.dpp
+   from (select a.id_mi010, sum(a.dpp) dpp from ti001 a
+         left join public.am90 b on b.id_am90 = a.id_am90 
+         where substring(a.tgtrn, 1, 6) = pTahun||'04' and a.id_mi001 = pIdMi001 and
+               (b.kode = 'INV001' or b.kode = 'INV005')
+         group by a.id_mi010) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+
+   update rekap_customer_tahun_tmp
+   set mei = x.dpp
+   from (select a.id_mi010, sum(a.dpp) dpp from ti001 a
+         left join public.am90 b on b.id_am90 = a.id_am90 
+         where substring(a.tgtrn, 1, 6) = pTahun||'05' and a.id_mi001 = pIdMi001 and
+               (b.kode = 'INV001' or b.kode = 'INV005')
+         group by a.id_mi010) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+
+   update rekap_customer_tahun_tmp
+   set juni = x.dpp
+   from (select a.id_mi010, sum(a.dpp) dpp from ti001 a
+         left join public.am90 b on b.id_am90 = a.id_am90 
+         where substring(a.tgtrn, 1, 6) = pTahun||'06' and a.id_mi001 = pIdMi001 and
+               (b.kode = 'INV001' or b.kode = 'INV005')
+         group by a.id_mi010) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+
+   update rekap_customer_tahun_tmp
+   set juli = x.dpp
+   from (select a.id_mi010, sum(a.dpp) dpp from ti001 a
+         left join public.am90 b on b.id_am90 = a.id_am90 
+         where substring(a.tgtrn, 1, 6) = pTahun||'07' and a.id_mi001 = pIdMi001 and
+               (b.kode = 'INV001' or b.kode = 'INV005')
+         group by a.id_mi010) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+
+   update rekap_customer_tahun_tmp
+   set agustus = x.dpp
+   from (select a.id_mi010, sum(a.dpp) dpp from ti001 a
+         left join public.am90 b on b.id_am90 = a.id_am90 
+         where substring(a.tgtrn, 1, 6) = pTahun||'08' and a.id_mi001 = pIdMi001 and
+               (b.kode = 'INV001' or b.kode = 'INV005')
+         group by a.id_mi010) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+
+   update rekap_customer_tahun_tmp
+   set september = x.dpp
+   from (select a.id_mi010, sum(a.dpp) dpp from ti001 a
+         left join public.am90 b on b.id_am90 = a.id_am90 
+         where substring(a.tgtrn, 1, 6) = pTahun||'09' and a.id_mi001 = pIdMi001 and
+               (b.kode = 'INV001' or b.kode = 'INV005')
+         group by a.id_mi010) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+
+   update rekap_customer_tahun_tmp
+   set oktober = x.dpp
+   from (select a.id_mi010, sum(a.dpp) dpp from ti001 a
+         left join public.am90 b on b.id_am90 = a.id_am90 
+         where substring(a.tgtrn, 1, 6) = pTahun||'10' and a.id_mi001 = pIdMi001 and
+               (b.kode = 'INV001' or b.kode = 'INV005')
+         group by a.id_mi010) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+
+   update rekap_customer_tahun_tmp
+   set november = x.dpp
+   from (select a.id_mi010, sum(a.dpp) dpp from ti001 a
+         left join public.am90 b on b.id_am90 = a.id_am90 
+         where substring(a.tgtrn, 1, 6) = pTahun||'11' and a.id_mi001 = pIdMi001 and
+               (b.kode = 'INV001' or b.kode = 'INV005')
+         group by a.id_mi010) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;   
+         
+   update rekap_customer_tahun_tmp
+   set desember = x.dpp
+   from (select a.id_mi010, sum(a.dpp) dpp from ti001 a
+         left join public.am90 b on b.id_am90 = a.id_am90 
+         where substring(a.tgtrn, 1, 6) = pTahun||'12' and a.id_mi001 = pIdMi001 and
+               (b.kode = 'INV001' or b.kode = 'INV005')
+         group by a.id_mi010) x
+   where rekap_customer_tahun_tmp.process_id = pProsesId and
+         rekap_customer_tahun_tmp.id_mi010 = x.id_mi010;
+         
+   -- kosongkan isi bulan_renewal, last_jumkar dan default_nilai
+   -- bila customer berstatus END
+   update rekap_customer_tahun_tmp
+   set bulan_renewal = null, last_jumkar = 0, default_nilai = 0
+   where process_id = pProsesId and (trim(status) = 'END' or trim(status) = 'HOLD');
+         
+   -- kosongkan isi default_nilai
+   -- bila bulan_renewal tidak ada di tahun laporan ini 
+   update rekap_customer_tahun_tmp
+   set default_nilai = 0
+   where process_id = pProsesId and substring(bulan_renewal, 1, 4) <> pTahun;
+         
+   VStmt := 'Select public.sys_guid() id, nama, tglive, tgstop, status, ' ||
+                   'siklus, tipe, jnstgh, diskon, bulan_renewal, ' || 
+                   'last_jumkar, default_nilai, januari, pebruari, maret, ' || 
+                   'april, mei, juni, juli, agustus, ' ||
+                   'september, oktober, november, desember ' || 
+            'From rekap_customer_tahun_tmp ' || 
+            'Where process_id = ' || chr(39) || pProsesId || chr(39) || ' ' || 
+            'Order By status, nama;';
+    
+   OPEN PHasil FOR EXECUTE VStmt;
+   
+   --VStmt := 'Select 1';
+   --OPEN PHasil FOR EXECUTE VStmt;
+	
+   delete from rekap_customer_tahun_tmp where process_id = pProsesId;
+   delete from rekap_diskon_customer_tmp where process_id = pProsesId;
+	
+   RETURN PHasil;
+
+end;
+
+$function$
+;

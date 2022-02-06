@@ -1,0 +1,230 @@
+package co.id.sofcograha.base.master.menu.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.Query;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.master.menu.entities.EMenu;
+
+@Repository
+public class EMenuRepository extends SimpleJpaRepository<EMenu, String> {
+
+  protected final EntityManager em;
+
+  public EMenuRepository(EntityManager em) {
+    super(EMenu.class, em);
+    this.em = em;
+  }
+  
+  public EMenu findByBK(String menuCode) {
+    EMenu entity;
+
+    try {
+      entity = em.createQuery("FROM EMenu e WHERE e.menuCode = :menuCode", EMenu.class)
+          .setParameter("menuCode", menuCode).getSingleResult();
+    } catch (NoResultException e) {
+      entity = null;
+    }
+
+    return entity;
+  }
+  
+  public EMenu findById(String idMenu) {
+    EMenu entity;
+
+    try {
+      entity = em.createQuery("FROM EMenu e WHERE e.id = :idMenu", EMenu.class)
+          .setParameter("idMenu", idMenu).getSingleResult();
+    } catch (NoResultException e) {
+      entity = null;
+    }
+
+    return entity;
+  }
+
+  // contoh native query dengan return bukan entity
+  public void getCertainBaseMenuCode2(String menuCode) {
+
+    Query query = em.createNativeQuery("Select * From std_menu Where menu_code like :menuCode");
+    
+    query.setParameter("menuCode", menuCode + "%");
+    
+    @SuppressWarnings("unchecked")
+    List<Object[]> result = query.getResultList();
+        
+  }
+
+  // contoh native query dengan return entity
+  public void getCertainBaseMenuCode(String menuCode) {
+
+    Query query = em.createNativeQuery("Select * From std_menu Where menu_code like :menuCode", EMenu.class);
+    
+    query.setParameter("menuCode", menuCode + "%");
+    
+    @SuppressWarnings("unchecked")
+    List<EMenu> result = query.getResultList();
+    
+  }
+  
+  // menentukan daftar menu per user
+  public List<EMenu> getCertainMenuList(int menuCodeLength, String menuCode) {
+    Query query = em.createNativeQuery("");
+    
+    if (menuCode.equals("")) {
+      query = em.createNativeQuery("SELECT * FROM public.std_menu a "
+          + "INNER JOIN AM56 b ON a.id = b.id_menu "
+          + "WHERE b.id_user = :idUser AND length(a.menu_code) = :menuCodeLength "
+          + "AND b.flview = 'Y' "
+          + "ORDER BY a.menu_code ASC ", EMenu.class);
+      
+      query.setParameter("idUser", CurrentUser.getUserId());
+      query.setParameter("menuCodeLength", menuCodeLength);
+    } else {
+      query = em.createNativeQuery("SELECT * FROM public.std_menu a "
+          + "INNER JOIN AM56 b ON a.id = b.id_menu "
+          + "WHERE b.id_user = :idUser AND length(a.menu_code) = :menuCodeLength "
+          + "AND substring(a.menu_code, 1, :subMenuCodeLength) like :menuCode "
+          + "AND b.flview = 'Y' "
+          + "ORDER BY a.menu_code ASC ", EMenu.class);
+      
+      query.setParameter("idUser", CurrentUser.getUserId());
+      query.setParameter("menuCodeLength", menuCodeLength);
+      query.setParameter("subMenuCodeLength", menuCodeLength - 3);
+      query.setParameter("menuCode", menuCode);
+    }
+    
+    @SuppressWarnings("unchecked")
+    List<EMenu> result = query.getResultList();
+    
+    return result;
+  }
+
+  // contoh native query dengan return entity
+//  @SuppressWarnings("unchecked")
+//  public List<EMenu> getCertainMenuList(int menuCodeLength, String menuCode) {
+//
+//    String sql = "";
+//    if (menuCode.equals("")) {
+//      
+//      String query = "SELECT e FROM EMenu e " + 
+//                           "WHERE length(e.menuCode) = :menuCodeLength";
+//      
+//      return em.createQuery(query, EMenu.class)
+//           .setParameter("menuCodeLength", menuCodeLength)
+//           .getResultList();
+//      
+//    } else {
+//
+//      String query = "SELECT e FROM EMenu e " + 
+//                           "WHERE length(e.menuCode) = :menuCodeLength And " +
+//                       "substring(menu_code, 1, :subMenuCodeLength) like :menuCode";
+//    
+//          return em.createQuery(query, EMenu.class)
+//             .setParameter("menuCodeLength", menuCodeLength)
+//             .setParameter("subMenuCodeLength", menuCodeLength - 3)
+//             .setParameter("menuCode", menuCode)
+//             .getResultList();
+//      
+//    }
+//  }
+
+  // contoh native query dengan return entity
+  @SuppressWarnings("unchecked")
+  public List<EMenu> getCertainMenuList2(int menuCodeLength, String menuCode) {
+
+    String sql = "";
+    if (menuCode.equals("")) {
+      
+      sql = "Select * " + 
+                    "From std_menu " + 
+                    "Where length(menu_code) = :menuCodeLength";
+      
+      Query query = em.createNativeQuery(sql, EMenu.class);
+      
+      query.setParameter("menuCodeLength", menuCodeLength);
+
+      return query.getResultList();
+      
+    } else {
+      
+      sql = "Select * " + 
+                  "From std_menu " + 
+                  "Where length(menu_code) = :menuCodeLength And " + 
+                        "substring(menu_code, 1, :subMenuCodeLength) like :menuCode";
+      
+      Query query = em.createNativeQuery(sql, EMenu.class);
+      
+      query.setParameter("menuCodeLength", menuCodeLength);
+      query.setParameter("subMenuCodeLength", menuCodeLength - 3);
+      query.setParameter("menuCode", menuCode);
+
+      return query.getResultList();
+    }
+  }
+
+//  public void addAuthorization(User user, Boolean superUser) {
+//    clearSpParameter();
+//    addSpParameter(user.getId());
+//    addSpParameter(CurrentUser.getUsername());
+//    addSpParameter(superUser ? "Y" : "N");
+//    executeVoidProcedure("public.spSimpanOtorisasiUser");
+//  }
+//
+//  public SearchResult<User> search(SearchParameter searchParameter) {
+//    HqlSimpleSearchBuilder<User> search = new HqlSimpleSearchBuilder<>(User.class, em);
+//
+//    String userName = (String) searchParameter.getValueFromMappedParam("userName");
+//    String name = (String) searchParameter.getValueFromMappedParam("name");
+//    String companyId = (String) searchParameter.getValueFromMappedParam("company.id");
+//    String email = (String) searchParameter.getValueFromMappedParam("email");
+//    Integer accessLevel = (Integer) searchParameter.getValueFromMappedParam("accessLevel");
+//    Boolean locked = (Boolean) searchParameter.getValueFromMappedParam("locked");
+//    Boolean active = (Boolean) searchParameter.getValueFromMappedParam("active");
+//
+//    if (!QueryUtil.isAll(userName)) {
+//      search.addWhere("AND LOWER(userName) LIKE LOWER(:userName) ");
+//      search.addParameter("userName", QueryUtil.formatStringForLikeFilter(userName));
+//    }
+//
+//    if (!QueryUtil.isAll(name)) {
+//      search.addWhere("AND LOWER(name) LIKE LOWER(:name) ");
+//      search.addParameter("name", QueryUtil.formatStringForLikeFilter(name));
+//    }
+//
+//    if (companyId != null) {
+//      search.addWhere("AND company.id = :companyId ");
+//      search.addParameter("companyId", companyId);
+//    }
+//
+//    if (!QueryUtil.isAll(email)) {
+//      search.addWhere("AND LOWER(email) LIKE LOWER(:email) ");
+//      search.addParameter("email", QueryUtil.formatStringForLikeFilter(email));
+//    }
+//
+//    if (accessLevel != null) {
+//      search.addWhere("AND accessLevel = :accessLevel ");
+//      search.addParameter("accessLevel", accessLevel);
+//    }
+//
+//    if (locked != null) {
+//      search.addWhere("AND locked = :locked ");
+//      search.addParameter("locked", locked);
+//    }
+//
+//    if (active != null) {
+//      search.addWhere("AND active = :active ");
+//      search.addParameter("active", active);
+//    }
+//
+//    search.setSort(searchParameter.getSort());
+//    search.setPaging(searchParameter.getPagination());
+//
+//    return search.getSearchResult();
+//  }
+}

@@ -1,0 +1,81 @@
+package co.id.sofcograha.base.master.menu.services;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.master.menu.entities.EMenu;
+import co.id.sofcograha.base.master.menu.pojos.Menu;
+import co.id.sofcograha.base.master.menu.repositories.EMenuRepository;
+
+@Service
+public class MenuService {
+	
+	@Autowired
+	private EMenuRepository eMenuRepository;	
+	
+	public Menu findById(String idMenu) {
+	  return Menu.fromEntity(eMenuRepository.findById(idMenu));
+	}
+	
+	public EMenu findByBK(String menuCode) {
+      return eMenuRepository.findByBK(menuCode);
+    }
+	
+	public ArrayList<Menu> getMenuList() {
+		List<EMenu> eMenus = eMenuRepository.getCertainMenuList(3, "");
+
+		ArrayList<Menu> menus = new ArrayList<Menu>();
+		
+		if (!eMenus.isEmpty()) {
+			
+			for (EMenu item : eMenus) {
+				
+				Menu itemMenu = Menu.fromEntity(item);
+				if (!itemMenu.path.equals("/")) {
+					itemMenu.path = "/" + itemMenu.path;
+				}
+
+				scanSubMenu(item, 3, itemMenu);
+				
+				menus.add(itemMenu);
+			}
+			
+//			scanAllMenu(eMenus, 3, "", menu);
+		}
+
+//		for (Menu menu : menus) {
+//			testConstructedMenu(menu, "");
+//		}
+		
+		return menus;
+	}
+	
+	private void scanSubMenu(EMenu eMenu, int menuCodeLength, Menu menu) {
+
+		List<EMenu> eSubMenus = eMenuRepository.getCertainMenuList(menuCodeLength + 3, eMenu.getMenuCode());
+
+		for (EMenu item : eSubMenus) {
+			
+			Menu itemMenu = Menu.fromEntity(item);
+			itemMenu.path = menu.path + "/" + itemMenu.path;
+			menu.subMenus.add(itemMenu);
+			
+			scanSubMenu(item, menuCodeLength + 3, itemMenu);
+		}
+		
+	}
+	
+	// rekursi untuk ambil setiap menu
+	// - ambil semua menu yang memiliki lebar menu_code = 3
+	//   - untuk masing-masing menu tersebut, cari menu dengan 3 digit pertama sama dengan di atas
+	//     tetapi lebar nya = 6
+	//     - bila ditemukan, untuk masing-masing menu tersebut, cari menu dengan 6 digit pertama
+	//       sama dengan di atas tetapi lebarnya = 9
+	//     - bila tidak ditemukan, maka ini adalah last node
+	// red : belum ada kebutuhan untuk tahu last node atau bukan, jadi hanya sekedar scan seluruh
+	//       leaf saja.
+	
+}

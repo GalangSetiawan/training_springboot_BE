@@ -1,0 +1,725 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.services;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+import co.id.sofcograha.base.master.jenisTransaksi.repositories.EJenisTransaksiRepository;
+import co.id.sofcograha.base.master.jenisTransaksi.services.JenisTransaksiService;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingComponent;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingCounter;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingLog;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.repositories.EAutomaticNumberingComponentRepository;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.repositories.EAutomaticNumberingCounterRepository;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.repositories.EAutomaticNumberingLogRepository;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.entities.ESetting;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.services.SettingService;
+
+@Service
+public class AutomaticNumberingService extends BaseService {
+	
+	private static final int MAX_NUMBER_OF_ATTEMPT = 10;
+	
+	//public enum ComponentType { Constant, Variable, DateVariable, CounterPerBranch, GlobalCounter; }
+	public enum ComponentType { Constant, TransactionCode, Year, Month; }
+	//public enum ComponentFormat { FourDigitYear, TwoDigitYear, TwoDigitMonth, MonthName, RomanMonth, DayInMonth; }
+	public enum Action { Add, Delete; }
+	
+	@Autowired private EAutomaticNumberingLogRepository eAutomaticNumberingLogRepository;
+	
+	@Autowired private EAutomaticNumberingComponentRepository eAutomaticNumberingComponentRepository;
+	
+	@Autowired private EAutomaticNumberingCounterRepository eAutomaticNumberingCounterRepository;
+	
+	//@Autowired private TransactionService transactionService;
+	@Autowired private EJenisTransaksiRepository eJenisTransaksiRepository;
+	
+	@Autowired private JenisTransaksiService jenisTransaksiService;
+	
+	@Autowired private SettingService settingService;
+	
+//	@Transactional
+//	public String manageDocumentNumber(Transaction transaction, HashMap<String, Object> variables) {
+// di gaji.id v.2, isi dari variables itu hanya "date" yaitu terisi dengan tanggal transaksi
+//		valRequiredReference(transaction, "automaticnumbering.transactionid.required");
+//
+// karena variables hanya terisi dengan "date" saja, maka method manageParameters juga praktis tidak banyak berguna
+// ( defineDefaultValue di manageParameters tidak terpakai karena isi dari variables hanya date saja sedangkan method ini berfungsi
+//   hanya jika ada tipe string di variables,
+//   insertTrxTypeToVariables juga hanya berfungsi mentransfer id jenis transaksi saja, ini kelak bisa langsung di paten saja
+//   manageMinMaxValues ini untuk memvalidasi isi variables yang "number", lha tapi ini kan adanya cuma "date" jadi ya ga fungsi
+//   manageReferences, method ini tidak ada isinya, jadi ya pasti ga fungsi)	
+//		manageParameters(transaction, variables);
+	
+// ini dia ambil data dari AutomaticNumberingLog berdasarkan nilai "documentRootId" yg ada di variables, lha sedangkan 
+// yg ada di variables tu cuma "date", jadi ya oldLog ini pasti null
+//		Optional<AutomaticNumberingLog> oldLog = getLogByDocumentId(variables);
+//		
+// baris ini harusnya yang diperlukan
+// tapi tidak perlu ekspresi if nya sebab tidak ada isi "number" di variables, jadi ya pasti getNewNumber ini di eksekusi
+//		if (isUsingAutomaticNumbering(variables)) getNewNumber(variables);
+	
+//		if (isLogExists(oldLog)) {
+// blok ini pasti tidak dijalankan karena oldLog bisa dipastikan selalu null 	
+//			if (isDocumentBkChanged(variables, oldLog)) {
+//				markNumberAsUnused(oldLog);
+//				if (isNumberExists(variables)) logNewNumber(variables);
+//			}
+//		} else {
+
+// baris ini yang pasti dijalankan	
+// tapi tidak perlu ekspresi if nya sebab tidak ada isi "number" di variables, jadi ya pasti getNewNumber ini di eksekusi
+//			if (isNumberExists(variables)) logNewNumber(variables);
+//		}
+//		
+//		return usingString((String) variables.get("number"), BaseConstants.EMPTY);
+//	}
+	
+	/* harus ditambahkan fitur bilamana mode default maka itu artinya format diambil dari format default (AM59.id_am90 = 10000)
+	@Transactional
+	public String manageDocumentNumber(String jenisTransaksi, Date tanggalTransaksi) {
+		//valRequiredReference(eJenisTransaksi, eJenisTransaksi == null ? null : eJenisTransaksi.getId(), "automaticnumbering.transactionid.required");
+		valRequiredString(jenisTransaksi, "automaticnumbering.transactionType.required");
+		valRequiredDate(tanggalTransaksi, "automaticnumbering.date.required");
+		
+		EJenisTransaksi eJenisTransaksi = eJenisTransaksiRepository.findByBK(jenisTransaksi);
+		
+		HashMap<String, Object> variables = new HashMap<>();
+		variables.put("transactionId", eJenisTransaksi.getId());
+		variables.put("transactionCodeDisplay", eJenisTransaksi.getKodeDisplay());
+		variables.put("date", tanggalTransaksi);
+		
+		getNewNumber(variables);		
+		logNewNumber(variables);
+		
+		return usingString((String) variables.get("number"), BaseConstants.EMPTY);
+	}
+	*/
+	@Transactional
+	public String manageDocumentNumber(String jenisTransaksi, Date tanggalTransaksi, boolean isDefault) {
+
+		valRequiredString(jenisTransaksi, "automaticnumbering.transactionType.required");
+		valRequiredDate(tanggalTransaksi, "automaticnumbering.date.required");
+		
+		// ambil tanda reset tahunan / bulanan
+		ESetting eSettingGL = settingService.getData();
+
+		EJenisTransaksi eJenisTransaksi = eJenisTransaksiRepository.findByBK(jenisTransaksi);
+		
+		HashMap<String, Object> variables = new HashMap<>();
+		variables.put("transactionId", eJenisTransaksi.getId());
+		variables.put("transactionCodeDisplay", eJenisTransaksi.getKodeDisplay());
+		variables.put("date", tanggalTransaksi);
+		variables.put("resetPer", eSettingGL.getRstoto());
+		
+		getNewNumber(variables, isDefault);		
+		logNewNumber(variables);
+		
+		return usingString((String) variables.get("number"), BaseConstants.EMPTY);
+	}
+
+// tidak ada default values bagi parameter untuk automatic number, karena parameter satu satunya hanya jenis transaksi
+// lebar maksimal dari hasil generator juga secara otomatis sudah terbatasi dengan desain (kode transaksi utk di display
+// tidak bisa lebih dari 10 char, tahun 4 char, bulan 2 char, nomor juga sudah ditentukan dari am60.width)
+//	private void manageParameters(Transaction transaction, HashMap<String, Object> variables) {
+//		variables = defineDefaultValues(variables);
+//				
+//		variables = insertTrxTypeToVariables(transaction, variables);
+//		
+//		manageMinMaxValues(variables);
+//		manageReferences(variables);
+//	}
+
+	/*
+	private HashMap<String, Object> insertTrxTypeToVariables(Transaction transaction, 
+												HashMap<String, Object> variables) {
+		
+		//masukkan trxType dan clinicBranch ke dalam variables
+		variables.put("transactionId", transaction.getId());
+		
+		return variables;
+	}
+
+	private HashMap<String, Object> defineDefaultValues(HashMap<String, Object> variables) {
+		if (variables == null) variables = new HashMap<String, Object>();
+		
+		for (Map.Entry<String, Object> entrySet : variables.entrySet()) {
+			if (entrySet.getValue() instanceof String) {
+				entrySet.setValue(usingString((String) entrySet.getValue(), BaseConstants.EMPTY));
+			}
+		}
+		
+		return variables;
+	}
+
+	private void manageMinMaxValues(HashMap<String, Object> variables) {
+		valMaxString((String) variables.get("number"), 40, "automaticnumbering.number.max.length");
+		throwBatchError();
+	}
+	
+	private void manageReferences(HashMap<String, Object> variables) {}
+	*/
+	
+	private void getNewNumber(HashMap<String, Object> variables, boolean isDefault) {
+		int attemptRemaining = MAX_NUMBER_OF_ATTEMPT;
+		boolean docNumberAlreadyUsed;
+		
+		do {
+			generateNewNumber(variables, isDefault);
+			docNumberAlreadyUsed = isNewDocumentNumberAlreadyUsedByAnotherDocument(variables);
+			
+			attemptRemaining--;
+		} while (attemptRemaining > 0 && docNumberAlreadyUsed);
+		
+		if (docNumberAlreadyUsed) variables.put("number", BaseConstants.EMPTY);
+	}
+	
+	private void generateNewNumber(HashMap<String, Object> variables, boolean isDefault) {
+		
+		// getValidCombination ini tidak dipakai dulu, ini pada dasarnya digunakan untuk memeriksa bila ada ekspresi (semacam logic)
+		// dalam penomoran otomatis, misal komponen yang ini tidak boleh begini begitu terhadap komponen nomor otomatis yang itu
+		// method getValidCombination pada dasarnya memeriksa valid tidaknya ekspresi tersebut dengan menggunakan statement query
+		// Select, jadi semacam menggunakan error atau tidaknya statement select tsb sebagai acuan
+		// untuk kemudahan setting bagi user (karena dirasa kerumitan ini pada ujungnya : 
+		//    1. overkill
+		//    2. kemungkinan besar hanya sofco yang dapat set
+		// maka sementara tidak dipakai dulu, jadi 4 baris di bawah ini tidak dipakai dulu
+		
+		//List<AutomaticNumbering> combinations = getCombinationsByTransactionId(variables);
+		//if (noCombinationExists(combinations)) return;
+		
+		//AutomaticNumbering combinationId = getValidCombination(variables, combinations);
+		//if (noValidCombinationExists(combinationId)) return;
+		
+		List<EAutomaticNumberingComponent> numberComponents = null;
+		if (isDefault) {
+			// ambil daftar komponen penyusun nomor otomatis berdasarkan format default (jenis transaksi = 10000)
+			numberComponents = getNumberComponentsByTransactionId(BaseConstants.ID_DEFAULT_PENOMORAN_OTOMATIS);						
+		} else {
+			// ambil dari am59 (daftar komponen penyusun nomor otomatis) berdasarkan jenis transaksi yang diinginkan
+			numberComponents = getNumberComponentsByTransactionId((String) variables.get("transactionId"));			
+		}
+		
+		generateNumberBasedOnComponents(variables, numberComponents);
+	}
+	
+	//private List<AutomaticNumberingNumberComponentDetail> getNumberComponentsByCombinationId(AutomaticNumbering combinationId) {
+	//	return numberComponentRepository.findByAutomaticNumberingId(combinationId);
+	//}	
+	public List<EAutomaticNumberingComponent> getNumberComponentsByTransactionId(String transactionId) {
+		return eAutomaticNumberingComponentRepository.findByTransactionId(transactionId);
+	}
+	
+	public List<EAutomaticNumberingComponent> getNumberComponentsByTransactionCode(String kode) {
+		return eAutomaticNumberingComponentRepository.findByTransactionCode(kode);
+	}
+	
+	/*
+	private void generateNumberBasedOnComponents(HashMap<String, Object> variables,
+			List<EAutomaticNumberingComponent> numberComponents) {
+		
+		String generatedNumber = BaseConstants.EMPTY;
+		
+		for (EAutomaticNumberingComponent numberComponent : numberComponents) {
+			String numberComponentValue = getNumberComponentValue(variables, numberComponent);
+			generatedNumber = appendNumberComponentValueToGeneratedNumber(generatedNumber, numberComponent, numberComponentValue);
+		}
+		
+		variables.put("number", generatedNumber);
+	}
+	*/
+	
+	private void generateNumberBasedOnComponents(HashMap<String, Object> variables,
+			List<EAutomaticNumberingComponent> numberComponents) {
+		
+		String generatedNumber = BaseConstants.EMPTY;
+		
+		List<String> numberPerSequence = new ArrayList<String>();
+		List<String> searchKey = new ArrayList<String>();
+	    Integer counter = 0;
+	    Integer indexCounter = 0;
+	    String counterKonektor = "";
+	    Integer counterWidth = 1;
+		
+	    // lengkapi list component nomor otomatis untuk tipe yang selain counter
+		// Catatan: bila counter di reset tiap bulan, maka key pencarian mengikutsertakan tahun dan bulan
+		//          bila counter di reset tiap tahun, maka key pencarian hanya mengikutsertakan tahun saja
+	    String resetPer = (String) variables.get("resetPer");
+
+		for (EAutomaticNumberingComponent numberComponent : numberComponents) {
+			
+			switch (numberComponent.getJenis()) {
+				case BaseConstants.TIPE_KOMPONEN_JENIS_TRANSAKSI:
+					numberPerSequence.add(((String) variables.get("transactionCodeDisplay")).trim() + numberComponent.getKonektor().trim());
+					searchKey.add(((String) variables.get("transactionCodeDisplay")).trim() + numberComponent.getKonektor().trim());
+					counter = counter + 1;
+					break;
+				case BaseConstants.TIPE_KOMPONEN_TAHUN:
+					numberPerSequence.add(TimeUtil.getFourDigitYear((Date) variables.get("date")).trim() + numberComponent.getKonektor().trim());
+					searchKey.add(((String) variables.get("transactionCodeDisplay")).trim() + numberComponent.getKonektor().trim());
+					counter = counter + 1;
+					break;
+				case BaseConstants.TIPE_KOMPONEN_BULAN:
+					if (resetPer.equals(BaseConstants.RESET_NO_BULANAN)) {
+						searchKey.add(TimeUtil.getTwoDigitMonth((Date) variables.get("date")).trim() + numberComponent.getKonektor().trim());						
+					}
+					numberPerSequence.add(TimeUtil.getTwoDigitMonth((Date) variables.get("date")).trim() + numberComponent.getKonektor().trim());
+					counter = counter + 1;
+					break;
+				case BaseConstants.TIPE_KOMPONEN_BULAN_ROMAWI:
+					if (resetPer.equals(BaseConstants.RESET_NO_BULANAN)) {
+						searchKey.add(TimeUtil.getTwoDigitMonth((Date) variables.get("date")).trim() + numberComponent.getKonektor().trim());						
+					}
+					// terjemahkan bulan ke digit romawi
+					numberPerSequence.add(TimeUtil.getMonthToRoman((Date) variables.get("date")).trim() + numberComponent.getKonektor().trim());
+					counter = counter + 1;
+					break;
+				case BaseConstants.TIPE_KOMPONEN_KONSTANTA:
+					numberPerSequence.add(numberComponent.getKonstanta().trim() + numberComponent.getKonektor().trim());
+					searchKey.add(numberComponent.getKonstanta().trim() + numberComponent.getKonektor().trim());
+					counter = counter + 1;
+					break;
+				case BaseConstants.TIPE_KOMPONEN_COUNTER:
+					numberPerSequence.add("");
+					counterKonektor = numberComponent.getKonektor().trim();
+					counterWidth = numberComponent.getWidth();
+					indexCounter = counter;
+					counter = counter + 1;
+					break;
+			}
+			
+		}
+		
+	    // bentuk key untuk pencarian ke admin counter, key terdiri dari komponen penyusun nomor otomatis yang bukan counter
+		String searchValue = "";
+//		for (String item : numberPerSequence) {
+//			searchValue = searchValue + item; 
+//		}
+		for (String item : searchKey) {
+			searchValue = searchValue + item;
+		}
+
+		// cari nomor otomatis terakhir untuk key penyusun nomor otomatis tersebut
+		EAutomaticNumberingCounter lastCounter = eAutomaticNumberingCounterRepository.findByBk(searchValue);
+		
+		// ambil nomor otomatis,
+		//    bila sudah ada tambah 1 dan simpan ke admin nomor otomatis
+		//    bila belum ada tambah ke admin nomor otomatis
+		Integer currentCounterValue = 1;
+		if (lastCounter != null) {
+			currentCounterValue = incrementLastCounter(lastCounter);
+		} else {
+			createNewLastCounter(searchValue, currentCounterValue);
+		}
+
+		// generate counter dengan ditambahkan 000 di depannya dengan lebar sesuai dengan yang didefinisikan
+		String currentCounterString = "00000000000000000000" + currentCounterValue.toString().trim();
+		currentCounterString = currentCounterString.substring(currentCounterString.length() - counterWidth, currentCounterString.length()); 
+		numberPerSequence.set(indexCounter, currentCounterString + counterKonektor);
+		
+		// generate nomor otomatis lengkap
+		for (String item : numberPerSequence) {
+			generatedNumber = generatedNumber + item; 
+		}
+		
+		variables.put("number", generatedNumber);
+	}
+	
+	/*
+	private int incrementLastCounter(Optional<AutomaticNumberingLastCounterSubDetail> lastCounter) {
+		int currentCounterValue;
+		
+		AutomaticNumberingLastCounterSubDetail lastCounterEntity = lastCounter.get();
+		currentCounterValue = lastCounterEntity.getLastCounter().intValue() + 1;
+		
+		lastCounterEntity.setLastCounter(Integer.valueOf(currentCounterValue));
+		lastCounterRepository.edit(lastCounterEntity);
+		
+		return currentCounterValue;
+	}
+	*/
+	
+	private int incrementLastCounter(EAutomaticNumberingCounter lastCounter) {
+		int currentCounterValue;
+		
+		currentCounterValue = lastCounter.getLastCount().intValue() + 1;
+		
+		lastCounter.setLastCount(Integer.valueOf(currentCounterValue));
+		eAutomaticNumberingCounterRepository.edit(lastCounter);
+		
+		return currentCounterValue;
+	}
+	
+	/*
+	private void createNewLastCounter(AutomaticNumberingNumberComponentDetail numberComponent, String generatedCounter,
+			int currentCounterValue) {
+		
+		AutomaticNumberingLastCounterSubDetail lastCounterEntity = new AutomaticNumberingLastCounterSubDetail();
+		lastCounterEntity.setAutomaticNumberingNumberComponentDetail(numberComponent);
+		lastCounterEntity.setCounterKey(generatedCounter);
+		lastCounterEntity.setLastCounter(currentCounterValue);
+		lastCounterRepository.add(lastCounterEntity);
+	}
+	*/
+	private void createNewLastCounter(String key, int currentCounterValue) {
+		
+		EAutomaticNumberingCounter lastCounterEntity = new EAutomaticNumberingCounter();
+		lastCounterEntity.setKey(key);
+		lastCounterEntity.setLastCount(currentCounterValue);
+		eAutomaticNumberingCounterRepository.add(lastCounterEntity);
+	}
+	
+	/*
+	private boolean isNewDocumentNumberAlreadyUsedByAnotherDocument(HashMap<String, Object> variables) {
+		Optional<AutomaticNumberingLog> logFromDb = getLogByDocumentBk(variables);
+		AutomaticNumberingLog log;
+		
+		if (isLogExists(logFromDb)) {
+			log = logFromDb.get();
+			
+			if (YesNo.Yes.equals(log.getUsedFlag())
+					&& !log.getDocumentRootId().equals((String) variables.get("documentRootId"))) {
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	}
+	*/
+
+	private boolean isNewDocumentNumberAlreadyUsedByAnotherDocument(HashMap<String, Object> variables) {
+		EAutomaticNumberingLog logFromDb = getLogByDocumentBk(variables);
+		
+		if (logFromDb != null) {
+			
+			if (logFromDb.getUsedFlag().equals(BaseConstants.YA)) {
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	}
+	
+	/*
+	private void logNewNumber(HashMap<String, Object> variables) {
+		Optional<AutomaticNumberingLog> logFromDb = getLogByDocumentBk(variables);
+		AutomaticNumberingLog log;
+		
+		if (isLogExists(logFromDb)) {
+			log = logFromDb.get();
+			
+			if (YesNo.Yes.equals(log.getUsedFlag())
+					&& !log.getDocumentRootId().equals((String) variables.get("documentRootId"))) {
+				error("automaticnumbering.number.already.used", variables.get("number"));
+			} else {
+				// ini berarti nomor sudah ada tapi tidak digunakan, mungkin karena di delete atau gimana
+				log = markNumberAsUsedInLog(variables, log);
+			}
+		} else {
+			log = createNewLog(variables);
+		}
+		
+		if (isDocumentRootIdExists(variables)) {
+			addActionLog(log, Action.Add);
+		}
+	}
+	*/
+	private void logNewNumber(HashMap<String, Object> variables) {
+		EAutomaticNumberingLog logFromDb = getLogByDocumentBk(variables);
+		
+		if (logFromDb != null) {
+			if (logFromDb.getUsedFlag().equals(BaseConstants.YA)) {
+				error("automaticnumbering.number.already.used", variables.get("number"));
+			} else {
+				// ini berarti nomor sudah ada tapi tidak digunakan, mungkin karena di delete atau gimana
+				logFromDb = markNumberAsUsedInLog(variables, logFromDb);
+			}
+		} else {
+			logFromDb = createNewLog(variables);
+		}
+		
+	}
+
+	/*
+	private Optional<AutomaticNumberingLog> getLogByDocumentBk(HashMap<String, Object> variables) {
+		return getLogByDocumentBk((String) variables.get("transactionId"),
+				(String) variables.get("number"));
+	}
+	*/
+	private EAutomaticNumberingLog getLogByDocumentBk(HashMap<String, Object> variables) {
+		
+		return eAutomaticNumberingLogRepository.findByDocumentBk((String) variables.get("transactionId"), (String) variables.get("number"));
+	}
+	
+	/*
+	private AutomaticNumberingLog markNumberAsUsedInLog(HashMap<String, Object> variables, AutomaticNumberingLog oldLog) {
+		if (isDocumentRootIdExists(variables)) {
+			oldLog.setDocumentRootId((String) variables.get("documentRootId"));
+			oldLog.setUsedFlag(YesNo.Yes);
+			oldLog = logRepository.edit(oldLog);
+		}
+		
+		return oldLog;
+	}
+	*/
+	private EAutomaticNumberingLog markNumberAsUsedInLog(HashMap<String, Object> variables, EAutomaticNumberingLog oldLog) {
+		
+		oldLog.setUsedFlag(BaseConstants.YA);
+		oldLog = eAutomaticNumberingLogRepository.edit(oldLog);
+		
+		return oldLog;
+	}
+	
+	/*
+	private AutomaticNumberingLog createNewLog(HashMap<String, Object> variables) {
+		AutomaticNumberingLog log = new AutomaticNumberingLog();
+		log.setTransaction(transactionService.find((String) variables.get("transactionId")).get());
+		log.setNumber((String) variables.get("number"));
+		
+		if (isDocumentRootIdExists(variables)) {
+			log.setDocumentRootId((String) variables.get("documentRootId"));
+			log.setUsedFlag(YesNo.Yes);
+		} else {
+			log.setDocumentRootId(BaseConstants.EMPTY);
+			log.setUsedFlag(YesNo.No);
+		}
+		
+		return logRepository.add(log);
+	}
+	*/
+	private EAutomaticNumberingLog createNewLog(HashMap<String, Object> variables) {
+		EAutomaticNumberingLog log = new EAutomaticNumberingLog();
+		
+		log.setJenisTransaksi(eJenisTransaksiRepository.getOne((String) variables.get("transactionId")));
+		log.setTrxNumber((String) variables.get("number"));
+		log.setUsedFlag(BaseConstants.YA);
+		
+		return eAutomaticNumberingLogRepository.add(log);
+	}
+	
+	// ======================== untuk manipulasi AM59 (Master nomor otomatis)
+	@Transactional
+	public EAutomaticNumberingComponent add(EAutomaticNumberingComponent entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		EAutomaticNumberingComponent addedEntity = eAutomaticNumberingComponentRepository.add(entity);
+		postAdd(addedEntity);
+			
+		throwBatchError();
+		return addedEntity;			
+		
+	}
+	
+	@Transactional
+	public EAutomaticNumberingComponent edit(EAutomaticNumberingComponent entity) {
+				
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		EAutomaticNumberingComponent toBeSaved = eAutomaticNumberingComponentRepository.getOne(entity.getId());
+		EAutomaticNumberingComponent oldEntity = (EAutomaticNumberingComponent) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = eAutomaticNumberingComponentRepository.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EAutomaticNumberingComponent.class.getSimpleName());
+		throwBatchError();
+		
+		EAutomaticNumberingComponent toBeDeleted = eAutomaticNumberingComponentRepository.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		preDelete(toBeDeleted);
+		eAutomaticNumberingComponentRepository.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		throwBatchError();
+		
+	}
+	
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EAutomaticNumberingComponent dbEntity = eAutomaticNumberingComponentRepository.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (eAutomaticNumberingComponentRepository.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EAutomaticNumberingComponent entity) {
+	}
+	
+	protected void defineEditableValues(EAutomaticNumberingComponent newValues, EAutomaticNumberingComponent toBeSaved) {
+		
+		toBeSaved.setJenisTransaksi(newValues.getJenisTransaksi());
+		toBeSaved.setNoUrut(newValues.getNoUrut());
+		toBeSaved.setJenis(newValues.getJenis());
+		toBeSaved.setKonstanta(newValues.getKonstanta());
+		toBeSaved.setKonektor(newValues.getKonektor());
+		toBeSaved.setWidth(newValues.getWidth());
+		
+	}
+	
+	protected void valRequiredValues(EAutomaticNumberingComponent entity) {
+
+		valRequiredInteger(entity.getNoUrut(), "settingNomorOtomatis.nomorUrut.required");
+		valRequiredString(entity.getJenis(), "settingNomorOtomatis.jenis.required");
+		if (entity.getJenis() != null && !entity.getJenis().equals("") && entity.getJenis().equals(BaseConstants.NOOTO_KONSTANTA)) {
+			valRequiredString(entity.getKonstanta(), "settingNomorOtomatis.konstanta.required");			
+		}
+		//valRequiredString(entity.getKonektor(), "settingNomorOtomatis.konektor.required");
+		
+		if (entity.getJenis() != null && !entity.getJenis().equals("") && entity.getJenis().equals(BaseConstants.NOOTO_COUNTER)) {
+			valRequiredInteger(entity.getWidth(), "settingNomorOtomatis.width.required");
+		}
+
+		valRequiredReference(entity.getJenisTransaksi(),
+				             entity.getJenisTransaksi() == null ? null : entity.getJenisTransaksi().getId(),
+				             "settingNomorOtomatis.jenisTransaksi.required");
+	}
+	
+	protected void manageMinMaxValues(EAutomaticNumberingComponent entity) {
+		
+		valMaxInteger(entity.getNoUrut(), 99, "settingNomorOtomatis.nomorUrut.max.length");
+		valMaxInteger(entity.getWidth(), 9, "settingNomorOtomatis.width.max.length");
+		valMaxString(entity.getJenis(), 1, "settingNomorOtomatis.jenis.max.length");
+		valMaxString(entity.getKonektor(), 2, "settingNomorOtomatis.konektor.max.length");
+		valMaxString(entity.getKonstanta(), 5, "settingNomorOtomatis.konstanta.max.length");
+
+	}
+
+	protected void manageReferences(EAutomaticNumberingComponent entity) {
+		
+		if (entity.getJenisTransaksi() != null) {
+			EJenisTransaksi eJenisTransaksiFromDb = jenisTransaksiService.get(entity.getJenisTransaksi().getId());
+			if (eJenisTransaksiFromDb == null) {
+				batchError("jenisTransaksi.not.found");
+			} else {
+				entity.setJenisTransaksi(eJenisTransaksiFromDb);
+			}			
+		}		
+	}
+
+	protected void valDelete(EAutomaticNumberingComponent toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(EAutomaticNumberingComponent addedEntity) {
+		EAutomaticNumberingComponent entityFromDb = eAutomaticNumberingComponentRepository.findByBk(addedEntity.getJenisTransaksi().getId(), addedEntity.getNoUrut());
+		if (entityFromDb != null) {
+			throw new BusinessException("settingNomorOtomatis.bk", addedEntity.getJenisTransaksi().getKodeDisplay(), addedEntity.getNoUrut());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EAutomaticNumberingComponent editedEntity) {
+		EAutomaticNumberingComponent entityFromDb = eAutomaticNumberingComponentRepository.findByBk(editedEntity.getJenisTransaksi().getId(), editedEntity.getNoUrut());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("settingNomorOtomatis.bk", editedEntity.getJenisTransaksi().getKodeDisplay(), editedEntity.getNoUrut());
+			}
+		}
+	}
+	
+	protected void preAdd(EAutomaticNumberingComponent entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(EAutomaticNumberingComponent entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(EAutomaticNumberingComponent toBeSaved, EAutomaticNumberingComponent oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(EAutomaticNumberingComponent toBeSaved, EAutomaticNumberingComponent oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(EAutomaticNumberingComponent entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(EAutomaticNumberingComponent entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}	
+	// ======================== end of manipulasi AM59 (Master nomor otomatis)
+
+	public EAutomaticNumberingComponent get(String id) {
+		return eAutomaticNumberingComponentRepository.getOne(id);
+	}
+	
+	@Transactional
+	public void deleteByTransactionId(String idAm90) {
+		eAutomaticNumberingComponentRepository.deleteByTransactionId(idAm90);
+	}
+    
+}

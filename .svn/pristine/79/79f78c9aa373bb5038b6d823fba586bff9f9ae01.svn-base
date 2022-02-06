@@ -1,0 +1,252 @@
+package co.id.sofcograha.domain.invoicing.masters.grupdiskon.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.entities.EGrupDiskonDetail;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.pojos.GrupDiskonDetail;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.repositories.EGrupDiskonDetailRepository;
+
+@Service("grupDiskonDetailService")
+public class GrupDiskonDetailService extends BaseService {
+	
+	@Autowired private EGrupDiskonDetailRepository repo;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public GrupDiskonDetail findByBk(String idMi004, Integer nourut) {
+		return GrupDiskonDetail.fromEntity(repo.findByBK(idMi004, nourut));
+	}
+
+	public GrupDiskonDetail getFirstDetail(String idMi004) {
+		return GrupDiskonDetail.fromEntity(repo.getFirstDetail(idMi004));		
+	}
+	
+	public SearchResult<EGrupDiskonDetail> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public EGrupDiskonDetail add(EGrupDiskonDetail entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		manageMinMaxValues(entity);
+		//throwBatchError();
+		
+		manageReferences(entity);
+		//throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		//throwBatchError();
+		
+		if (!isAnyBatchErrors()) {
+			preAdd(entity);
+			EGrupDiskonDetail addedEntity = repo.add(entity);
+			postAdd(addedEntity);
+			
+			return addedEntity;	
+		}
+			
+		//throwBatchError();
+		return entity;	
+
+	}
+	
+	@Transactional
+	public EGrupDiskonDetail edit(EGrupDiskonDetail entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		EGrupDiskonDetail toBeSaved = repo.getOne(entity.getId());
+		EGrupDiskonDetail oldEntity = (EGrupDiskonDetail) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EGrupDiskonDetail.class.getSimpleName());
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		EGrupDiskonDetail toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		//throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		//throwBatchError();
+		
+	}
+	
+	// terkait manipulasi data
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EGrupDiskonDetail dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EGrupDiskonDetail entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(EGrupDiskonDetail newValues, EGrupDiskonDetail toBeSaved) {
+
+		if (toBeSaved != null) {
+			toBeSaved.setNourut(newValues.getNourut());
+			toBeSaved.setPctdisc(newValues.getPctdisc());
+			toBeSaved.setJumdurPct(newValues.getJumdurPct());
+			toBeSaved.setSatdurPct(newValues.getSatdurPct());
+			toBeSaved.setNildisc(newValues.getNildisc());
+			toBeSaved.setJumdurNil(newValues.getJumdurNil());
+			toBeSaved.setSatdurNil(newValues.getSatdurNil());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(EGrupDiskonDetail entity) {
+	}
+	
+	protected void manageMinMaxValues(EGrupDiskonDetail entity) {
+		valMinInteger(entity.getNourut(), 1, "grupdiskon.detail.nourut.min.length");
+		valMaxInteger(entity.getNourut(), 999, "grupdiskon.detail.nourut.max.length");
+		valMinDouble(entity.getPctdisc(), 0D, "grupdiskon.detail.prosen.min.length");
+		valMaxDouble(entity.getPctdisc(), 999D, "grupdiskon.detail.prosen.max.length");
+		valMinInteger(entity.getJumdurPct(), 0, "grupdiskon.detail.jumdurPct.min.length");
+		valMaxInteger(entity.getJumdurPct(), 99999, "grupdiskon.detail.jumdurPct.max.length");
+		valMaxString(entity.getSatdurPct(), 50, "grupdiskon.detail.satdurPct.max.length");
+		valMinDouble(entity.getNildisc(), 0D, "grupdiskon.detail.nilai.min.length");
+		valMaxDouble(entity.getNildisc(), 999999999D, "grupdiskon.detail.nilai.max.length");
+		valMinInteger(entity.getJumdurNil(), 0, "grupdiskon.detail.jumdurNil.min.length");
+		valMaxInteger(entity.getJumdurNil(), 99999, "grupdiskon.detail.jumdurNil.max.length");
+		valMaxString(entity.getSatdurNil(), 50, "grupdiskon.detail.satdurNil.max.length");
+	}
+
+	protected void manageReferences(EGrupDiskonDetail entity) {
+	}
+
+	protected void valDelete(EGrupDiskonDetail toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(EGrupDiskonDetail addedEntity) {
+		EGrupDiskonDetail entityFromDb = repo.findByBK(addedEntity.getHeader().getId(), addedEntity.getNourut());
+		if (entityFromDb != null) {
+			throw new BusinessException("grupdiskon.detail.bk", addedEntity.getNourut());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EGrupDiskonDetail editedEntity) {
+		EGrupDiskonDetail entityFromDb = repo.findByBK(editedEntity.getHeader().getId(), editedEntity.getNourut());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("grupdiskon.detail.bk", editedEntity.getNourut());
+			}
+		}
+	}
+
+	protected void preAdd(EGrupDiskonDetail entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(EGrupDiskonDetail entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(EGrupDiskonDetail toBeSaved, EGrupDiskonDetail oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(EGrupDiskonDetail toBeSaved, EGrupDiskonDetail oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(EGrupDiskonDetail entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(EGrupDiskonDetail entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	// ----
+	
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya	
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+}

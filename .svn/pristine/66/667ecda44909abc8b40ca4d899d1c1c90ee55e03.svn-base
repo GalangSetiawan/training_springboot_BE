@@ -1,0 +1,49 @@
+package co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.controllers;
+
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.entities.EMappingCustomerProduk;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.pojos.MappingCustomerProduk;
+import co.id.sofcograha.domain.invoicing.masters.mappingCustomerProduk.services.MappingCustomerProdukService;
+
+@RestController
+@RequestMapping("/api/mapping-customer-produk")
+public class MappingCustomerProdukController {
+	
+	public static final Logger logger = LoggerFactory.getLogger(MappingCustomerProdukController.class);
+	
+	@Autowired private MappingCustomerProdukService mappingCustomerProdukService;
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<EMappingCustomerProduk> searchResult = mappingCustomerProdukService.search(SearchParameter.generate(searchParameter, 
+				MappingCustomerProduk.getFieldMappings()));
+		
+		return ApiResponse.dataWithPaging("items", 
+				MappingCustomerProduk.fromEntities(searchResult.getResult()), 
+				searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String idMi011, @RequestParam String account, @RequestParam String npwp, @RequestParam String kodekp) {
+		MappingCustomerProduk data = mappingCustomerProdukService.findByBk(idMi011, account, npwp, kodekp);
+	    
+	    return ApiResponse.data("item", data);
+	}
+	
+}

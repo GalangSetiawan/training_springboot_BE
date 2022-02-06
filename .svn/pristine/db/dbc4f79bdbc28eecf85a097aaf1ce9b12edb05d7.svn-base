@@ -1,0 +1,1701 @@
+package co.id.sofcograha.domain.invoicing.admin.diskon.services;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+import co.id.sofcograha.domain.invoicing.admin.diskon.entities.EAdminDiskon;
+import co.id.sofcograha.domain.invoicing.admin.diskon.repositories.EAdminDiskonRepository;
+import co.id.sofcograha.domain.invoicing.admin.freemonth.entities.EAdminFreemonth;
+import co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.entities.EPenggunaanMaster;
+import co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.services.PenggunaanMasterService;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.services.CustomerGajiIdService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifDetail;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifDetail;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifDetailService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifHeaderService;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.pojos.DiskonKhususHeader;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.services.DiskonKhususHeaderService;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.entities.EGrupDiskonDetail;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.entities.EGrupDiskonHeader;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.pojos.GrupDiskonDetail;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.services.GrupDiskonDetailService;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.services.GrupDiskonHeaderService;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.services.ProdukService;
+import co.id.sofcograha.domain.invoicing.saldo.live.pojos.SaldoLive;
+import co.id.sofcograha.domain.invoicing.saldo.live.services.SaldoLiveService;
+import co.id.sofcograha.domain.invoicing.transaksi.live.entities.ETrxLive;
+
+@Service("adminDiskonService")
+public class AdminDiskonService extends BaseService {
+	
+	@Autowired private CustomerGajiIdService customerGajiIdService;
+	@Autowired private ProdukService produkService;
+	@Autowired private CustomerProdukTarifDetailService customerProdukTarifDetailService;
+	@Autowired private GrupDiskonDetailService grupDiskonDetailService;
+	@Autowired private DiskonKhususHeaderService diskonKhususHeaderService;
+	@Autowired private PenggunaanMasterService penggunaanMasterService;
+	@Autowired private SaldoLiveService saldoLiveService;
+	@Autowired private GrupDiskonHeaderService grupDiskonHeaderService;
+	@Autowired private CustomerProdukTarifHeaderService customerProdukTarifHeaderService;
+
+	@Autowired private EAdminDiskonRepository repo;
+	
+	//@Autowired private ActionAuthorizationService actionAuthorizationService;
+	
+	public EAdminDiskon findByBk(String tahun, String bulan, String idMi010, String idMi001, String jnsdis) {
+		return repo.findByBK(tahun, bulan, idMi010, idMi001, jnsdis);
+	}
+	
+	public EAdminDiskon findById(final String id) {
+		return repo.getOne(id);
+	}
+
+	public EAdminDiskon getMaxDisTerakhirBdskNourutMaster(String idMi010, String idMi001, String jnsdis, Integer nouds) {
+		return repo.getMaxDisTerakhirBdskNourutMaster(idMi010, idMi001, jnsdis, nouds);
+	}
+	
+	public SearchResult<EAdminDiskon> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	public List<EAdminDiskon> getByCustomerProdukDanTahunBulan(String idMi010, String idMi001, String tahun, String bulan) {
+		return repo.getByCustomerProdukDanTahunBulan(idMi010, idMi001, tahun, bulan);
+	}
+    
+	public List<EAdminDiskon> getByNourutMaster(String idMi010, String idMi001, Integer nouds) {
+		return repo.getByNourutMaster(idMi010, idMi001, nouds);
+	}
+	
+	@Transactional
+    public void createNextAdmin(String tahun, String bulan, ECustomerGajiId customer, EProduk produk) {
+
+		String nextBulan = "";
+		String nextTahun = tahun;
+		
+		if (Integer.valueOf(bulan) < 12) {
+			nextBulan = "0" + String.valueOf(Integer.valueOf(bulan) + 1);
+			nextBulan = nextBulan.substring(nextBulan.length()-2, nextBulan.length());
+		} else {
+			nextBulan = "01";
+			nextTahun = String.valueOf(Integer.valueOf(tahun) + 1);
+		}
+		
+		Date nextMonthDate = TimeUtil.getDate(nextTahun + nextBulan + "01");
+		
+		// harus dicek dulu di admin diskon, tahun bulan next ini sudah ada apa belum
+		// sebab utk kasus proses invoice ulang (misal januari diproses, cust a, b, c, cust a dan b lancar, c gagal
+		// lalu januari diproses ulang, nah admin diskon utk cust a dan b kan ga boleh terbentuk lagi, ntar dobel
+		boolean isAdminExists = isAdminDiskonAlreadyExists(customer.getId(), produk.getId(), nextTahun, nextBulan);
+		
+		if (!isAdminExists) {
+
+			List<EAdminDiskon> eAdminDiskonList = repo.getByCustomerProdukDanTahunBulan(customer.getId(), produk.getId(), tahun, bulan);
+			
+			boolean isPctdisExists = false;
+			boolean isNildisExists = false;
+			boolean isGrpdisExists = false;
+			boolean isSpcdisExists = false;
+			Integer lastNourutPctdis = 0;
+			Integer lastNourutNildis = 0;
+			Integer lastNourutGrpdis = 0;
+			
+			// untuk kelanjutan diskon diskon yang telah ada di admin diskon
+			for (EAdminDiskon eAdminDiskon : eAdminDiskonList) {
+				
+				if (eAdminDiskon.getJnsdis().equals("PCTDIS")) {
+					
+					lastNourutPctdis = eAdminDiskon.getNouds();
+					
+					String jnstrf = eAdminDiskon.getJnsdis();
+					Integer nouds = eAdminDiskon.getNouds();
+					
+					// ambil detail master tarif untuk referensi nourut admin diskon ini
+					CustomerProdukTarifDetail detailTarif = customerProdukTarifDetailService.getByCustProdukNoUrut(customer.getId(), produk.getId(), jnstrf, nouds);				
+					
+					Integer durasi = detailTarif.jumdur;
+					if (detailTarif.satdur.equals("TAHUN")) {
+						durasi = durasi * 12;
+					}
+					
+					System.out.println(nextMonthDate + " " + detailTarif.tglstart + " " + detailTarif.tglstop);
+					// NB: 1 < 1 -> false
+						if (eAdminDiskon.getDiske() < durasi && 
+							(TimeUtil.isAfterOrEqual(nextMonthDate, detailTarif.tglstart) && (TimeUtil.isBeforeOrEqual(nextMonthDate, detailTarif.tglstop) || detailTarif.tglstop == null))) {					
+							// bila diske < jumdur di mi012 dan bulan berikutnya masih dalam range periode diskon di master tarif
+								
+							// create admin diskon untuk bulan berikutnya dengan diske = diske + 1 
+							int diske = eAdminDiskon.getDiske() + 1;
+								
+							EAdminDiskon newEAdminDiskon = new EAdminDiskon();
+								
+							newEAdminDiskon.setTahun(nextTahun);
+							newEAdminDiskon.setBulan(nextBulan);
+							newEAdminDiskon.setCustomer(customer);
+							newEAdminDiskon.setProduk(produk);
+							newEAdminDiskon.setJnsdis(jnstrf);
+							newEAdminDiskon.setNourut(1);
+							newEAdminDiskon.setDiske(diske);
+							newEAdminDiskon.setPctdisc(detailTarif.pctdisc);
+							newEAdminDiskon.setNildisc(0.0);
+							newEAdminDiskon.setIdref(detailTarif.id);
+							newEAdminDiskon.setNouds(detailTarif.nourut);
+							newEAdminDiskon.setFldel(BaseConstants.TIDAK);
+								
+							repo.add(newEAdminDiskon);
+								
+							isPctdisExists = true;
+						}					
+				}
+				
+				if (eAdminDiskon.getJnsdis().equals("NILDIS")) {
+					
+					lastNourutNildis = eAdminDiskon.getNouds();
+
+					String jnstrf = eAdminDiskon.getJnsdis();
+					Integer nouds = eAdminDiskon.getNouds();
+					
+					// ambil detail master tarif untuk referensi nourut admin diskon ini
+					CustomerProdukTarifDetail detailTarif = customerProdukTarifDetailService.getByCustProdukNoUrut(customer.getId(), produk.getId(), jnstrf, nouds);				
+					
+					Integer durasi = detailTarif.jumdur;
+					if (detailTarif.satdur.equals("TAHUN")) {
+						durasi = durasi * 12;
+					}
+					
+						if (eAdminDiskon.getDiske() < durasi && 
+								(TimeUtil.isAfterOrEqual(nextMonthDate, detailTarif.tglstart) && (TimeUtil.isBeforeOrEqual(nextMonthDate, detailTarif.tglstop) || detailTarif.tglstop == null))) {					
+							// bila diske < jumdur di mi012 dan bulan berikutnya masih dalam range periode diskon di master tarif
+						
+							// create admin diskon untuk bulan berikutnya dengan diske = diske + 1 
+							int diske = eAdminDiskon.getDiske() + 1;
+						
+							EAdminDiskon newEAdminDiskon = new EAdminDiskon();
+						
+							newEAdminDiskon.setTahun(nextTahun);
+							newEAdminDiskon.setBulan(nextBulan);
+							newEAdminDiskon.setCustomer(customer);
+							newEAdminDiskon.setProduk(produk);
+							newEAdminDiskon.setJnsdis(jnstrf);
+							newEAdminDiskon.setNourut(2);
+							newEAdminDiskon.setDiske(diske);
+							newEAdminDiskon.setPctdisc(0.0);
+							newEAdminDiskon.setNildisc(detailTarif.nildisc);
+							newEAdminDiskon.setIdref(detailTarif.id);
+							newEAdminDiskon.setNouds(detailTarif.nourut);
+							newEAdminDiskon.setFldel(BaseConstants.TIDAK);
+						
+							repo.add(newEAdminDiskon);
+						
+							isNildisExists = true;
+						}
+				}
+
+				if (eAdminDiskon.getJnsdis().equals("GRPDIS1") || eAdminDiskon.getJnsdis().equals("GRPDIS2")) {
+					
+					lastNourutGrpdis = eAdminDiskon.getNouds();
+					
+					//String jnstrf = "GRPDIS";
+					//Integer nouds = 1; // karena untuk grup diskon, di detail master tarif hanya ada 1 detail tidak bisa lebih
+					
+					// ambil detail master tarif untuk referensi nourut admin diskon ini
+					//CustomerProdukTarifDetail detailTarif = customerProdukTarifDetailService.getByCustProdukNoUrut(customer.getId(), produk.getId(), jnstrf, nouds);
+					
+					// ambil master grup diskon, sebab durasi ada di sini
+					GrupDiskonDetail grupDiskon = grupDiskonDetailService.findId(eAdminDiskon.getIdref());
+					
+					if (eAdminDiskon.getJnsdis().equals("GRPDIS1")) {
+						// %
+						
+						Integer durasi = grupDiskon.jumdurPct;
+						if (grupDiskon.satdurPct.equals("TAHUN")) {
+							durasi = durasi * 12;
+						}
+						
+						if (eAdminDiskon.getDiske() < durasi) {					
+							// bila diske < jumdurpct di master grup diskon (MI005)
+							
+							// create admin diskon untuk bulan berikutnya dengan diske = diske + 1 
+							int diske = eAdminDiskon.getDiske() + 1;
+							
+							EAdminDiskon newEAdminDiskon = new EAdminDiskon();
+							
+							newEAdminDiskon.setTahun(nextTahun);
+							newEAdminDiskon.setBulan(nextBulan);
+							newEAdminDiskon.setCustomer(customer);
+							newEAdminDiskon.setProduk(produk);
+							newEAdminDiskon.setJnsdis("GRPDIS1");
+							newEAdminDiskon.setNourut(3);
+							newEAdminDiskon.setDiske(diske);
+							newEAdminDiskon.setPctdisc(grupDiskon.pctdisc);
+							newEAdminDiskon.setNildisc(0.0);
+							newEAdminDiskon.setIdref(grupDiskon.id);
+							newEAdminDiskon.setNouds(grupDiskon.nourut);
+							newEAdminDiskon.setFldel(BaseConstants.TIDAK);
+							
+							repo.add(newEAdminDiskon);
+							
+							isGrpdisExists = true;
+						}
+					}
+
+					if (eAdminDiskon.getJnsdis().equals("GRPDIS2")) {
+						// Nilai
+						
+						Integer durasi = grupDiskon.jumdurNil;
+						if (grupDiskon.satdurNil.equals("TAHUN")) {
+							durasi = durasi * 12;
+						}
+						
+						if (eAdminDiskon.getDiske() < durasi) {					
+							// bila diske < jumdurnil di master grup diskon (MI005)
+							
+							// create admin diskon untuk bulan berikutnya dengan diske = diske + 1 
+							int diske = eAdminDiskon.getDiske() + 1;
+							
+							EAdminDiskon newEAdminDiskon = new EAdminDiskon();
+							
+							newEAdminDiskon.setTahun(nextTahun);
+							newEAdminDiskon.setBulan(nextBulan);
+							newEAdminDiskon.setCustomer(customer);
+							newEAdminDiskon.setProduk(produk);
+							newEAdminDiskon.setJnsdis("GRPDIS2");
+							newEAdminDiskon.setNourut(4);
+							newEAdminDiskon.setDiske(diske);
+							newEAdminDiskon.setPctdisc(0.0);
+							newEAdminDiskon.setNildisc(grupDiskon.nildisc);
+							newEAdminDiskon.setIdref(grupDiskon.id);
+							newEAdminDiskon.setNouds(grupDiskon.nourut);
+							newEAdminDiskon.setFldel(BaseConstants.TIDAK);
+							
+							repo.add(newEAdminDiskon);
+							
+							isGrpdisExists = true;
+						}
+					}
+				}
+				
+				if (eAdminDiskon.getJnsdis().equals("SPCDIS")) {
+					
+					// untuk diskon khusus
+					DiskonKhususHeader diskonKhusus = DiskonKhususHeader.fromEntity(diskonKhususHeaderService.get(eAdminDiskon.getIdref()));
+					
+					if (diskonKhusus != null) {
+
+						Integer durasi = diskonKhusus.jumdur;
+						if (diskonKhusus.satdur.equals("TAHUN")) {
+							durasi = durasi * 12;
+						}
+
+						if (durasi > 1) {						
+							if ((eAdminDiskon.getDiske() < durasi && 
+								(TimeUtil.isAfterOrEqual(nextMonthDate, diskonKhusus.tglstart) && (TimeUtil.isBeforeOrEqual(nextMonthDate, diskonKhusus.tglstop) || diskonKhusus.tglstop == null))) ||
+								(durasi == 1 && diskonKhusus.satdur.equals("BULAN") && 
+								(TimeUtil.isAfterOrEqual(nextMonthDate, diskonKhusus.tglstart) && diskonKhusus.tglstop == null))) {					
+						
+								// create admin diskon untuk bulan berikutnya dengan diske = diske + 1 
+								int diske = eAdminDiskon.getDiske() + 1;
+							
+								EAdminDiskon newEAdminDiskon = new EAdminDiskon();
+							
+								newEAdminDiskon.setTahun(nextTahun);
+								newEAdminDiskon.setBulan(nextBulan);
+								newEAdminDiskon.setCustomer(customer);
+								newEAdminDiskon.setProduk(produk);
+								newEAdminDiskon.setJnsdis("SPCDIS");
+								newEAdminDiskon.setNourut(5);
+								newEAdminDiskon.setDiske(diske);
+								newEAdminDiskon.setPctdisc(diskonKhusus.pctdisc);
+								newEAdminDiskon.setNildisc(diskonKhusus.nildisc);
+								newEAdminDiskon.setIdref(diskonKhusus.id);
+								newEAdminDiskon.setNouds(0);
+								newEAdminDiskon.setFldel(BaseConstants.TIDAK);
+							
+								repo.add(newEAdminDiskon);
+							
+								isSpcdisExists = true;
+							}
+						}
+					}
+					
+				}
+				
+			}
+
+			// untuk diskon diskon yang belum ada di master
+			// PCTDIS
+			if (!isPctdisExists) {
+				// bila di admin diskon sudah ada untuk tahun bulan depan, maka tidak dapat ditambah lagi (hanya ada satu jenis
+				// yang aktif di satu bulan, tidak boleh dobel)
+
+				// Ambil detail master tarif, untuk jenis tarif PCTDIS dan nomor urut nya tidak ada di admin diskon untuk customer + produk ini 
+				// dan next tahun bulan masuk dalam range periode detil master tarif, ambil data dengan nourut yang termuda
+				// ini juga mengambil diskon yang berlaku selamanya 
+				CustomerProdukTarifDetail detailDiskon = customerProdukTarifDetailService.getDetailBelumAdaDiAdminDiskon(customer.getId(), produk.getId(), "PCTDIS", lastNourutPctdis, nextTahun, nextBulan);
+				
+				if (detailDiskon != null) {
+					EAdminDiskon eAdminDiskon = new EAdminDiskon();
+					
+					eAdminDiskon.setTahun(nextTahun);
+					eAdminDiskon.setBulan(nextBulan);
+					eAdminDiskon.setCustomer(customer);
+					eAdminDiskon.setProduk(produk);
+					eAdminDiskon.setJnsdis("PCTDIS");
+					eAdminDiskon.setNourut(1);
+					eAdminDiskon.setDiske(1);
+					eAdminDiskon.setPctdisc(detailDiskon.pctdisc);
+					eAdminDiskon.setNildisc(0.0);
+					eAdminDiskon.setIdref(detailDiskon.id);
+					eAdminDiskon.setNouds(detailDiskon.nourut);
+					eAdminDiskon.setFldel(BaseConstants.TIDAK);
+					
+					repo.add(eAdminDiskon);
+				}
+				
+			}
+			
+			// NILDIS
+			if (!isNildisExists) {
+				// bila di admin diskon sudah ada untuk tahun bulan depan, maka tidak dapat ditambah lagi (hanya ada satu jenis
+				// yang aktif di satu bulan, tidak boleh dobel)
+
+				// Ambil detail master tarif, untuk jenis tarif PCTDIS dan nomor urut nya tidak ada di admin diskon untuk customer + produk ini 
+				// dan tahun bulan masuk dalam range periode detil master tarif, ambil data dengan nourut yang termuda
+				// ini juga mengambil diskon yang berlaku selamanya 
+				CustomerProdukTarifDetail detailDiskon = customerProdukTarifDetailService.getDetailBelumAdaDiAdminDiskon(customer.getId(), produk.getId(), "NILDIS", lastNourutNildis, nextTahun, nextBulan);
+				
+				if (detailDiskon != null) {
+					EAdminDiskon eAdminDiskon = new EAdminDiskon();
+					
+					eAdminDiskon.setTahun(nextTahun);
+					eAdminDiskon.setBulan(nextBulan);
+					eAdminDiskon.setCustomer(customer);
+					eAdminDiskon.setProduk(produk);
+					eAdminDiskon.setJnsdis("NILDIS");
+					eAdminDiskon.setNourut(2);
+					eAdminDiskon.setDiske(1);
+					eAdminDiskon.setPctdisc(0.0);
+					eAdminDiskon.setNildisc(detailDiskon.nildisc);
+					eAdminDiskon.setIdref(detailDiskon.id);
+					eAdminDiskon.setNouds(detailDiskon.nourut);
+					eAdminDiskon.setFldel(BaseConstants.TIDAK);
+					
+					repo.add(eAdminDiskon);
+				}
+			}
+			
+			// GRPDIS
+			if (!isGrpdisExists) {
+				// bila di admin diskon sudah ada untuk tahun bulan depan, maka tidak dapat ditambah lagi (hanya ada satu jenis
+				// yang aktif di satu bulan, tidak boleh dobel)
+				
+				// hal yang khusus untuk grup diskon ini adalah :
+				// bahwa di detail master tarif ia tidak memiliki tanggal start - stop
+				// mainnya hanya di durasi yang ada di master grup diskon, dan di master grup diskon ini tidak ada perulangan
+				// jadi : n bulan pertama sekian, n bulan selanjutnya sekian, setelah itu ya tidak didiskon
+				
+				// oleh sebab itu, khusus grup diskon, diskon ini hanya bisa berlaku sekali jalan saja
+				
+				// tapi tetap dia harus bisa ambil next durasi grup diskon tsb
+				// ambil detail master tarif untuk referensi nourut admin diskon ini
+				
+				// karena sekali jalan saja, maka bila last nomor urutnya = 0, ini artinya di admin saldo tidak ada grup diskon
+				// dan bila tidak ada grup diskon artinya pasti tidak ada lanjutannnya, sebab begini ;
+				//    - admin diskon diisi waktu trx live -> grup diskon diisi bdsk master yg cocok saat itu
+				//    - waktu proses dijalankan akan digenerate admin diskon berdasarkan admin diskon tsb, dihitung durasinya sampai
+				//      habis
+				// jadi bila last normor urutnya = 0, jangan cari next durasinya lagi, sebab jadinya akan berulang lagi
+				
+				if (lastNourutGrpdis > 0) {
+					CustomerProdukTarifDetail detailDiskon = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(customer.getId(), produk.getId(), "GRPDIS", nextTahun + nextBulan + "01");
+					
+					// ambil master grup diskon, untuk nomor urut yang belum ada di admin diskon atau nomor urut diskon yang berlaku selamanya
+					GrupDiskonDetail grupDiskon = grupDiskonDetailService.getGrupDiskonBelumAdaDiAdminDiskon(detailDiskon.grupDiskon.id, lastNourutGrpdis);
+
+					if (grupDiskon != null) {
+						
+						if (grupDiskon.pctdisc > 0.0) {
+
+							EAdminDiskon eAdminDiskon = new EAdminDiskon();
+							
+							eAdminDiskon.setTahun(nextTahun);
+							eAdminDiskon.setBulan(nextBulan);
+							eAdminDiskon.setCustomer(customer);
+							eAdminDiskon.setProduk(produk);
+							eAdminDiskon.setJnsdis("GRPDIS1");
+							eAdminDiskon.setNourut(3);
+							eAdminDiskon.setDiske(1);
+							eAdminDiskon.setPctdisc(grupDiskon.pctdisc);
+							eAdminDiskon.setNildisc(0.0);
+							eAdminDiskon.setIdref(grupDiskon.id);
+							eAdminDiskon.setNouds(grupDiskon.nourut); // -> karena di detail master tarif, hanya ada satu nourut untuk grup diskon
+							eAdminDiskon.setFldel(BaseConstants.TIDAK);
+							
+							repo.add(eAdminDiskon);				
+						}
+
+						if (grupDiskon.nildisc > 0.0) {
+
+							EAdminDiskon eAdminDiskon = new EAdminDiskon();
+							
+							eAdminDiskon.setTahun(nextTahun);
+							eAdminDiskon.setBulan(nextBulan);
+							eAdminDiskon.setCustomer(customer);
+							eAdminDiskon.setProduk(produk);
+							eAdminDiskon.setJnsdis("GRPDIS2");
+							eAdminDiskon.setNourut(4);
+							eAdminDiskon.setDiske(1);
+							eAdminDiskon.setPctdisc(0.0);
+							eAdminDiskon.setNildisc(grupDiskon.nildisc);
+							eAdminDiskon.setIdref(grupDiskon.id);
+							eAdminDiskon.setNouds(grupDiskon.nourut);
+							eAdminDiskon.setFldel(BaseConstants.TIDAK);
+							
+							repo.add(eAdminDiskon);				
+						}
+					}				
+				}
+				
+				// lalu bagaimana bila client sudah berlangganan lama, dan karena punya beberapa client yg berlangganan maka
+				// hendak diberi diskon ?? sementara belum bisa
+				
+			}
+			
+			// SPCDIS
+			if (!isSpcdisExists) {
+				DiskonKhususHeader diskonKhusus = diskonKhususHeaderService.getFindByCustomerAndTanggal(customer.getId(), nextTahun + nextBulan + "01");
+				
+				if (diskonKhusus != null) {
+					
+					EAdminDiskon eAdminDiskon = new EAdminDiskon();
+					
+					eAdminDiskon.setTahun(nextTahun);
+					eAdminDiskon.setBulan(nextBulan);
+					eAdminDiskon.setCustomer(customer);
+					eAdminDiskon.setProduk(produk);
+					eAdminDiskon.setJnsdis("SPCDIS");
+					eAdminDiskon.setNourut(5);
+					eAdminDiskon.setDiske(1);
+					eAdminDiskon.setPctdisc(diskonKhusus.pctdisc);
+					eAdminDiskon.setNildisc(diskonKhusus.nildisc);
+					eAdminDiskon.setIdref(diskonKhusus.id);
+					eAdminDiskon.setNouds(0);
+					eAdminDiskon.setFldel(BaseConstants.TIDAK);
+
+					repo.add(eAdminDiskon);
+				}
+			}
+		}
+	}
+	
+	@Transactional
+    public void updateNextAdmin(ECustomerGajiId customer, EProduk produk, ECustomerProdukTarifDetail eDetailTarif) {
+
+		// periksa apakah ada admin diskon untuk jenis diskon ini di 1 bulan dari proses terakhir
+		if (eDetailTarif.getJnstrf().equals("PCTDIS") || eDetailTarif.getJnstrf().equals("NILDIS")) {
+
+			// ambil tahun bulan terakhir proses dari saldo live
+			SaldoLive saldoLive = saldoLiveService.findLiveCustomerProduk(customer.getId(), produk.getId());
+			
+			if (saldoLive != null) {
+				
+				String nextTahunBulan = TimeUtil.convertDateToYyyyMmDd(saldoLive.tglive).substring(0, 6);
+				if (saldoLive.thpro != null && saldoLive.blpro != null) {
+					nextTahunBulan = TimeUtil.getNextMonth(saldoLive.thpro + saldoLive.blpro);					
+				}
+				
+				String nextTahun = nextTahunBulan.substring(0, 4);
+				String nextBulan = nextTahunBulan.substring(4, 6);
+				int intNextTahunBulan = Integer.valueOf(nextTahunBulan);
+				
+				String tahunBulanStop = eDetailTarif.getTglstop() == null ? "30000101" : eDetailTarif.getTglstop();
+				tahunBulanStop = tahunBulanStop.substring(0, 6);
+				int intTahunBulanStop  = Integer.valueOf(tahunBulanStop);
+				int intTahunBulanStart = Integer.valueOf(eDetailTarif.getTglstart().substring(0, 6));
+				
+				// bila tahun bulan proses bulanan terakhir + 1, ada dalam range periode diskon ini 
+				if (intNextTahunBulan >= intTahunBulanStart && intNextTahunBulan <= intTahunBulanStop) {
+					
+					// bila bulan stop >= bulan terakhir proses + 1
+					if (Integer.valueOf(tahunBulanStop) >= Integer.valueOf(nextTahunBulan)) {
+						
+						EAdminDiskon eAdminDiskon = findByBk(nextTahun, nextBulan, customer.getId(), produk.getId(), eDetailTarif.getJnstrf());
+						
+						if (eAdminDiskon != null) {
+							
+							// admin diskon untuk bulan proses terakhir + 1 ditemukan, update isinya
+							// masalahnya isi yang diupdate adalah : pctdis dan nildis
+							// diske tidak perlu diupdate, kenapa bisa begitu ? perhatikan contoh di bawah ini :
+							// 
+							// live januari 2021, diskon 10%, durasi 3 bulan
+							// trx live diinput      -> muncul admin januari 2021, diske = 1
+							// januari 2021 diproses -> muncul admin pebruari 2021, diske = 2
+							// durasi diubah menjadi 2 bulan (masih bisa karena tgl stop masih di proses terakhir yaitu pebruari 2021)
+							// untuk kasus ini, tidak ada yang dilakukan karena durasi 2 bulan ini masih masuk di admin
+							// apakah durasi bisa diubah menjadi 1 bulan -> tidak bisa
+							//
+							// contoh lain
+							// live januari 2021, diskon 10%, durasi 3 bulan
+							// trx live diinput      -> muncul admin januari 2021, diske = 1
+							// januari 2021 diproses -> muncul admin pebruari 2021, diske = 2
+							// durasi diubah menjadi 3 bulan 
+							// untuk kasus ini, tidak ada yang dilakukan karena durasi 2 bulan ini masih masuk di admin
+							//
+	                        // jadi dari simulasi di atas, diske seharusnya tidak perlu diupdate 						
+							
+							eAdminDiskon.setPctdisc(eDetailTarif.getPctdisc());
+							eAdminDiskon.setNildisc(eDetailTarif.getNildisc());
+							
+						} else {
+							
+							// admin diskon tidak ditemukan, ini bisa berarti durasi diperbesar, misal dari 1 bulan menjadi 2 bulan
+							// sehingga di admin diskon bulan terakhir proses + 1 tidak ditemukan
+							// untuk keadaan ini tambah data admin diskon
+							// atau bisa juga karena memang baru sama sekali
+							EAdminDiskon eAdminDiskonTmp = findByBk(saldoLive.thpro, saldoLive.blpro, customer.getId(), produk.getId(), eDetailTarif.getJnstrf());
+							
+							int diske = 0;
+							if (eAdminDiskonTmp != null) {
+								diske = eAdminDiskonTmp.getDiske();
+							}
+							
+							// bila tanggal stop dari detail diskon = null dan
+							// durasi adalah 1 bulan, maka diske tidak boleh dijumlah, karena untuk yang tiap bulan di diskon ini
+							// diske selalu dianggap = 1
+							//diske = diske + 1;
+							if (intTahunBulanStop == 300001 && (eDetailTarif.getJumdur() == 1 && eDetailTarif.getSatdur().equals("BULAN"))) {
+								diske = 1;
+							} else {
+								diske = diske + 1;								
+							}
+							
+							int nourut = 0;
+							String jnsmst = "";
+							if (eDetailTarif.getJnstrf().equals("PCTDIS")) {
+								nourut = 1;
+								jnsmst = "PRODIS";
+							}
+							if (eDetailTarif.getJnstrf().equals("NILDIS")) {
+								nourut = 2;
+								jnsmst = "NILDIS";
+							}
+							
+							eAdminDiskon = new EAdminDiskon();
+							
+							eAdminDiskon.setTahun(nextTahun);
+							eAdminDiskon.setBulan(nextBulan);
+							eAdminDiskon.setCustomer(customer);
+							eAdminDiskon.setProduk(produk);
+							eAdminDiskon.setJnsdis(eDetailTarif.getJnstrf());
+							eAdminDiskon.setNourut(nourut);
+							eAdminDiskon.setDiske(diske);
+							eAdminDiskon.setPctdisc(eDetailTarif.getPctdisc());
+							eAdminDiskon.setNildisc(eDetailTarif.getNildisc());
+							eAdminDiskon.setIdref(eDetailTarif.getId());
+							eAdminDiskon.setNouds(eDetailTarif.getNourut());
+							eAdminDiskon.setFldel(BaseConstants.TIDAK);
+							
+							eAdminDiskon = repo.add(eAdminDiskon);
+							
+							/* 27 Sept 2021, tidak perlu tambah admin penggunaan master, kan belum digunakan
+							 *               nanti di generate invoice baru dia benar benar digunakan
+							// tambah admin penggunaan master diskon
+							EPenggunaanMaster ePenggunaanMasterDiskon = new EPenggunaanMaster();
+							ePenggunaanMasterDiskon.setJnsmst(jnsmst);
+							ePenggunaanMasterDiskon.setJnstrf(eDetailTarif.getJnstrf());
+							ePenggunaanMasterDiskon.setIdMi010(customer.getId());
+							ePenggunaanMasterDiskon.setIdMi001(produk.getId());
+							ePenggunaanMasterDiskon.setNourut(eDetailTarif.getNourut());			
+							ePenggunaanMasterDiskon.setJnspgg("ADMDISKON");
+							ePenggunaanMasterDiskon.setIdPgg(eAdminDiskon.getId());
+							ePenggunaanMasterDiskon.setTahun(nextTahun);
+							ePenggunaanMasterDiskon.setBulan(nextBulan);			
+							penggunaanMasterService.add(ePenggunaanMasterDiskon);
+							*/
+							
+						}
+					}					
+				} else {
+					// bila next tahun bulan melampaui tahun bulan stop di detail ini
+					// bila ada admin diskon di next tahun bulan tersebut, maka artinya admin tersebut harusnya dihapus
+					// karena sudah tidak ada dalam range periode diskon %
+					if (intNextTahunBulan > intTahunBulanStop) {
+						EAdminDiskon eAdminDiskon = repo.findByBK(nextTahun, nextBulan, customer.getId(), produk.getId(), "PCTDIS");
+						delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());						
+					}
+				}
+			}
+		}
+		
+		if (eDetailTarif.getJnstrf().equals("GRPDIS")) {
+			// ambil tahun bulan terakhir proses dari saldo live
+			SaldoLive saldoLive = saldoLiveService.findLiveCustomerProduk(customer.getId(), produk.getId());
+			
+			if (saldoLive != null) {
+				
+				String nextTahunBulan = TimeUtil.convertDateToYyyyMmDd(saldoLive.tglive).substring(0, 6);
+				if (saldoLive.thpro != null && saldoLive.blpro != null) {
+					nextTahunBulan = TimeUtil.getNextMonth(saldoLive.thpro + saldoLive.blpro);					
+				}
+				
+				String nextTahun = nextTahunBulan.substring(0, 4);
+				String nextBulan = nextTahunBulan.substring(4, 6);
+				int intNextTahunBulan = Integer.valueOf(nextTahunBulan);
+				
+				// durasi grup diskon ada di master grup diskon
+				EGrupDiskonHeader eGrupDiskonHeader = grupDiskonHeaderService.get(eDetailTarif.getGrupDiskon().getId());
+				
+				// loop masing-masing durasi detail grup diskon untuk mencari adakah tahun bulan yang harus diciptakan untuk
+				// nextTahun bulan
+				String startTahunBulan = TimeUtil.convertDateToYyyyMmDd(saldoLive.tglive).substring(0, 6);
+				int intStartYear = Integer.valueOf(startTahunBulan.substring(0, 4));
+				int intStartMonth = Integer.valueOf(startTahunBulan.substring(4, 6));
+				int intStartTahunBulan = Integer.valueOf(startTahunBulan);
+				Date startDate = saldoLive.tglive;
+				for (EGrupDiskonDetail eGrupDiskonDetail : eGrupDiskonHeader.getDetail()) {
+					
+					if (eGrupDiskonDetail.getPctdisc() > 0) {
+
+						// generate endTahunBulan
+						int jumdur = eGrupDiskonDetail.getJumdurPct();
+						if (eGrupDiskonDetail.getSatdurPct().equals("TAHUN")) {
+							jumdur = jumdur * 12;
+						}
+						
+						Date endDate = TimeUtil.addMonths(startDate, jumdur);
+						String endTahunBulan = TimeUtil.convertDateToYyyyMmDd(endDate).substring(0, 6);
+						int intEndTahunBulan = Integer.valueOf(endTahunBulan);
+
+						if (intStartTahunBulan == intEndTahunBulan) {
+							if (intStartTahunBulan == intNextTahunBulan) {
+								// cari di admin saldo, bila belum ada tambahkan, bila sudah ada edit prosen diskonnya
+								
+								String thpro = startTahunBulan.substring(0, 4);
+								String blpro = startTahunBulan.substring(4, 6);
+								EAdminDiskon eAdminDiskonTmp = findByBk(thpro, blpro, customer.getId(), produk.getId(), "GRPDIS1");
+
+								if (eAdminDiskonTmp == null) {
+									
+									// tambah admin diskon
+									EAdminDiskon eAdminDiskon = new EAdminDiskon();
+									
+									eAdminDiskon.setTahun(thpro);
+									eAdminDiskon.setBulan(blpro);
+									eAdminDiskon.setCustomer(customer);
+									eAdminDiskon.setProduk(produk);
+									eAdminDiskon.setJnsdis("GRPDIS1");
+									eAdminDiskon.setNourut(3);
+									eAdminDiskon.setDiske(1);
+									eAdminDiskon.setPctdisc(eGrupDiskonDetail.getPctdisc());
+									eAdminDiskon.setNildisc(0.0);
+									eAdminDiskon.setIdref(eGrupDiskonDetail.getId());
+									eAdminDiskon.setNouds(eGrupDiskonDetail.getNourut());
+									eAdminDiskon.setFldel(BaseConstants.TIDAK);
+									
+									eAdminDiskon = repo.add(eAdminDiskon);
+									
+									/* 27 Sept 2021, tidak perlu tambah admin penggunaan master, kan belum digunakan
+									 *               nanti di generate invoice baru dia benar benar digunakan
+									// tambah admin penggunaan master diskon
+									EPenggunaanMaster ePenggunaanMasterDiskon = new EPenggunaanMaster();
+									ePenggunaanMasterDiskon.setJnsmst("GRPPRODIS");
+									ePenggunaanMasterDiskon.setJnstrf("GRPDIS");
+									ePenggunaanMasterDiskon.setIdMi010(customer.getId());
+									ePenggunaanMasterDiskon.setIdMi001(produk.getId());
+									ePenggunaanMasterDiskon.setNourut(eDetailTarif.getNourut());			
+									ePenggunaanMasterDiskon.setJnspgg("ADMDISKON");
+									ePenggunaanMasterDiskon.setIdPgg(eAdminDiskon.getId());
+									ePenggunaanMasterDiskon.setTahun(thpro);
+									ePenggunaanMasterDiskon.setBulan(blpro);			
+									penggunaanMasterService.add(ePenggunaanMasterDiskon);
+									*/
+									
+								} else {
+									
+									eAdminDiskonTmp.setPctdisc(eGrupDiskonDetail.getPctdisc());
+									eAdminDiskonTmp.setNildisc(0.0);
+								}
+								break;
+							}
+						} else {
+							int diske = 1;
+							
+							while (intStartTahunBulan != intEndTahunBulan) {
+								
+								String bln = "0" + String.valueOf(Integer.valueOf(intStartMonth));
+								bln = bln.substring(bln.length() - 2, bln.length());
+								String thn = String.valueOf(intStartYear);
+
+								if (intStartTahunBulan == intNextTahunBulan) {
+									
+									EAdminDiskon eAdminDiskonTmp = findByBk(thn, bln, customer.getId(), produk.getId(), "GRPDIS1");
+
+									if (eAdminDiskonTmp == null) {
+										
+										// tambah admin diskon
+										EAdminDiskon eAdminDiskon = new EAdminDiskon();
+										
+										eAdminDiskon.setTahun(thn);
+										eAdminDiskon.setBulan(bln);
+										eAdminDiskon.setCustomer(customer);
+										eAdminDiskon.setProduk(produk);
+										eAdminDiskon.setJnsdis("GRPDIS1");
+										eAdminDiskon.setNourut(3);
+										eAdminDiskon.setDiske(diske);
+										eAdminDiskon.setPctdisc(eGrupDiskonDetail.getPctdisc());
+										eAdminDiskon.setNildisc(0.0);
+										eAdminDiskon.setIdref(eGrupDiskonDetail.getId());
+										eAdminDiskon.setNouds(eGrupDiskonDetail.getNourut());
+										eAdminDiskon.setFldel(BaseConstants.TIDAK);
+										
+										eAdminDiskon = repo.add(eAdminDiskon);
+										
+										/* 27 Sept 2021, tidak perlu tambah admin penggunaan mster, kan belum digunakan
+										 *               nanti di generate invoice baru dia benar benar digunakan
+										// tambah admin penggunaan master diskon
+										EPenggunaanMaster ePenggunaanMasterDiskon = new EPenggunaanMaster();
+										ePenggunaanMasterDiskon.setJnsmst("GRPPRODIS");
+										ePenggunaanMasterDiskon.setJnstrf("GRPDIS");
+										ePenggunaanMasterDiskon.setIdMi010(customer.getId());
+										ePenggunaanMasterDiskon.setIdMi001(produk.getId());
+										ePenggunaanMasterDiskon.setNourut(eDetailTarif.getNourut());			
+										ePenggunaanMasterDiskon.setJnspgg("ADMDISKON");
+										ePenggunaanMasterDiskon.setIdPgg(eAdminDiskon.getId());
+										ePenggunaanMasterDiskon.setTahun(thn);
+										ePenggunaanMasterDiskon.setBulan(bln);			
+										penggunaanMasterService.add(ePenggunaanMasterDiskon);
+										*/
+
+									} else {
+										
+										eAdminDiskonTmp.setPctdisc(eGrupDiskonDetail.getPctdisc());
+										eAdminDiskonTmp.setNildisc(0.0);
+									}
+
+									break;
+
+								}
+
+								if (intStartMonth == 12) {
+									intStartYear = intStartYear + 1;
+									intStartMonth = 1;
+								} else {
+									intStartMonth = intStartMonth + 1;
+								}
+								
+								bln = "0" + String.valueOf(Integer.valueOf(intStartMonth));
+								bln = bln.substring(bln.length() - 2, bln.length());
+								thn = String.valueOf(intStartYear);
+								
+								intStartTahunBulan = Integer.valueOf(thn + bln);
+								diske = diske + 1;
+							}
+						}
+					}
+					
+					if (eGrupDiskonDetail.getNildisc() > 0) {
+
+						// generate endTahunBulan
+						int jumdur = eGrupDiskonDetail.getJumdurNil();
+						if (eGrupDiskonDetail.getSatdurNil().equals("TAHUN")) {
+							jumdur = jumdur * 12;
+						}
+						
+						Date endDate = TimeUtil.addMonths(startDate, jumdur);
+						String endTahunBulan = TimeUtil.convertDateToYyyyMmDd(endDate).substring(0, 6);
+						int intEndTahunBulan = Integer.valueOf(endTahunBulan);
+
+						if (intStartTahunBulan == intEndTahunBulan) {
+							if (intStartTahunBulan == intNextTahunBulan) {
+								// cari di admin saldo, bila belum ada tambahkan, bila sudah ada edit prosen diskonnya
+								
+								String thpro = startTahunBulan.substring(0, 4);
+								String blpro = startTahunBulan.substring(4, 6);
+								EAdminDiskon eAdminDiskonTmp = findByBk(thpro, blpro, customer.getId(), produk.getId(), "GRPDIS2");
+
+								if (eAdminDiskonTmp == null) {
+									
+									// tambah admin diskon
+									EAdminDiskon eAdminDiskon = new EAdminDiskon();
+									
+									eAdminDiskon.setTahun(thpro);
+									eAdminDiskon.setBulan(blpro);
+									eAdminDiskon.setCustomer(customer);
+									eAdminDiskon.setProduk(produk);
+									eAdminDiskon.setJnsdis("GRPDIS2");
+									eAdminDiskon.setNourut(4);
+									eAdminDiskon.setDiske(1);
+									eAdminDiskon.setPctdisc(eGrupDiskonDetail.getPctdisc());
+									eAdminDiskon.setNildisc(0.0);
+									eAdminDiskon.setIdref(eGrupDiskonDetail.getId());
+									eAdminDiskon.setNouds(eGrupDiskonDetail.getNourut());
+									eAdminDiskon.setFldel(BaseConstants.TIDAK);
+									
+									eAdminDiskon = repo.add(eAdminDiskon);
+									
+								} else {
+									
+									eAdminDiskonTmp.setPctdisc(eGrupDiskonDetail.getPctdisc());
+									eAdminDiskonTmp.setNildisc(0.0);
+								}
+								break;
+							}
+						} else {
+							int diske = 1;
+							
+							while (intStartTahunBulan != intEndTahunBulan) {
+								
+								String bln = "0" + String.valueOf(Integer.valueOf(intStartMonth));
+								bln = bln.substring(bln.length() - 2, bln.length());
+								String thn = String.valueOf(intStartYear);
+
+								if (intStartTahunBulan == intNextTahunBulan) {
+									
+									EAdminDiskon eAdminDiskonTmp = findByBk(thn, bln, customer.getId(), produk.getId(), "GRPDIS2");
+
+									if (eAdminDiskonTmp == null) {
+										
+										// tambah admin diskon
+										EAdminDiskon eAdminDiskon = new EAdminDiskon();
+										
+										eAdminDiskon.setTahun(thn);
+										eAdminDiskon.setBulan(bln);
+										eAdminDiskon.setCustomer(customer);
+										eAdminDiskon.setProduk(produk);
+										eAdminDiskon.setJnsdis("GRPDIS2");
+										eAdminDiskon.setNourut(4);
+										eAdminDiskon.setDiske(diske);
+										eAdminDiskon.setPctdisc(eGrupDiskonDetail.getPctdisc());
+										eAdminDiskon.setNildisc(0.0);
+										eAdminDiskon.setIdref(eGrupDiskonDetail.getId());
+										eAdminDiskon.setNouds(eGrupDiskonDetail.getNourut());
+										eAdminDiskon.setFldel(BaseConstants.TIDAK);
+										
+										eAdminDiskon = repo.add(eAdminDiskon);
+										
+									} else {
+										
+										eAdminDiskonTmp.setPctdisc(eGrupDiskonDetail.getPctdisc());
+										eAdminDiskonTmp.setNildisc(0.0);
+									}
+
+									break;
+
+								}
+
+								if (intStartMonth == 12) {
+									intStartYear = intStartYear + 1;
+									intStartMonth = 1;
+								} else {
+									intStartMonth = intStartMonth + 1;
+								}
+								
+								bln = "0" + String.valueOf(Integer.valueOf(intStartMonth));
+								bln = bln.substring(bln.length() - 2, bln.length());
+								thn = String.valueOf(intStartYear);
+								
+								intStartTahunBulan = Integer.valueOf(thn + bln);
+								diske = diske + 1;
+							}
+						}
+					}
+				}
+			}			
+		}
+	}
+	
+	@Transactional
+    public void deleteNextAdmin(ECustomerGajiId customer, EProduk produk, CustomerProdukTarifDetail detailTarif) {
+
+		// periksa apakah ada admin diskon untuk jenis diskon ini di 1 bulan dari proses terakhir
+		if (detailTarif.jnstrf.equals("PCTDIS") || detailTarif.jnstrf.equals("NILDIS") || detailTarif.jnstrf.equals("GRPDIS")) {
+
+			// ambil tahun bulan terakhir proses dari saldo live
+			SaldoLive saldoLive = saldoLiveService.findLiveCustomerProduk(customer.getId(), produk.getId());
+			
+			if (saldoLive != null) {
+				
+				String nextTahunBulan = TimeUtil.convertDateToYyyyMmDd(saldoLive.tglive).substring(0, 6);
+				if (saldoLive.thpro != null && saldoLive.blpro != null) {
+					nextTahunBulan = TimeUtil.getNextMonth(saldoLive.thpro + saldoLive.blpro);					
+				}
+				
+				String nextTahun = nextTahunBulan.substring(0, 4);
+				String nextBulan = nextTahunBulan.substring(4, 6);
+				int intNextTahunBulan = Integer.valueOf(nextTahunBulan);
+				
+				if (detailTarif.jnstrf.equals("PCTDIS") || detailTarif.jnstrf.equals("NILDIS")) {
+					
+					String tahunBulanStop = detailTarif.tglstop == null ? "30000101" : TimeUtil.convertDateToYyyyMmDd(detailTarif.tglstop);
+					tahunBulanStop = tahunBulanStop.substring(0, 6);
+					int intTahunBulanStop  = Integer.valueOf(tahunBulanStop);
+					int intTahunBulanStart = Integer.valueOf(TimeUtil.convertDateToYyyyMmDd(detailTarif.tglstart).substring(0, 6));
+					
+					// bila tahun bulan proses bulanan terakhir + 1, ada dalam range periode diskon ini 
+					if (intNextTahunBulan >= intTahunBulanStart && intNextTahunBulan <= intTahunBulanStop) {
+						// cari, lalu hapus
+						EAdminDiskon eAdminDiskon = findByBk(nextTahun, nextBulan, customer.getId(), produk.getId(), detailTarif.jnstrf);
+						
+						delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());
+					}					
+				}
+				
+				if (detailTarif.jnstrf.equals("GRPDIS")) {
+					
+					EAdminDiskon eAdminDiskon = findByBk(nextTahun, nextBulan, customer.getId(), produk.getId(), "GRPDIS1");					
+					if (eAdminDiskon != null) {
+						delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());											
+					}
+					
+					eAdminDiskon = findByBk(nextTahun, nextBulan, customer.getId(), produk.getId(), "GRPDIS2");
+					if (eAdminDiskon != null) {
+						delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());											
+					}					
+				}
+			}
+		}
+	}
+
+	private boolean isAdminDiskonAlreadyExists(String idMi010, String idMi001, String tahun, String bulan) {
+		List<EAdminDiskon> listEAdminDiskon = repo.getByCustomerProdukDanTahunBulan(idMi010, idMi001, tahun, bulan);
+		
+		if (listEAdminDiskon == null || listEAdminDiskon.isEmpty()) {
+			return false;
+		} else {
+			return true;
+		}
+	}
+	
+	@Transactional
+    public void createAdmin(ETrxLive eTrxLive) {
+		
+		// 8 Oktober 2021
+		// untuk pasca bayar, admin diskon terbentuk dua :
+		// - admin diskon untuk bulan live
+		// - admin diskon untuk 1 bulan setelah live
+		// karena hitung otomatis hanya dilakukan di 1 bulan setelah live dan dihasilkan 2 invoice, invoice untuk bulan live
+		// dan invoice untuk 1 bulan setelah live
+		CustomerProdukTarifHeader customerProdukTarifHeader = customerProdukTarifHeaderService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId());
+		if (customerProdukTarifHeader.jnstgh.equals("PRA")) {
+			
+			String prevTahun = eTrxLive.getTglive().substring(0, 4);
+			String prevBulan = eTrxLive.getTglive().substring(4, 6);
+			
+			String nextTahunBulan = TimeUtil.getNextMonth(eTrxLive.getTglive().substring(0, 6));			
+			String tahun = nextTahunBulan.substring(0,4);
+			String bulan = nextTahunBulan.substring(4,6);
+			
+			CustomerProdukTarifDetail detailDiskon = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "PCTDIS", tahun + bulan + "01");
+			
+			if (detailDiskon != null) {
+				
+				EAdminDiskon ePrevAdminDiskon = findByBk(prevTahun, prevBulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "PCTDIS");
+				if (ePrevAdminDiskon != null) {
+					
+					Integer durasi = detailDiskon.jumdur;
+					if (detailDiskon.satdur.equals("TAHUN")) {
+						durasi = durasi * 12;
+					}
+					
+					Date nextMonthDate = TimeUtil.getDate(tahun + bulan + "01");
+					
+					if (TimeUtil.isAfterOrEqual(nextMonthDate, detailDiskon.tglstart) && (TimeUtil.isBeforeOrEqual(nextMonthDate, detailDiskon.tglstop) || detailDiskon.tglstop == null)) {
+						
+						int diske = 1;
+						if (ePrevAdminDiskon.getDiske() < durasi) {
+							diske = ePrevAdminDiskon.getDiske() + 1;
+						}
+						
+						EAdminDiskon eAdminDiskon = new EAdminDiskon();
+						
+						eAdminDiskon.setTahun(tahun);
+						eAdminDiskon.setBulan(bulan);
+						eAdminDiskon.setCustomer(eTrxLive.getCustomer());
+						eAdminDiskon.setProduk(eTrxLive.getProduk());
+						eAdminDiskon.setJnsdis("PCTDIS");
+						eAdminDiskon.setNourut(1);
+						eAdminDiskon.setDiske(diske);
+						eAdminDiskon.setPctdisc(detailDiskon.pctdisc);
+						eAdminDiskon.setNildisc(0.0);
+						eAdminDiskon.setIdref(detailDiskon.id);
+						eAdminDiskon.setNouds(detailDiskon.nourut);
+						eAdminDiskon.setFldel(BaseConstants.TIDAK);
+						
+						eAdminDiskon = add(eAdminDiskon);
+						
+						// tambah admin penggunaan master diskon
+						EPenggunaanMaster ePenggunaanMasterDiskon = new EPenggunaanMaster();
+						ePenggunaanMasterDiskon.setJnsmst("PRODIS");
+						ePenggunaanMasterDiskon.setJnstrf("PCTDIS");
+						ePenggunaanMasterDiskon.setIdMi010(eTrxLive.getCustomer().getId());
+						ePenggunaanMasterDiskon.setIdMi001(eTrxLive.getProduk().getId());
+						ePenggunaanMasterDiskon.setNourut(detailDiskon.nourut);			
+						ePenggunaanMasterDiskon.setJnspgg("ADMDISKON");
+						ePenggunaanMasterDiskon.setIdPgg(eAdminDiskon.getId());
+						ePenggunaanMasterDiskon.setTahun(tahun);
+						ePenggunaanMasterDiskon.setBulan(bulan);			
+						penggunaanMasterService.add(ePenggunaanMasterDiskon);
+						
+					}
+				}
+			}
+
+			// diskon nilai
+			detailDiskon = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "NILDIS", tahun + bulan + "01");
+			
+			if (detailDiskon != null) {
+				
+				EAdminDiskon ePrevAdminDiskon = findByBk(prevTahun, prevBulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "NILDIS");
+				if (ePrevAdminDiskon != null) {
+					
+					Integer durasi = detailDiskon.jumdur;
+					if (detailDiskon.satdur.equals("TAHUN")) {
+						durasi = durasi * 12;
+					}
+					
+					Date nextMonthDate = TimeUtil.getDate(tahun + bulan + "01");
+					
+					if (TimeUtil.isAfterOrEqual(nextMonthDate, detailDiskon.tglstart) && (TimeUtil.isBeforeOrEqual(nextMonthDate, detailDiskon.tglstop) || detailDiskon.tglstop == null)) {
+						
+						int diske = 1;
+						if (ePrevAdminDiskon.getDiske() < durasi) {
+							diske = ePrevAdminDiskon.getDiske() + 1;
+						}
+						
+						EAdminDiskon eAdminDiskon = new EAdminDiskon();
+						
+						eAdminDiskon.setTahun(tahun);
+						eAdminDiskon.setBulan(bulan);
+						eAdminDiskon.setCustomer(eTrxLive.getCustomer());
+						eAdminDiskon.setProduk(eTrxLive.getProduk());
+						eAdminDiskon.setJnsdis("NILDIS");
+						eAdminDiskon.setNourut(1);
+						eAdminDiskon.setDiske(diske);
+						eAdminDiskon.setPctdisc(0.0);
+						eAdminDiskon.setNildisc(detailDiskon.nildisc);
+						eAdminDiskon.setIdref(detailDiskon.id);
+						eAdminDiskon.setNouds(detailDiskon.nourut);
+						eAdminDiskon.setFldel(BaseConstants.TIDAK);
+						
+						eAdminDiskon = add(eAdminDiskon);
+						
+						// tambah admin penggunaan master diskon
+						EPenggunaanMaster ePenggunaanMasterDiskon = new EPenggunaanMaster();
+						ePenggunaanMasterDiskon.setJnsmst("NILDIS");
+						ePenggunaanMasterDiskon.setJnstrf("NILDIS");
+						ePenggunaanMasterDiskon.setIdMi010(eTrxLive.getCustomer().getId());
+						ePenggunaanMasterDiskon.setIdMi001(eTrxLive.getProduk().getId());
+						ePenggunaanMasterDiskon.setNourut(detailDiskon.nourut);			
+						ePenggunaanMasterDiskon.setJnspgg("ADMDISKON");
+						ePenggunaanMasterDiskon.setIdPgg(eAdminDiskon.getId());
+						ePenggunaanMasterDiskon.setTahun(tahun);
+						ePenggunaanMasterDiskon.setBulan(bulan);			
+						penggunaanMasterService.add(ePenggunaanMasterDiskon);
+						
+					}
+				}
+			}
+
+			// diskon grup %
+			detailDiskon = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "GRPDIS", tahun + bulan + "01");
+			
+			if (detailDiskon != null) {
+				
+				EAdminDiskon ePrevAdminDiskon = findByBk(prevTahun, prevBulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "GRPDIS1");
+				if (ePrevAdminDiskon != null) {
+					
+					GrupDiskonDetail grupDiskon = grupDiskonDetailService.findId(ePrevAdminDiskon.getIdref());
+					
+					Integer durasi = grupDiskon.jumdurPct;
+					if (grupDiskon.satdurPct.equals("TAHUN")) {
+						durasi = durasi * 12;
+					}
+						
+					int diske = 1;
+					if (ePrevAdminDiskon.getDiske() < durasi) {
+						diske = ePrevAdminDiskon.getDiske() + 1;
+					}
+					
+					EAdminDiskon newEAdminDiskon = new EAdminDiskon();
+					
+					newEAdminDiskon.setTahun(tahun);
+					newEAdminDiskon.setBulan(bulan);
+					newEAdminDiskon.setCustomer(eTrxLive.getCustomer());
+					newEAdminDiskon.setProduk(eTrxLive.getProduk());
+					newEAdminDiskon.setJnsdis("GRPDIS1");
+					newEAdminDiskon.setNourut(3);
+					newEAdminDiskon.setDiske(diske);
+					newEAdminDiskon.setPctdisc(grupDiskon.pctdisc);
+					newEAdminDiskon.setNildisc(0.0);
+					newEAdminDiskon.setIdref(grupDiskon.id);
+					newEAdminDiskon.setNouds(grupDiskon.nourut);
+					newEAdminDiskon.setFldel(BaseConstants.TIDAK);
+						
+					repo.add(newEAdminDiskon);
+				}
+
+				ePrevAdminDiskon = findByBk(prevTahun, prevBulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "GRPDIS2");
+				if (ePrevAdminDiskon != null) {
+					
+					GrupDiskonDetail grupDiskon = grupDiskonDetailService.findId(ePrevAdminDiskon.getIdref());
+		
+					Integer durasi = grupDiskon.jumdurNil;
+					if (grupDiskon.satdurNil.equals("TAHUN")) {
+						durasi = durasi * 12;
+					}
+						
+					int diske = 1;
+					if (ePrevAdminDiskon.getDiske() < durasi) {
+						diske = ePrevAdminDiskon.getDiske() + 1;
+					}
+					
+					EAdminDiskon newEAdminDiskon = new EAdminDiskon();
+					
+					newEAdminDiskon.setTahun(tahun);
+					newEAdminDiskon.setBulan(bulan);
+					newEAdminDiskon.setCustomer(eTrxLive.getCustomer());
+					newEAdminDiskon.setProduk(eTrxLive.getProduk());
+					newEAdminDiskon.setJnsdis("GRPDIS2");
+					newEAdminDiskon.setNourut(4);
+					newEAdminDiskon.setDiske(diske);
+					newEAdminDiskon.setPctdisc(0.0);
+					newEAdminDiskon.setNildisc(grupDiskon.nildisc);
+					newEAdminDiskon.setIdref(grupDiskon.id);
+					newEAdminDiskon.setNouds(grupDiskon.nourut);
+					newEAdminDiskon.setFldel(BaseConstants.TIDAK);
+						
+					repo.add(newEAdminDiskon);
+
+				}
+			}
+		}
+		
+		
+		// 12 Agt 2021, diskon %, diskon nilai dan grup diskon dipindah ke master customer tarif
+		/*		
+		// untuk diskon % yang dari master tarif
+		// ambil data dari master tarif, dengan memperhitungkan range, karena master customer tarif produk sudah disusun periode
+		// berdasar tanggal transaksi live nya, 
+		// dan ambil bdsk nomor urut termuda
+		//CustomerProdukTarifDetail detailDiskon = customerProdukTarifDetailService.getByCustProdukAndJenisTarifTanpaRange(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "PCTDIS");
+		CustomerProdukTarifDetail detailDiskon = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "PCTDIS", tahun + bulan + "01");
+		
+		if (detailDiskon != null) {
+			EAdminDiskon eAdminDiskon = new EAdminDiskon();
+			
+			eAdminDiskon.setTahun(tahun);
+			eAdminDiskon.setBulan(bulan);
+			eAdminDiskon.setCustomer(eTrxLive.getCustomer());
+			eAdminDiskon.setProduk(eTrxLive.getProduk());
+			eAdminDiskon.setJnsdis("PCTDIS");
+			eAdminDiskon.setNourut(1);
+			eAdminDiskon.setDiske(1);
+			eAdminDiskon.setPctdisc(detailDiskon.pctdisc);
+			eAdminDiskon.setNildisc(0.0);
+			eAdminDiskon.setIdref(detailDiskon.id);
+			eAdminDiskon.setNouds(detailDiskon.nourut);
+			eAdminDiskon.setFldel(BaseConstants.TIDAK);
+			
+			//eAdminDiskon = repo.add(eAdminDiskon);
+			eAdminDiskon = add(eAdminDiskon);
+			
+			// tambah admin penggunaan master diskon
+			EPenggunaanMaster ePenggunaanMasterDiskon = new EPenggunaanMaster();
+			ePenggunaanMasterDiskon.setJnsmst("PRODIS");
+			ePenggunaanMasterDiskon.setJnstrf("PCTDIS");
+			ePenggunaanMasterDiskon.setIdMi010(eTrxLive.getCustomer().getId());
+			ePenggunaanMasterDiskon.setIdMi001(eTrxLive.getProduk().getId());
+			ePenggunaanMasterDiskon.setNourut(detailDiskon.nourut);			
+			ePenggunaanMasterDiskon.setJnspgg("ADMDISKON");
+			ePenggunaanMasterDiskon.setIdPgg(eAdminDiskon.getId());
+			ePenggunaanMasterDiskon.setTahun(tahun);
+			ePenggunaanMasterDiskon.setBulan(bulan);			
+			penggunaanMasterService.add(ePenggunaanMasterDiskon);
+			
+		}
+
+		// untuk diskon nilai yang dari master tarif
+		// ambil data dari master tarif, dengan memperhitungkan range, karena master customer tarif produk sudah disusun periode
+		// berdasar tanggal transaksi live nya, 
+		// dan ambil bdsk nomor urut termuda
+		//detailDiskon = customerProdukTarifDetailService.getByCustProdukAndJenisTarifTanpaRange(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "NILDIS");
+		detailDiskon = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "NILDIS", tahun + bulan + "01");
+		
+		if (detailDiskon != null) {
+			EAdminDiskon eAdminDiskon = new EAdminDiskon();
+			
+			eAdminDiskon.setTahun(tahun);
+			eAdminDiskon.setBulan(bulan);
+			eAdminDiskon.setCustomer(eTrxLive.getCustomer());
+			eAdminDiskon.setProduk(eTrxLive.getProduk());
+			eAdminDiskon.setJnsdis("NILDIS");
+			eAdminDiskon.setNourut(2);
+			eAdminDiskon.setDiske(1);
+			eAdminDiskon.setPctdisc(0.0);
+			eAdminDiskon.setNildisc(detailDiskon.nildisc);
+			eAdminDiskon.setIdref(detailDiskon.id);
+			eAdminDiskon.setNouds(detailDiskon.nourut);
+			eAdminDiskon.setFldel(BaseConstants.TIDAK);
+			
+			eAdminDiskon = repo.add(eAdminDiskon);
+
+			// tambah admin penggunaan master diskon
+			EPenggunaanMaster ePenggunaanMasterDiskon = new EPenggunaanMaster();
+			ePenggunaanMasterDiskon.setJnsmst("NILDIS");
+			ePenggunaanMasterDiskon.setJnstrf("NILDIS");
+			ePenggunaanMasterDiskon.setIdMi010(eTrxLive.getCustomer().getId());
+			ePenggunaanMasterDiskon.setIdMi001(eTrxLive.getProduk().getId());
+			ePenggunaanMasterDiskon.setNourut(detailDiskon.nourut);			
+			ePenggunaanMasterDiskon.setJnspgg("ADMDISKON");
+			ePenggunaanMasterDiskon.setIdPgg(eAdminDiskon.getId());
+			ePenggunaanMasterDiskon.setTahun(tahun);
+			ePenggunaanMasterDiskon.setBulan(bulan);			
+			penggunaanMasterService.add(ePenggunaanMasterDiskon);
+		}
+
+		// untuk grup diskon 
+		// ambil data dari master tarif, dengan memperhitungkan range, karena master customer tarif produk sudah disusun periode
+		// berdasar tanggal transaksi live nya, 
+		// dan ambil bdsk nomor urut termuda
+		//detailDiskon = customerProdukTarifDetailService.getByCustProdukAndJenisTarifTanpaRange(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "GRPDIS");
+		detailDiskon = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "GRPDIS", tahun + bulan + "01");
+		
+		if (detailDiskon != null) {
+			// ambil dari master grup diskon, untuk nomor urut yang termuda
+			GrupDiskonDetail grupDiskon = grupDiskonDetailService.getFirstDetail(detailDiskon.grupDiskon.id);
+			
+			// grup diskon dalam satu row ada dua durasi, satu untuk durasi % satu untuk durasi nilai
+			// untuk itu jnsdis terpaksa dibedakan menjadi dua, GRPDIS1 dan GRPDIS2
+			
+			if (grupDiskon.pctdisc > 0.0) {
+
+				EAdminDiskon eAdminDiskon = new EAdminDiskon();
+				
+				eAdminDiskon.setTahun(tahun);
+				eAdminDiskon.setBulan(bulan);
+				eAdminDiskon.setCustomer(eTrxLive.getCustomer());
+				eAdminDiskon.setProduk(eTrxLive.getProduk());
+				eAdminDiskon.setJnsdis("GRPDIS1");
+				eAdminDiskon.setNourut(3);
+				eAdminDiskon.setDiske(1);
+				eAdminDiskon.setPctdisc(grupDiskon.pctdisc);
+				eAdminDiskon.setNildisc(0.0);
+				eAdminDiskon.setIdref(grupDiskon.id);
+				eAdminDiskon.setNouds(grupDiskon.nourut); // -> karena di detail master tarif, hanya ada satu nourut untuk grup diskon
+				eAdminDiskon.setFldel(BaseConstants.TIDAK);
+				
+				eAdminDiskon = repo.add(eAdminDiskon);				
+
+				// tambah admin penggunaan master diskon
+				EPenggunaanMaster ePenggunaanMasterDiskon = new EPenggunaanMaster();
+				ePenggunaanMasterDiskon.setJnsmst("GRPPRODIS");
+				ePenggunaanMasterDiskon.setJnstrf("GRPDIS");
+				ePenggunaanMasterDiskon.setIdMi010(eTrxLive.getCustomer().getId());
+				ePenggunaanMasterDiskon.setIdMi001(eTrxLive.getProduk().getId());
+				ePenggunaanMasterDiskon.setNourut(detailDiskon.nourut);			
+				ePenggunaanMasterDiskon.setJnspgg("ADMDISKON");
+				ePenggunaanMasterDiskon.setIdPgg(eAdminDiskon.getId());
+				ePenggunaanMasterDiskon.setTahun(tahun);
+				ePenggunaanMasterDiskon.setBulan(bulan);			
+				penggunaanMasterService.add(ePenggunaanMasterDiskon);
+			}
+
+			if (grupDiskon.nildisc > 0.0) {
+
+				EAdminDiskon eAdminDiskon = new EAdminDiskon();
+				
+				eAdminDiskon.setTahun(tahun);
+				eAdminDiskon.setBulan(bulan);
+				eAdminDiskon.setCustomer(eTrxLive.getCustomer());
+				eAdminDiskon.setProduk(eTrxLive.getProduk());
+				eAdminDiskon.setJnsdis("GRPDIS2");
+				eAdminDiskon.setNourut(4);
+				eAdminDiskon.setDiske(1);
+				eAdminDiskon.setPctdisc(0.0);
+				eAdminDiskon.setNildisc(grupDiskon.nildisc);
+				eAdminDiskon.setIdref(grupDiskon.id);
+				eAdminDiskon.setNouds(grupDiskon.nourut);
+				eAdminDiskon.setFldel(BaseConstants.TIDAK);
+				
+				eAdminDiskon = repo.add(eAdminDiskon);				
+
+				// tambah admin penggunaan master diskon
+				EPenggunaanMaster ePenggunaanMasterDiskon = new EPenggunaanMaster();
+				ePenggunaanMasterDiskon.setJnsmst("GRPNILDIS");
+				ePenggunaanMasterDiskon.setJnstrf("GRPDIS");
+				ePenggunaanMasterDiskon.setIdMi010(eTrxLive.getCustomer().getId());
+				ePenggunaanMasterDiskon.setIdMi001(eTrxLive.getProduk().getId());
+				ePenggunaanMasterDiskon.setNourut(grupDiskon.nourut);			
+				ePenggunaanMasterDiskon.setJnspgg("ADMDISKON");
+				ePenggunaanMasterDiskon.setIdPgg(eAdminDiskon.getId());
+				ePenggunaanMasterDiskon.setTahun(tahun);
+				ePenggunaanMasterDiskon.setBulan(bulan);			
+				penggunaanMasterService.add(ePenggunaanMasterDiskon);
+			}
+		}
+		*/
+		
+		String tahun = eTrxLive.getTglive().substring(0,4);
+		String bulan = eTrxLive.getTglive().substring(4,6);		
+		
+		// untuk diskon khusus
+		DiskonKhususHeader diskonKhusus = diskonKhususHeaderService.getFindByCustomerAndTanggal(eTrxLive.getCustomer().getId(), eTrxLive.getTglive());
+		
+		if (diskonKhusus != null) {
+			
+			EAdminDiskon eAdminDiskon = new EAdminDiskon();
+			
+			eAdminDiskon.setTahun(tahun);
+			eAdminDiskon.setBulan(bulan);
+			eAdminDiskon.setCustomer(eTrxLive.getCustomer());
+			eAdminDiskon.setProduk(eTrxLive.getProduk());
+			eAdminDiskon.setJnsdis("SPCDIS");
+			eAdminDiskon.setNourut(5);
+			eAdminDiskon.setDiske(1);
+			eAdminDiskon.setPctdisc(diskonKhusus.pctdisc);
+			eAdminDiskon.setNildisc(diskonKhusus.nildisc);
+			eAdminDiskon.setIdref(diskonKhusus.id);
+			eAdminDiskon.setNouds(0);
+			eAdminDiskon.setFldel(BaseConstants.TIDAK);
+
+			repo.add(eAdminDiskon);
+		}
+	}
+	
+	@Transactional
+    public void deleteAdmin(ETrxLive eTrxLive) {
+		
+		String tahun = eTrxLive.getTglive().substring(0,4);
+		String bulan = eTrxLive.getTglive().substring(4,6);
+		
+		EAdminDiskon eAdminDiskon = findByBk(tahun, bulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "PCTDIS");
+		if (eAdminDiskon != null) {
+
+			EPenggunaanMaster ePenggunaanMaster = penggunaanMasterService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "PCTDIS", eAdminDiskon.getNouds(), eAdminDiskon.getId());
+			
+			if (ePenggunaanMaster != null) {
+				penggunaanMasterService.delete(ePenggunaanMaster.getId(), ePenggunaanMaster.getVersion());
+			}		
+
+			delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());
+		}
+
+		eAdminDiskon = findByBk(tahun, bulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "NILDIS");		
+		if (eAdminDiskon != null) {
+			EPenggunaanMaster ePenggunaanMaster = penggunaanMasterService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "NILDIS", eAdminDiskon.getNouds(), eAdminDiskon.getId());
+			
+			if (ePenggunaanMaster != null) {
+				penggunaanMasterService.delete(ePenggunaanMaster.getId(), ePenggunaanMaster.getVersion());
+			}		
+
+
+			delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());
+		}
+
+		eAdminDiskon = findByBk(tahun, bulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "GRPDIS1");
+		if (eAdminDiskon != null) {
+			
+			EPenggunaanMaster ePenggunaanMaster = penggunaanMasterService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "GRPDIS", eAdminDiskon.getNouds(), eAdminDiskon.getId());
+			
+			if (ePenggunaanMaster != null) {
+				penggunaanMasterService.delete(ePenggunaanMaster.getId(), ePenggunaanMaster.getVersion());
+			}		
+
+			delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());
+		}
+
+		eAdminDiskon = findByBk(tahun, bulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "GRPDIS2");
+		if (eAdminDiskon != null) {
+			
+			EPenggunaanMaster ePenggunaanMaster = penggunaanMasterService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "GRPDIS", eAdminDiskon.getNouds(), eAdminDiskon.getId());
+			
+			if (ePenggunaanMaster != null) {
+				penggunaanMasterService.delete(ePenggunaanMaster.getId(), ePenggunaanMaster.getVersion());
+			}		
+
+			delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());
+		}
+
+		eAdminDiskon = findByBk(tahun, bulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "SPCDIS");
+		if (eAdminDiskon != null) {
+			delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());
+		}
+		
+		// untuk pasca bayar, admin diskon terbentuk dua :
+		// - admin diskon untuk bulan live
+		// - admin diskon untuk 1 bulan setelah live
+		// jadi admin diskon 1 bulan setelah live ini juga harus dihapus
+		CustomerProdukTarifHeader customerProdukTarifHeader = customerProdukTarifHeaderService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId());
+		if (customerProdukTarifHeader.jnstgh.equals("PRA")) {
+			
+			String nextTahunBulan = TimeUtil.getNextMonth(eTrxLive.getTglive().substring(0, 6));
+			
+			tahun = nextTahunBulan.substring(0,4);
+			bulan = nextTahunBulan.substring(4,6);
+			
+			eAdminDiskon = findByBk(tahun, bulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "PCTDIS");
+			if (eAdminDiskon != null) {
+
+				EPenggunaanMaster ePenggunaanMaster = penggunaanMasterService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "PCTDIS", eAdminDiskon.getNouds(), eAdminDiskon.getId());
+				
+				if (ePenggunaanMaster != null) {
+					penggunaanMasterService.delete(ePenggunaanMaster.getId(), ePenggunaanMaster.getVersion());
+				}		
+
+				delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());
+			}
+
+			eAdminDiskon = findByBk(tahun, bulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "NILDIS");		
+			if (eAdminDiskon != null) {
+				EPenggunaanMaster ePenggunaanMaster = penggunaanMasterService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "NILDIS", eAdminDiskon.getNouds(), eAdminDiskon.getId());
+				
+				if (ePenggunaanMaster != null) {
+					penggunaanMasterService.delete(ePenggunaanMaster.getId(), ePenggunaanMaster.getVersion());
+				}		
+
+
+				delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());
+			}
+
+			eAdminDiskon = findByBk(tahun, bulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "GRPDIS1");
+			if (eAdminDiskon != null) {
+				
+				EPenggunaanMaster ePenggunaanMaster = penggunaanMasterService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "GRPDIS", eAdminDiskon.getNouds(), eAdminDiskon.getId());
+				
+				if (ePenggunaanMaster != null) {
+					penggunaanMasterService.delete(ePenggunaanMaster.getId(), ePenggunaanMaster.getVersion());
+				}		
+
+				delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());
+			}
+
+			eAdminDiskon = findByBk(tahun, bulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "GRPDIS2");
+			if (eAdminDiskon != null) {
+				
+				EPenggunaanMaster ePenggunaanMaster = penggunaanMasterService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "GRPDIS", eAdminDiskon.getNouds(), eAdminDiskon.getId());
+				
+				if (ePenggunaanMaster != null) {
+					penggunaanMasterService.delete(ePenggunaanMaster.getId(), ePenggunaanMaster.getVersion());
+				}		
+
+				delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());
+			}
+
+			eAdminDiskon = findByBk(tahun, bulan, eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId(), "SPCDIS");
+			if (eAdminDiskon != null) {
+				delete(eAdminDiskon.getId(), eAdminDiskon.getVersion());
+			}			
+		}
+	}
+	
+	@Transactional
+    public EAdminDiskon add(EAdminDiskon entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EAdminDiskon addedEntity = repo.add(entity);
+		
+		throwBatchError();
+		return addedEntity;	
+		
+    }
+       
+    //private void valOnAdd(final EAdminDiskon valuta) {
+    //}
+
+	@Transactional
+	public EAdminDiskon edit(EAdminDiskon entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EAdminDiskon toBeSaved = repo.getOne(entity.getId());
+		//EAdminDiskon oldEntity = (EAdminDiskon) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+		
+		repo.delete(toBeSaved.getId());		
+		throwBatchError();
+		
+		toBeSaved = repo.add(toBeSaved);
+		throwBatchError();
+		
+		return toBeSaved;
+		
+	}
+
+	//private void valOnEdit(final EAdminDiskon valuta) {
+    //}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EAdminDiskon.class.getSimpleName());
+		throwBatchError();
+		
+		EAdminDiskon toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		repo.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	//private void valOnDelete(EAdminDiskon entity) {
+    //}
+	
+	//private void valAuthAdd() {
+	//  if(!actionAuthorizationService.valHakAdd()) {
+	//    error("NoRightToAdd");
+	//  }
+	//}
+	
+	//private void valAuthEdit() {
+    //  if(!actionAuthorizationService.valHakEdit()) {
+    //    error("NoRightToChange");
+    //  }
+    //}
+	
+    //private void valAuthDelete() {
+    //  if(!actionAuthorizationService.valHakDelete()) {
+    //    error("NoRightToDelete");
+    //  }
+    //}
+
+    protected void defineDefaultValuesOnAdd(EAdminDiskon entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+    
+    protected void valRequiredValues(EAdminDiskon entity) {
+	}
+    
+    protected void manageMinMaxValues(EAdminDiskon entity) {
+	}
+    
+    protected void manageReferences(EAdminDiskon entity) {
+		if (entity.getCustomer() != null) {
+			ECustomerGajiId eFromDb = customerGajiIdService.get(entity.getCustomer().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setCustomer(eFromDb);
+				} else {
+					batchError("customerGajiId.not.active");
+				}
+			} else {
+				batchError("customerGajiId.not.found");
+			}			
+		}		
+
+		if (entity.getProduk() != null) {
+			EProduk eFromDb = produkService.get(entity.getProduk().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setProduk(eFromDb);
+				} else {
+					batchError("produk.not.active");
+				}
+			} else {
+				batchError("produk.not.found");
+			}			
+		}		
+
+    }
+
+    protected void valUniquenessOnAdd(EAdminDiskon addedEntity) {
+		EAdminDiskon entityFromDb = repo.findByBK(addedEntity.getTahun(), addedEntity.getBulan(), addedEntity.getCustomer().getId(), addedEntity.getProduk().getId(), addedEntity.getJnsdis());
+		if (entityFromDb != null) {
+			throw new BusinessException("admin.diskon.bk");
+		}
+	}
+    
+    private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EAdminDiskon dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+    
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void valUniquenessOnEdit(EAdminDiskon editedEntity) {
+		EAdminDiskon entityFromDb = repo.findByBK(editedEntity.getTahun(), editedEntity.getBulan(), editedEntity.getCustomer().getId(), editedEntity.getProduk().getId(), editedEntity.getJnsdis());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("admin.diskon.bk");
+			}
+		}
+	}
+	
+	protected void defineEditableValues(EAdminDiskon newValues, EAdminDiskon toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setTahun(newValues.getTahun());
+			toBeSaved.setBulan(newValues.getBulan());
+			toBeSaved.setJnsdis(newValues.getJnsdis());
+			toBeSaved.setIdref(newValues.getIdref());
+			toBeSaved.setNouds(newValues.getNouds());
+			toBeSaved.setNourut(newValues.getNourut());
+			toBeSaved.setFldel(newValues.getFldel());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valDelete(EAdminDiskon toBeDeleted) {	}
+    
+    
+	public EAdminDiskon get(String id) {
+		return repo.getOne(id);
+	}
+}

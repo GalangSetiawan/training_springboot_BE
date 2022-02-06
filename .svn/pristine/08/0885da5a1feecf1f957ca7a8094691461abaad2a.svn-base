@@ -1,0 +1,198 @@
+package co.id.sofcograha.domain.invoicing.admin.bulanan.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.bulanan.entities.EAdminBulanan;
+import co.id.sofcograha.domain.invoicing.admin.bulanan.repositories.EAdminBulananRepository;
+
+@Service("adminBulananService")
+public class AdminBulananService extends BaseService {
+	
+	@Autowired private EAdminBulananRepository repo;
+	
+	//@Autowired private ActionAuthorizationService actionAuthorizationService;
+	
+	public EAdminBulanan findByBk(String tahun, String bulan) {
+		return repo.findByBK(tahun, bulan);
+	}
+	
+	public EAdminBulanan findById(final String id) {
+		return repo.getOne(id);
+	}
+
+	public EAdminBulanan getNextProcessed(String tahun, String bulan) {
+		return repo.getNextProcessed(tahun, bulan);
+	}
+	
+	public SearchResult<EAdminBulanan> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+    
+	@Transactional
+    public EAdminBulanan add(EAdminBulanan entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EAdminBulanan addedEntity = repo.add(entity);
+		
+		throwBatchError();
+		return addedEntity;	
+		
+    }
+       
+    //private void valOnAdd(final EAdminBulanan valuta) {
+    //}
+
+	@Transactional
+	public EAdminBulanan edit(EAdminBulanan entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EAdminBulanan toBeSaved = repo.getOne(entity.getId());
+		//EAdminBulanan oldEntity = (EAdminBulanan) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+		
+		throwBatchError();
+		return toBeSaved;
+		
+	}
+
+	//private void valOnEdit(final EAdminBulanan valuta) {
+    //}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EAdminBulanan.class.getSimpleName());
+		throwBatchError();
+		
+		EAdminBulanan toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		repo.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	//private void valOnDelete(EAdminBulanan entity) {
+    //}
+	
+	//private void valAuthAdd() {
+	//  if(!actionAuthorizationService.valHakAdd()) {
+	//    error("NoRightToAdd");
+	//  }
+	//}
+	
+	//private void valAuthEdit() {
+    //  if(!actionAuthorizationService.valHakEdit()) {
+    //    error("NoRightToChange");
+    //  }
+    //}
+	
+    //private void valAuthDelete() {
+    //  if(!actionAuthorizationService.valHakDelete()) {
+    //    error("NoRightToDelete");
+    //  }
+    //}
+
+    protected void defineDefaultValuesOnAdd(EAdminBulanan entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+    
+    protected void valRequiredValues(EAdminBulanan entity) {
+	}
+    
+    protected void manageMinMaxValues(EAdminBulanan entity) {
+	}
+    
+    protected void manageReferences(EAdminBulanan entity) {
+    }
+
+    protected void valUniquenessOnAdd(EAdminBulanan addedEntity) {
+		EAdminBulanan entityFromDb = repo.findByBK(addedEntity.getTahun(), addedEntity.getBulan());
+		if (entityFromDb != null) {
+			throw new BusinessException("admin.bulanan.bk");
+		}
+	}
+    
+    private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EAdminBulanan dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+    
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void valUniquenessOnEdit(EAdminBulanan editedEntity) {
+		EAdminBulanan entityFromDb = repo.findByBK(editedEntity.getTahun(), editedEntity.getBulan());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("admin.bulanan.bk");
+			}
+		}
+	}
+	
+	protected void defineEditableValues(EAdminBulanan newValues, EAdminBulanan toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setTahun(newValues.getTahun());
+			toBeSaved.setBulan(newValues.getBulan());
+			toBeSaved.setFluplo(newValues.getFluplo());
+			toBeSaved.setFlproi(newValues.getFlproi());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valDelete(EAdminBulanan toBeDeleted) {	}
+    
+    
+	public EAdminBulanan get(String id) {
+		return repo.getOne(id);
+	}
+}

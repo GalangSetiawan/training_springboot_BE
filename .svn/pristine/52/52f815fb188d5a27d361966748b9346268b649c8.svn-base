@@ -1,0 +1,248 @@
+package co.id.sofcograha.domain.invoicing.transaksi.live.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+import co.id.sofcograha.base.master.jenisTransaksi.services.JenisTransaksiService;
+import co.id.sofcograha.base.utils.StringUtil;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.diskon.services.AdminDiskonService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalService;
+import co.id.sofcograha.domain.invoicing.admin.upload.services.AdminUploadHeaderService;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingComponent;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.services.AutomaticNumberingService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifCompleteService;
+import co.id.sofcograha.domain.invoicing.saldo.live.pojos.SaldoLive;
+import co.id.sofcograha.domain.invoicing.saldo.live.services.SaldoLiveCompleteService;
+import co.id.sofcograha.domain.invoicing.transaksi.live.entities.ETrxLive;
+import co.id.sofcograha.domain.invoicing.transaksi.live.pojos.TrxLive;
+import co.id.sofcograha.domain.invoicing.transaksi.live.repositories.ETrxLiveRepository;
+
+@Service("trxLiveCompleteService")
+public class TrxLiveCompleteService extends BaseService {
+	
+	@Autowired private TrxLiveService trxLiveService;
+	@Autowired private SaldoLiveCompleteService saldoLiveCompleteService;
+	@Autowired private AdminRenewalService adminRenewalService;
+	@Autowired private AdminUploadHeaderService adminUploadHeaderService;
+	@Autowired private AdminDiskonService adminDiskonService;
+	@Autowired private CustomerProdukTarifCompleteService customerProdukTarifCompleteService;
+	
+	//@Autowired private SaldoDepositCompleteService saldoDepositCompleteService;
+
+	@Autowired private JenisTransaksiService jenisTransaksiService;
+	@Autowired private AutomaticNumberingService automaticNumberingService;	
+
+	@Autowired private ETrxLiveRepository eTrxLiveRepository;
+	
+	public TrxLive findByBk(String nomor) {
+		return TrxLive.fromEntity(eTrxLiveRepository.findByBK(nomor));
+	}
+
+	public SearchResult<ETrxLive> search(SearchParameter searchParameter) {
+		return eTrxLiveRepository.search(searchParameter);
+	}
+	
+	@Transactional
+	public ETrxLive add(TrxLive pojo, String jenisTransaksi) {
+		
+		EJenisTransaksi eJenisTransaksi = jenisTransaksiService.findByBk(jenisTransaksi);
+
+		ETrxLive entityHeader = pojo.toEntity();
+		entityHeader.setJenisTransaksi(eJenisTransaksi);
+		
+		if (StringUtil.isBlank(entityHeader.getNomor())) {
+			List<EAutomaticNumberingComponent> autoNumbList = automaticNumberingService.getNumberComponentsByTransactionId(eJenisTransaksi.getId());
+			if (autoNumbList == null || autoNumbList.isEmpty()) {
+				// bila tidak ada definisi nomor otomatis di setting nomor otomatis (AM59), maka generate nomor otomatis dari
+				// default (AM59.id_am90 = 10000)
+				entityHeader.setNomor(automaticNumberingService.manageDocumentNumber(jenisTransaksi, 
+						TimeUtil.getDate(entityHeader.getTgtrn()), true));
+			} else {
+				// generate nomor otomatis berdasarkan jenis transaksi ini
+				entityHeader.setNomor(automaticNumberingService.manageDocumentNumber(jenisTransaksi,
+						TimeUtil.getDate(entityHeader.getTgtrn()), false));
+			}
+		}
+		
+		valAdaData(entityHeader);
+		throwBatchError();
+		
+		valBelumPernahLive(entityHeader);
+		throwBatchError();
+		
+		ETrxLive entityAdded = trxLiveService.add(entityHeader);
+		throwBatchError();
+		
+		saldoLiveCompleteService.addSaldoLive(entityAdded);
+		throwBatchError();
+		
+		// generate tgl start-stop di master tarif (diletakkan di pertama, agar edit tidak terkena
+		// error data integrity (FK) dengan admin upload (AI001)
+		customerProdukTarifCompleteService.updateLive(entityAdded);
+		
+		// ciptakan admin tahun bulan renewal
+		adminRenewalService.createAdmin(entityAdded);
+		
+		// ciptakan admin upload data
+		adminUploadHeaderService.createAdmin(entityAdded);
+
+		// ciptakan admin diskon
+		adminDiskonService.createAdmin(entityAdded);
+		
+		return entityAdded;
+
+	}
+	
+	private void valAdaData(ETrxLive entity) {
+		if (entity == null) {
+			batchError("trx.live.no.data");
+		}
+	}
+	
+	private void valBelumPernahLive(ETrxLive eTrxLive) {
+		
+		SaldoLive saldoLive = saldoLiveCompleteService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId());
+		
+		if (saldoLive != null) {
+			batchError("trx.live.sudah.live", eTrxLive.getCustomer().getNama(), eTrxLive.getProduk().getNama());
+		}
+	}
+	
+	@Transactional
+	public ETrxLive edit(TrxLive pojo) {
+		
+		ETrxLive entityHeader = pojo.toEntity();
+		
+		valAdaData(entityHeader);
+		throwBatchError();
+		
+		ETrxLive newHeader = trxLiveService.get(entityHeader.getId());
+		
+		//validasi belum dihentikan
+		valBelumDihentikan(newHeader);
+		throwBatchError();
+
+		//validasi belum proses invoice
+		valBelumProsesInvoice(newHeader);
+		throwBatchError();
+		
+		saldoLiveCompleteService.deleteSaldoLive(newHeader);
+		throwBatchError();
+		
+		// hapus admin tahun bulan renewal
+		adminRenewalService.deleteAdmin(newHeader);
+		
+		// hapus admin upload data
+		adminUploadHeaderService.deleteAdmin(newHeader);
+		
+		// hapus admin diskon
+		adminDiskonService.deleteAdmin(newHeader);
+
+		// hapus tgl start-stop di master tarif
+		customerProdukTarifCompleteService.cancelUpdateLive(newHeader);
+		
+		newHeader = trxLiveService.edit(entityHeader);
+		throwBatchError();
+		
+		saldoLiveCompleteService.addSaldoLive(newHeader);
+		throwBatchError();
+		
+		// generate tgl start-stop di master tarif (diletakkan di pertama, agar edit tidak terkena
+		// error data integrity (FK) dengan admin upload (AI001)
+		customerProdukTarifCompleteService.updateLive(newHeader);
+		
+		// ciptakan admin tahun bulan renewal
+		adminRenewalService.createAdmin(newHeader);
+		
+		// ciptakan admin upload data
+		adminUploadHeaderService.createAdmin(newHeader);
+
+		// ciptakan admin diskon
+		adminDiskonService.createAdmin(newHeader);
+		
+		return newHeader;
+	}
+	
+	private void valBelumDihentikan(ETrxLive eTrxLive) {
+		
+		SaldoLive saldoLive = saldoLiveCompleteService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId());
+		
+		if (saldoLive != null) {			
+			if (saldoLive.tgstop != null) {
+				batchError("trx.live.sudah.stop", eTrxLive.getCustomer().getNama(), eTrxLive.getProduk().getNama());				
+			}
+		}
+	}
+		
+	private void valBelumProsesInvoice(ETrxLive eTrxLive) {
+
+		SaldoLive saldoLive = saldoLiveCompleteService.findByBk(eTrxLive.getCustomer().getId(), eTrxLive.getProduk().getId());
+		
+		if (saldoLive != null) {			
+			if (saldoLive.flproi) {
+				batchError("trx.live.sudah.proses.invoice", eTrxLive.getCustomer().getNama(), eTrxLive.getProduk().getNama());				
+			}
+		}
+	}
+		
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valRootVersion(id, version);
+		throwBatchError();
+		
+		ETrxLive newHeader = trxLiveService.get(id);
+
+		//validasi belum dihentikan
+		valBelumDihentikan(newHeader);
+		throwBatchError();
+
+		//validasi belum proses invoice
+		valBelumProsesInvoice(newHeader);
+		throwBatchError();
+		
+		ETrxLive eTrxLive = trxLiveService.get(id);
+				
+		saldoLiveCompleteService.deleteSaldoLive(newHeader);
+//		throwBatchError();
+
+		// hapus admin tahun bulan renewal
+		adminRenewalService.deleteAdmin(eTrxLive);
+		
+		// hapus admin upload data
+		adminUploadHeaderService.deleteAdmin(eTrxLive);
+		
+		// hapus admin diskon
+		adminDiskonService.deleteAdmin(eTrxLive);
+		
+		// hapus tgl start-stop di master tarif
+		customerProdukTarifCompleteService.cancelUpdateLive(newHeader);
+
+		// delete trx header
+		trxLiveService.delete(id, version);
+	}
+	
+	protected void valRootVersion(String id, Long version) {
+		valEntityExists(id);
+		ETrxLive dbEntity = trxLiveService.get(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id) {
+		if (trxLiveService.get(id) == null) {
+			throw new BusinessException("data.not.found", id);
+		}
+	}
+	
+}

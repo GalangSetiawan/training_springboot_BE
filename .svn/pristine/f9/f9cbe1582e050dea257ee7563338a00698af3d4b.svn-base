@@ -1,0 +1,96 @@
+package co.id.sofcograha.domain.invoicing.transaksi.berhenti.controllers;
+
+import java.text.ParseException;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.berhenti.entities.ETrxBerhenti;
+import co.id.sofcograha.domain.invoicing.transaksi.berhenti.pojos.TrxBerhenti;
+import co.id.sofcograha.domain.invoicing.transaksi.berhenti.services.TrxBerhentiCompleteService;
+
+@RestController
+@RequestMapping("/api/trx-berhenti")
+public class TrxBerhentiController {
+	
+	public static final Logger logger = LoggerFactory.getLogger(TrxBerhentiController.class);
+	
+	@Autowired private TrxBerhentiCompleteService trxBerhentiCompleteService;
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<ETrxBerhenti> searchResult = trxBerhentiCompleteService.search(SearchParameter.generate(searchParameter, 
+				TrxBerhenti.getFieldMappings()));
+		
+		return ApiResponse.dataWithPaging("items", 
+				TrxBerhenti.fromEntities(searchResult.getResult()), 
+				searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String nomor) throws JsonProcessingException, ParseException {
+		TrxBerhenti data = trxBerhentiCompleteService.findByBk(nomor);
+	    
+	    return ApiResponse.data("item", data);
+	}
+	
+	//@AuthAdd("TRX_PP")
+	@NoAuth
+	@PostMapping
+	public ApiResponse add(@RequestBody TrxBerhenti pojo) {
+
+		
+		ETrxBerhenti header = trxBerhentiCompleteService.add(pojo, BaseConstants.JENIS_TRX_BERHENTI);
+		
+		return ApiResponse.data("item", TrxBerhenti.fromEntity(header));
+	}
+	
+	//@AuthEdit("TRX_PP")
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody TrxBerhenti pojo) {
+		
+		ETrxBerhenti header = trxBerhentiCompleteService.edit(pojo);
+		
+		return ApiResponse.data("item", TrxBerhenti.fromEntity(header));
+	}
+
+	//@AuthDelete("TRX_PP")
+	@NoAuth
+	@DeleteMapping
+	public ApiResponse delete(@RequestParam String id, @RequestParam(required = false) Long version) {
+		
+		trxBerhentiCompleteService.delete(id, version);
+		
+		return ApiResponse.ok();
+	}
+	
+//	@NoAuth
+//    @GetMapping("/pdf")
+//    public ApiResponse createAndSendPdf(@RequestParam String nomor) throws ParseException {
+//		
+//	    Base64StringEncodedPojo result = invoiceManualExportPdfService.pdfReport(nomor);
+//	    
+//	    return ApiResponse.data("item", result);		
+//    }
+}

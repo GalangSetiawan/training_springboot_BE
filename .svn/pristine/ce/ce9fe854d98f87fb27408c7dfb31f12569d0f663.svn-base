@@ -1,0 +1,139 @@
+package co.id.sofcograha.base.queue.queuenotification.controllers;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.queue.queuenotification.entities.ESysNotification;
+import co.id.sofcograha.base.queue.queuenotification.pojos.SysNotificationPojo;
+import co.id.sofcograha.base.queue.queuenotification.services.SysNotificationService;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@RestController
+@RequestMapping(value = "/api/sysNotification")
+public class SysNotificationController {
+	
+	@Autowired
+	private SysNotificationService sysNotificationService;
+	
+	@Autowired
+	private UserService userService;
+	
+	@NoAuth
+	@GetMapping(value = BaseConstants.ID)
+	public ApiResponse get(@PathVariable String id) {
+		SysNotificationPojo notificationPojo = SysNotificationPojo.fromEntity(sysNotificationService.get(id));
+		if ((notificationPojo.user != null)) {
+			if (!CurrentUser.getUserId().equals(notificationPojo.user.id)) {
+				return ApiResponse.data("item", new SysNotificationPojo());
+			}
+		}
+		if ((notificationPojo.company != null)) {
+			if (!CurrentUser.getCompanyId().equals(notificationPojo.company.id)) {
+				return ApiResponse.data("item", new SysNotificationPojo());
+			}
+		}
+		return ApiResponse.data("item", notificationPojo);
+	}
+	
+	@NoAuth
+	@GetMapping(value = "/list")
+	public ApiResponse getCurrentNotification() {
+		return ApiResponse.data("items", SysNotificationPojo.fromEntities(sysNotificationService.getCurrentNotification()));
+	}
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		EUser user = userService.get(CurrentUser.getUserId());
+		// sementara belum ada tanda admin atau bukan di data user
+		//if(!user.getAdmin()) {
+		//	searchParameter.put("companyId", CurrentUser.getCompanyId());
+		//}
+	    SearchResult<ESysNotification> searchResult = sysNotificationService.search(SearchParameter.generate(searchParameter, 
+			  																			SysNotificationPojo.getFieldMappings()));
+	  
+	  return ApiResponse.dataWithPaging("items", 
+			  							SysNotificationPojo.fromEntities(searchResult.getResult()),
+			  							searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@PostMapping(value = "/client")
+	public ApiResponse clientAdd(@RequestBody SysNotificationPojo pojo) {
+		ESysNotification entity = sysNotificationService.add(pojo.toEntity());
+		return ApiResponse.data("item", SysNotificationPojo.fromEntity(entity));
+	}
+	
+	@NoAuth
+	@PutMapping(value = "/client")
+	public ApiResponse clientEdit(@RequestBody SysNotificationPojo pojo) {
+	  ESysNotification entity = sysNotificationService.edit(pojo.toEntity());
+	  return ApiResponse.data("item", SysNotificationPojo.fromEntity(entity));
+	}
+	
+	@NoAuth
+	@DeleteMapping(value = "/client" + BaseConstants.ID)
+	public ApiResponse clientDelete(@PathVariable String id, @RequestParam(required = false) Long version) {
+	  sysNotificationService.delete(id, version);
+	  return ApiResponse.ok();
+	}
+	
+	@NoAuth
+	@PostMapping(value = "/admin")
+	public ApiResponse adminAdd(@RequestBody SysNotificationPojo pojo) {
+		ESysNotification entity = sysNotificationService.add(pojo.toEntity());
+		return ApiResponse.data("item", SysNotificationPojo.fromEntity(entity));
+	}
+	
+	@NoAuth
+	@PutMapping(value = "/admin")
+	public ApiResponse adminEdit(@RequestBody SysNotificationPojo pojo) {
+	  ESysNotification entity = sysNotificationService.edit(pojo.toEntity());
+	  return ApiResponse.data("item", SysNotificationPojo.fromEntity(entity));
+	}
+	
+	@NoAuth
+	@DeleteMapping(value = "/admin" + BaseConstants.ID)
+	public ApiResponse adminDelete(@PathVariable String id, @RequestParam(required = false) Long version) {
+	  sysNotificationService.delete(id, version);
+	  return ApiResponse.ok();
+	}
+	
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody SysNotificationPojo pojo) {
+	  ESysNotification entity = sysNotificationService.edit(pojo.toEntity());
+	  return ApiResponse.data("item", SysNotificationPojo.fromEntity(entity));
+	}
+	
+	@NoAuth
+	@PutMapping(value = "/multi")
+	public ApiResponse editMulti(@RequestBody List<SysNotificationPojo> pojos) {
+	  List<ESysNotification> entities = new ArrayList<ESysNotification>();
+	  for (SysNotificationPojo sysNotificationPojo : pojos) {
+		  entities.add(sysNotificationPojo.toEntity());
+	  }
+	  List<ESysNotification> results = sysNotificationService.editMany(entities);
+	  return ApiResponse.data("items", SysNotificationPojo.fromEntities(results));
+	}
+	
+}

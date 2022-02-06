@@ -1,0 +1,662 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.invoiceManual.services;
+
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+import co.id.sofcograha.base.master.jenisTransaksi.services.JenisTransaksiService;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.StringUtil;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingComponent;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.services.AutomaticNumberingService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailImplementasi;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailLainLain;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailTraining;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailImplementasi;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailLainLain;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailTraining;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories.EInvoiceHeaderRepository;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceDetailImplementasiService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceDetailLainLainService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceDetailTrainingService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.invoiceManual.pojos.InvoiceManualComplete;
+
+@Service("invoiceManualCompleteService")
+public class InvoiceManualCompleteService extends BaseService {
+	
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	@Autowired private InvoiceDetailLainLainService invoiceDetailLainLainService;
+	@Autowired private InvoiceDetailImplementasiService invoiceDetailImplementasiService;
+	@Autowired private InvoiceDetailTrainingService invoiceDetailTrainingService;
+
+	@Autowired private JenisTransaksiService jenisTransaksiService;
+	@Autowired private AutomaticNumberingService automaticNumberingService;	
+
+	@Autowired private EInvoiceHeaderRepository eInvoiceHeaderRepository;
+	
+	private boolean isErrorDetail = false;
+	private boolean isErrorSubDetail = false;
+	
+	public InvoiceManualComplete findByBk(String nomor) {
+		return InvoiceManualComplete.setFromEntity(eInvoiceHeaderRepository.findByBK(nomor));
+	}
+
+	public SearchResult<EInvoiceHeader> search(SearchParameter searchParameter) {
+		return eInvoiceHeaderRepository.search(searchParameter);
+	}
+	
+	@Transactional
+	public EInvoiceHeader add(InvoiceManualComplete pojo, String jenisTransaksi) {
+		
+		EJenisTransaksi eJenisTransaksi = jenisTransaksiService.findByBk(jenisTransaksi);
+
+		EInvoiceHeader entityHeader = pojo.getEntityHeader();
+		entityHeader.setJenisTransaksi(eJenisTransaksi);
+		
+		if (StringUtil.isBlank(entityHeader.getNomor())) {
+			List<EAutomaticNumberingComponent> autoNumbList = automaticNumberingService.getNumberComponentsByTransactionId(eJenisTransaksi.getId());
+			if (autoNumbList == null || autoNumbList.isEmpty()) {
+				// bila tidak ada definisi nomor otomatis di setting nomor otomatis (AM59), maka generate nomor otomatis dari
+				// default (AM59.id_am90 = 10000)
+				entityHeader.setNomor(automaticNumberingService.manageDocumentNumber(jenisTransaksi, 
+						TimeUtil.getDate(entityHeader.getTgtrn()), true));
+			} else {
+				// generate nomor otomatis berdasarkan jenis transaksi ini
+				entityHeader.setNomor(automaticNumberingService.manageDocumentNumber(jenisTransaksi,
+						TimeUtil.getDate(entityHeader.getTgtrn()), false));
+			}
+		}
+		
+		valAdaData(entityHeader);
+		valDetailNotEmpty(pojo.detailLainLain, pojo.detailImplementasi, pojo.detailTraining);
+		throwBatchError();
+		
+		EInvoiceHeader entityAdded = invoiceHeaderService.add(entityHeader);
+		throwBatchError();
+		
+		isErrorDetail = false;
+		isErrorSubDetail = false;
+		
+		addDetailLainLain(entityAdded, pojo);
+		addDetailImplementasi(entityAdded, pojo);
+		addDetailTraining(entityAdded, pojo);
+		
+		if (isErrorDetail) {
+			batchErrorWithData("invoicemanual.komplit.error.in.detail", pojo);
+		}
+		if (isErrorSubDetail) {
+			batchErrorWithData("invoicemanual.komplit.error.in.subdetail", pojo);
+		}		
+		throwBatchError();
+		
+		return entityAdded;
+
+	}
+	
+	private void valAdaData(EInvoiceHeader entity) {
+		if (entity == null) {
+			batchError("invoicemanual.komplit.no.data");
+		}
+	}
+	
+	private void valDetailNotEmpty(List<InvoiceDetailLainLain> detailLainLain, 
+			                       List<InvoiceDetailImplementasi> detailImplementasi,
+			                       List<InvoiceDetailTraining> detailTraining) {
+		
+		if ((detailLainLain == null || detailLainLain.isEmpty()) &&
+			(detailImplementasi == null || detailImplementasi.isEmpty()) &&
+			(detailTraining == null || detailTraining.isEmpty()))  {
+			
+			batchError("invoicemanual.komplit.no.detail");
+		}
+	}
+	
+	private void addDetailLainLain(EInvoiceHeader eHeader, InvoiceManualComplete pojo) {
+		
+		List<InvoiceDetailLainLain> details = pojo.detailLainLain;
+		
+		//boolean isErrorDetail = false;
+		//boolean isErrorSubDetail = false;
+		
+		for (InvoiceDetailLainLain detail: details) {
+			
+			if (!detail.isSelect) {
+				// hanya simpan untuk yang tidak dicentang hapus
+				
+				EInvoiceDetailLainLain entityDetail = detail.toEntity();
+				
+				entityDetail.setHeader(eHeader);
+				
+				// method .add di detail ini tanpa ada throwBatchError(), supaya batchError nya terkumpul dan tidak serta merta di
+				// throw exception
+				entityDetail = invoiceDetailLainLainService.add(entityDetail);
+				
+				if (isAnyBatchErrors()) {
+					isErrorDetail = true;
+					
+					// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+					
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+						
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+						
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+			
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+						
+						if (detail.errorMsg == null) {
+							detail.errorMsg = new ArrayList<Message>();
+						}
+			
+						detail.errorMsg.clear();
+						detail.errorMsg.add(message);					
+					}
+					
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();
+					
+					continue;
+					// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
+					// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
+					// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik 
+					// satu satu sampai anak ter dalam
+				}
+										
+			}			
+		}
+		
+		// untuk error di grid
+		// karena ini ada lebih dari satu detail, dan penulisan ke batch error harus hanya satu kali, maka ditaro di luar saja
+		// (di pemanggil)
+		//if (isErrorDetail) {
+		//	batchErrorWithData("invoicemanual.komplit.error.in.detail", pojo);
+		//}
+		//if (isErrorSubDetail) {
+		//	batchErrorWithData("invoicemanual.komplit.error.in.subdetail", pojo);
+		//}
+	}	
+	
+	private void addDetailImplementasi(EInvoiceHeader eHeader, InvoiceManualComplete pojo) {
+		
+		List<InvoiceDetailImplementasi> details = pojo.detailImplementasi;
+		
+		//boolean isErrorDetail = false;
+		//boolean isErrorSubDetail = false;
+		
+		for (InvoiceDetailImplementasi detail: details) {
+			
+			if (!detail.isSelect) {
+				// hanya simpan untuk yang tidak dicentang hapus
+				
+				EInvoiceDetailImplementasi entityDetail = detail.toEntity();
+				
+				entityDetail.setHeader(eHeader);
+				
+				// method .add di detail ini tanpa ada throwBatchError(), supaya batchError nya terkumpul dan tidak serta merta di
+				// throw exception
+				entityDetail = invoiceDetailImplementasiService.add(entityDetail);
+				
+				if (isAnyBatchErrors()) {
+					isErrorDetail = true;
+					
+					// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+					
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+						
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+						
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+			
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+						
+						if (detail.errorMsg == null) {
+							detail.errorMsg = new ArrayList<Message>();
+						}
+			
+						detail.errorMsg.clear();
+						detail.errorMsg.add(message);					
+					}
+					
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();
+					
+					continue;
+					// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
+					// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
+					// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik 
+					// satu satu sampai anak ter dalam
+				}
+										
+			}			
+		}
+		
+		// untuk error di grid
+		// karena ini ada lebih dari satu detail, dan penulisan ke batch error harus hanya satu kali, maka ditaro di luar saja
+		// (di pemanggil)
+		//if (isErrorDetail) {
+		//	batchErrorWithData("invoicemanual.komplit.error.in.detail", pojo);
+		//}
+		//if (isErrorSubDetail) {
+		//	batchErrorWithData("invoicemanual.komplit.error.in.subdetail", pojo);
+		//}
+	}	
+	
+	private void addDetailTraining(EInvoiceHeader eHeader, InvoiceManualComplete pojo) {
+		
+		List<InvoiceDetailTraining> details = pojo.detailTraining;
+		
+		//boolean isErrorDetail = false;
+		//boolean isErrorSubDetail = false;
+		
+		for (InvoiceDetailTraining detail: details) {
+			
+			if (!detail.isSelect) {
+				// hanya simpan untuk yang tidak dicentang hapus
+				
+				EInvoiceDetailTraining entityDetail = detail.toEntity();
+				
+				entityDetail.setHeader(eHeader);
+				
+				// method .add di detail ini tanpa ada throwBatchError(), supaya batchError nya terkumpul dan tidak serta merta di
+				// throw exception
+				entityDetail = invoiceDetailTrainingService.add(entityDetail);
+				
+				if (isAnyBatchErrors()) {
+					isErrorDetail = true;
+					
+					// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+					
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+						
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+						
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+			
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+						
+						if (detail.errorMsg == null) {
+							detail.errorMsg = new ArrayList<Message>();
+						}
+			
+						detail.errorMsg.clear();
+						detail.errorMsg.add(message);					
+					}
+					
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();
+					
+					continue;
+					// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
+					// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
+					// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik 
+					// satu satu sampai anak ter dalam
+				}
+										
+			}			
+		}
+		
+		// untuk error di grid
+		// karena ini ada lebih dari satu detail, dan penulisan ke batch error harus hanya satu kali, maka ditaro di luar saja
+		// (di pemanggil)
+		//if (isErrorDetail) {
+		//	batchErrorWithData("invoicemanual.komplit.error.in.detail", pojo);
+		//}
+		//if (isErrorSubDetail) {
+		//	batchErrorWithData("invoicemanual.komplit.error.in.subdetail", pojo);
+		//}
+	}	
+	
+	@Transactional
+	public EInvoiceHeader edit(InvoiceManualComplete pojo) {
+		
+		EInvoiceHeader entityHeader = pojo.getEntityHeader();
+		
+		valAdaData(entityHeader);
+		valDetailNotEmpty(pojo.detailLainLain, pojo.detailImplementasi, pojo.detailTraining);
+		throwBatchError();
+		
+		EInvoiceHeader newHeader = invoiceHeaderService.get(entityHeader.getId());
+		
+		isErrorDetail = false;
+		isErrorSubDetail = false;
+		
+		editDetailLainLain(newHeader, pojo);
+		editDetailImplementasi(newHeader, pojo);
+		editDetailTraining(newHeader, pojo);
+		
+		if (isErrorDetail) {
+			batchErrorWithData("invoicemanual.komplit.error.in.detail", pojo);
+		}
+		if (isErrorSubDetail) {
+			batchErrorWithData("invoicemanual.komplit.error.in.subdetail", pojo);
+		}		
+		
+		throwBatchError();
+
+		newHeader = invoiceHeaderService.edit(entityHeader);
+		throwBatchError();
+		
+		return newHeader;
+	}
+	
+	private void editDetailLainLain(EInvoiceHeader entityHeader, InvoiceManualComplete pojo) {
+		
+		//boolean isErrorDetail = false;
+		
+		List<InvoiceDetailLainLain> details = pojo.detailLainLain;
+		for (InvoiceDetailLainLain detail: details) {
+			
+			if (detail.id != null && !detail.id.equals("")) {
+				invoiceDetailLainLainService.delete(detail.id, detail.version);
+			}
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detail.errorMsg == null) {
+						detail.errorMsg = new ArrayList<Message>();
+					}
+		
+					detail.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+		// untuk error di grid
+		//if (isErrorDetail) {
+		//	batchErrorWithData("customerProdukTarif.komplit.error.in.detail", pojo);
+		//}
+		//throwBatchError();		
+
+		if (!isErrorDetail) {
+			addDetailLainLain(entityHeader, pojo);
+		}
+		
+	}
+	
+	private void editDetailImplementasi(EInvoiceHeader entityHeader, InvoiceManualComplete pojo) {
+		
+		//boolean isErrorDetail = false;
+		
+		List<InvoiceDetailImplementasi> details = pojo.detailImplementasi;
+		for (InvoiceDetailImplementasi detail: details) {
+			
+			if (detail.id != null && !detail.id.equals("")) {
+				invoiceDetailImplementasiService.delete(detail.id, detail.version);
+			}
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detail.errorMsg == null) {
+						detail.errorMsg = new ArrayList<Message>();
+					}
+		
+					detail.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+		// untuk error di grid
+		//if (isErrorDetail) {
+		//	batchErrorWithData("customerProdukTarif.komplit.error.in.detail", pojo);
+		//}
+		//throwBatchError();		
+
+		if (!isErrorDetail) {
+			addDetailImplementasi(entityHeader, pojo);
+		}
+		
+	}
+	
+	private void editDetailTraining(EInvoiceHeader entityHeader, InvoiceManualComplete pojo) {
+		
+		//boolean isErrorDetail = false;
+		
+		List<InvoiceDetailTraining> details = pojo.detailTraining;
+		for (InvoiceDetailTraining detail: details) {
+			
+			if (detail.id != null && !detail.id.equals("")) {
+				invoiceDetailTrainingService.delete(detail.id, detail.version);
+			}
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detail.errorMsg == null) {
+						detail.errorMsg = new ArrayList<Message>();
+					}
+		
+					detail.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+		// untuk error di grid
+		//if (isErrorDetail) {
+		//	batchErrorWithData("customerProdukTarif.komplit.error.in.detail", pojo);
+		//}
+		//throwBatchError();		
+
+		if (!isErrorDetail) {
+			addDetailTraining(entityHeader, pojo);
+		}
+		
+	}
+	
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valRootVersion(id, version);
+		throwBatchError();
+		
+		EInvoiceHeader eTransaksiJurnalHeader = invoiceHeaderService.get(id);
+				
+		InvoiceManualComplete pojo = InvoiceManualComplete.setFromEntity(eTransaksiJurnalHeader);
+		
+		isErrorDetail = false;
+
+		// delete detail lain lain
+		for (InvoiceDetailLainLain detail: pojo.detailLainLain) {
+			
+			invoiceDetailLainLainService.delete(detail.id, detail.version);
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detail.errorMsg == null) {
+						detail.errorMsg = new ArrayList<Message>();
+					}
+		
+					detail.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+
+		for (InvoiceDetailImplementasi detail: pojo.detailImplementasi) {
+			
+			invoiceDetailImplementasiService.delete(detail.id, detail.version);
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detail.errorMsg == null) {
+						detail.errorMsg = new ArrayList<Message>();
+					}
+		
+					detail.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+		for (InvoiceDetailTraining detail: pojo.detailTraining) {
+			
+			invoiceDetailTrainingService.delete(detail.id, detail.version);
+			
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
+				
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini 
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (detail.errorMsg == null) {
+						detail.errorMsg = new ArrayList<Message>();
+					}
+		
+					detail.errorMsg.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+			}
+		}
+		
+		// untuk error di grid
+		if (isErrorDetail) {
+			batchErrorWithData("invoicemanual.komplit.error.in.detail", pojo);
+		}
+		throwBatchError();		
+		
+		// delete trx header
+		invoiceHeaderService.delete(id, version);
+	}
+	
+	protected void valRootVersion(String id, Long version) {
+		valEntityExists(id);
+		EInvoiceHeader dbEntity = invoiceHeaderService.get(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id) {
+		if (invoiceHeaderService.get(id) == null) {
+			throw new BusinessException("data.not.found", id);
+		}
+	}
+	
+}

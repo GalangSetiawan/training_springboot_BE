@@ -1,0 +1,19 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.pojos;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+@JsonInclude(Include.ALWAYS)
+public class UploadError {
+  public String Filename;
+  public String Location;
+  public String ErrorCode;
+  public String[] Args;
+  
+  public UploadError(String pFilename, String pLocation, String pErrorCode, String... pArgs) {
+    this.Filename = pFilename;
+    this.Location = pLocation;
+    this.ErrorCode = pErrorCode;
+    this.Args = pArgs;
+  }
+}

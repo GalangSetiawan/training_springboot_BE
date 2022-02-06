@@ -1,0 +1,87 @@
+package co.id.sofcograha.domain.invoicing.saldo.deposit.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.entities.ESaldoDepositHeader;
+
+@Repository
+public class ESaldoDepositHeaderRepository extends SimpleJpaRepository<ESaldoDepositHeader, String> {
+
+	protected final EntityManager em;
+
+	public ESaldoDepositHeaderRepository(EntityManager em) {
+		super(ESaldoDepositHeader.class, em);
+		this.em = em;
+	}
+	
+	public ESaldoDepositHeader findByBK(String idMi010, String idMi001) {
+		
+		String query = "SELECT e FROM ESaldoDepositHeader e " + 
+                       "WHERE e.customer.id = :idMi010 And " + 
+				             "e.produk.id = :idMi001";
+		
+		try {
+			return em.createQuery(query, ESaldoDepositHeader.class)
+					 .setParameter("idMi010", idMi010)
+					 .setParameter("idMi001", idMi001)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ESaldoDepositHeader getOne(String id) {
+
+		String query = "SELECT e FROM ESaldoDepositHeader e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, ESaldoDepositHeader.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public SearchResult<ESaldoDepositHeader> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ESaldoDepositHeader> search = new HqlSimpleSearchBuilder<>(ESaldoDepositHeader.class, em);
+		
+		String customer = (String) searchParameter.getValueFromMappedParam("customer");
+		String produk = (String) searchParameter.getValueFromMappedParam("produk");
+
+		if (!QueryUtil.isAll(customer)) {
+            search.addWhere("AND LOWER(customer.nama) LIKE LOWER(:customer) ");
+            search.addParameter("customer", QueryUtil.formatStringForLikeFilter(customer));
+        }
+
+		if (!QueryUtil.isAll(produk)) {
+            search.addWhere("AND LOWER(produk.nama) LIKE LOWER(:produk) ");
+            search.addParameter("produk", QueryUtil.formatStringForLikeFilter(produk));
+        }
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ESaldoDepositHeader add(ESaldoDepositHeader entity) {
+		return save(entity);
+	}
+
+	public ESaldoDepositHeader edit(ESaldoDepositHeader entity) {
+		return save(entity);
+	}
+}

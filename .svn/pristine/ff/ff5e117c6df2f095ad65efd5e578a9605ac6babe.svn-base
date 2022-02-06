@@ -1,0 +1,94 @@
+package co.id.sofcograha.domain.invoicing.proses.invoiceOtomatis.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.proses.invoiceOtomatis.entities.EProsesInvoiceDataRpt;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class ProsesInvoiceDataRpt {
+	
+	public String id;
+	public String idAi003;
+	public String idMi001;
+	public String namaproduk;
+	public String idMi010;
+	public String namacust;
+	public boolean flproi;
+	public String nomor;
+	public String tahunorg;
+	public String bulanorg;
+	public boolean flagAdj;
+	
+	public ArrayList<Message> errorMsg;
+	
+	public static ProsesInvoiceDataRpt fromEntity (EProsesInvoiceDataRpt entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static ProsesInvoiceDataRpt fromEntity(EProsesInvoiceDataRpt entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		
+		ProsesInvoiceDataRpt pojo = new ProsesInvoiceDataRpt();
+		
+		pojo.id = entity.getId();
+		
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.idAi003 = entity.getIdAi003();
+			pojo.idMi001 = entity.getIdMi001();
+			pojo.namaproduk = entity.getNamaproduk();
+			pojo.idMi010 = entity.getIdMi010();
+			pojo.namacust = entity.getNamacust();
+			pojo.flproi = entity.getFlproi() == null ? false : entity.getFlproi().trim().equals(BaseConstants.YA) ? true : false;
+			pojo.nomor = entity.getNomor();
+			pojo.tahunorg = entity.getTahunorg();
+			pojo.bulanorg = entity.getBulanorg();
+			pojo.flagAdj = entity.getFlagAdj() == null ? false : entity.getFlagAdj().trim().equals(BaseConstants.YA) ? true : false;
+
+		}
+
+		return pojo;
+	}
+	
+	public static List<ProsesInvoiceDataRpt> fromEntities(List<EProsesInvoiceDataRpt> entities) {
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static List<ProsesInvoiceDataRpt> fromEntities(List<EProsesInvoiceDataRpt> entities, int depthLevel) {
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<ProsesInvoiceDataRpt> pojos = new ArrayList<>();
+		
+		for (EProsesInvoiceDataRpt entity : entities) {
+			pojos.add(ProsesInvoiceDataRpt.fromEntity(entity, depthLevel));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("tahun", "tahun"));
+		mappings.add(new SearchFieldMapping("bulan", "bulan"));
+		mappings.add(new SearchFieldMapping("idMi001", "idMi001"));
+		mappings.add(new SearchFieldMapping("flproi", "flproi"));
+		mappings.add(new SearchFieldMapping("namacust", "namacust"));
+//		mappings.add(new SearchFieldMapping("nama", "nama", String.class).sortOnly());
+//		mappings.add(new SearchFieldMapping("kodept", "kodept", String.class).sortOnly());
+		
+		return mappings;
+	}
+
+}

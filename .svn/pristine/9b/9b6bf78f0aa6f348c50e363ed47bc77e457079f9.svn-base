@@ -1,0 +1,82 @@
+package co.id.sofcograha.base.master.widget.controllers;
+
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.widget.entities.EWidget;
+import co.id.sofcograha.base.master.widget.pojos.WidgetPojo;
+import co.id.sofcograha.base.master.widget.services.WidgetService;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+//import id.co.sofcograha.gajiidapi.base.authorization.annotation.AuthAdd;
+//import id.co.sofcograha.gajiidapi.base.authorization.annotation.AuthDelete;
+//import id.co.sofcograha.gajiidapi.base.authorization.annotation.AuthEdit;
+//import id.co.sofcograha.gajiidapi.base.authorization.annotation.NoAuth;
+//import id.co.sofcograha.gajiidapi.base.mst.widget.entities.Widget;
+//import id.co.sofcograha.gajiidapi.base.mst.widget.pojos.WidgetPojo;
+//import id.co.sofcograha.gajiidapi.base.mst.widget.services.WidgetService;
+//import id.co.sofcograha.gajiidapi.base.responses.ApiResponse;
+//import id.co.sofcograha.gajiidapi.base.search.SearchParameter;
+//import id.co.sofcograha.gajiidapi.base.search.SearchResult;
+//import id.co.sofcograha.gajiidapi.domain.constants.DomainFunctionConstants;
+//import id.co.sofcograha.gajiidapi.domain.constants.DomainUriConstants;
+
+@RestController
+@RequestMapping(value = "/api/widgets")
+public class WidgetController {
+	
+	@Autowired
+	private WidgetService widgetService;
+	
+	@NoAuth
+	@GetMapping(value = BaseConstants.ID)
+	public ApiResponse get(@PathVariable String id) {
+		return ApiResponse.data("item", WidgetPojo.fromEntity(widgetService.get(id)));
+	}
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+	  SearchResult<EWidget> searchResult = widgetService.search(SearchParameter.generate(searchParameter, 
+			  																			WidgetPojo.getFieldMappings()));
+	  
+	  return ApiResponse.dataWithPaging("items", 
+			  							WidgetPojo.fromEntities(searchResult.getResult()),
+			  							searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@PostMapping
+	public ApiResponse add(@RequestBody WidgetPojo pojo) {
+		EWidget entity = widgetService.add(pojo.toEntity());
+		return ApiResponse.data("item", WidgetPojo.fromEntity(entity));
+	}
+	
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody WidgetPojo pojo) {
+	  EWidget entity = widgetService.edit(pojo.toEntity());
+	  return ApiResponse.data("item", WidgetPojo.fromEntity(entity));
+	}
+	
+	@NoAuth
+	@DeleteMapping(value = BaseConstants.ID)
+	public ApiResponse delete(@PathVariable String id, @RequestParam(required = false) Long version) {
+	  widgetService.delete(id, version);
+	  return ApiResponse.ok();
+	}
+}

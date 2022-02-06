@@ -1,0 +1,160 @@
+drop function public.spHitungTarif(character varying, character varying, character varying, numeric);
+
+create or replace function public.spHitungTarif(
+	character varying,
+	character varying,
+	character varying,
+	numeric)
+	
+	returns numeric
+	language plpgsql
+as $function$
+
+declare
+	pIdMi010 alias for $1;
+	pIdMi001 alias for $2;
+	pTanggal alias for $3;
+	pJumkar alias for $4;
+
+	vHasil             numeric;
+    vTglTarif          character varying; 
+    vCustomerTarif     record;
+    vDetailSkema       record;
+    vJumAkumulasi      record;
+    vJumlahBulan       numeric;
+    vIdMi015           character varying;
+    vTahun             character(4);
+    vBulan             character(2);
+    vTotalKary         numeric;
+    vDiscPct           numeric;
+    vDiscPctGrp        numeric;
+    vDiscPctSpc        numeric;
+
+begin
+
+    vHasil = 0;
+    vTahun = substring(ptanggal, 1, 4);
+    vBulan = substring(ptanggal, 5, 2);
+    
+    select *
+    into vCustomerTarif
+    from mi011
+    where id_mi010 = pIdMi010 and id_mi001 = pIdMi001;
+
+    if vCustomerTarif.jnstgh = 'PASCA' then
+        raise notice 'PASCA';    
+        vTglTarif = public.add_month_to_str_date(pTanggal, -1);
+    else
+        raise notice 'PRA';    
+        vTglTarif = pTanggal;
+    end if;
+    
+    -- periksa apakah customer ini adalah customer akumulasi
+    select a.id_mi015 from mi014 a
+    into vIdMi015
+    left join mi011 b on b.id_mi011 = a.id_mi011 
+    where b.id_mi010 = pIdMi010 and b.id_mi001 = pIdMi001 and
+          ((pTanggal between b.tglstart and b.tglstop) or (pTanggal >= b.tglstart and b.tglstop is null)) and
+          ((pTanggal between a.tglstart and a.tglstop) or (pTanggal >= a.tglstart and a.tglstop is null));
+    
+    raise notice 'id mi010 % - vIdMi015 %', pIdMi010, vIdMi015;
+    
+    -- bila ini adalah customer akumulasi, ambil jumlah karyawan akumulasi dari ai008 (admin upload akumulasi)
+    vTotalKary = pJumkar;
+    raise notice 'vTotalKary %', vTotalKary;
+    if vIdMi015 is not null then
+    
+        select a.* from ai008 a
+        into vJumAkumulasi
+        where a.id_mi015 = vIdMi015 and a.tahun = vTahun and a.bulan = vBulan;
+
+        if vJumAkumulasi is not null then
+            if vCustomerTarif.jnstgh = 'PASCA' then
+                vTotalKary = vJumAkumulasi.revjkbullalui + vJumAkumulasi.revjnkbullalu;
+            else
+                vTotalKary = vJumAkumulasi.jkbulini + vJumAkumulasi.revjnkbullalu;
+            end if;        
+        end if;
+ 
+    end if;
+    
+    raise notice 'vTotalKary %', vTotalKary;
+
+    -- ambil detail master customer tarif (mi012) yang sesuai
+    select c.*
+    into vDetailSkema
+    from mi012 a
+    left join mi011 b on b.id_mi011 = a.id_mi011
+    left join mi002 c on c.id_mi002 = a.id_mi002
+    where b.id_mi010 = pIdMi010 and b.id_mi001 = pIdMi001 and
+          a.jnstrf = 'SKEMA' and
+          ((vTglTarif between b.tglstart and b.tglstop) or (vTglTarif >= b.tglstart and b.tglstop is null)) and
+          ((vTglTarif between a.tglstart and a.tglstop) or (vTglTarif >= a.tglstart and a.tglstop is null));
+
+    if vDetailSkema.tipe = 'PRG' then
+        raise notice 'PROGRESIF';    
+        vHasil = public.spHitungTarifProgressif(pIdMi010, pIdMi001, vTglTarif, pJumkar);
+    else 
+        raise notice 'FLAT';    
+        vHasil = public.spHitungTarifFlat(pIdMi010, pIdMi001, vTglTarif, vTotalKary, pJumkar);
+    end if;
+    
+    -- hasil di atas adalah hasil untuk nilai tagihan per bulan
+    -- periksa apakah customer ini bersiklus periodik, bila ya, hitung nilai total tagihan periodiknya
+    vJumlahBulan = 1;
+    if vCustomerTarif.satsiklus = 'TAHUN' or (vCustomerTarif.satsiklus = 'BULAN' and vCustomerTarif.jumsiklus > 1) then
+        if vCustomerTarif.satsiklus = 'TAHUN' then
+            vJumlahBulan = vCustomerTarif.jumsiklus * 12;
+        else
+            vJumlahBulan = vCustomerTarif.jumsiklus;
+        end if;
+    end if;
+    
+    vHasil = vHasil * vJumlahBulan;
+
+    -- DISKON
+    -- diskon baik untuk bulanan maupun periodik dicari di admin diskon berdasarkan tahun bulan hitung
+
+    -- DISKON PROSEN
+    select a.pctdisc from ai004 a
+    into vDiscPct
+    where a.id_mi010 = pIdMi010 and a.id_mi001 = pIdMi001 and
+          a.tahun = vTahun and a.bulan = vBulan and
+          a.jnsdis = 'PCTDIS' and a.fldel = 'T'
+    limit 1;
+
+    if vDiscPct is not null then
+       vHasil = vHasil - Round(((vHasil * vDiscPct) / 100));
+    end if;
+    
+    -- GRUP DISKON PROSEN
+    select a.pctdisc from ai004 a
+    into vDiscPctGrp
+    where a.id_mi010 = pIdMi010 and a.id_mi001 = pIdMi001 and
+          a.tahun = vTahun and a.bulan = vBulan and
+          a.jnsdis = 'GRPDIS1' and a.fldel = 'T'
+    limit 1;
+
+    if vDiscPctGrp is not null then
+       vHasil = vHasil - Round(((vHasil * vDiscPctGrp) / 100));
+    end if;
+    
+    -- SPECIAL DISKON
+    select a.pctdisc from ai004 a
+    into vDiscPctSpc
+    where a.id_mi010 = pIdMi010 and a.id_mi001 = pIdMi001 and
+          a.tahun = vTahun and a.bulan = vBulan and
+          a.jnsdis = 'SPCDIS' and a.fldel = 'T'
+    limit 1;
+    
+    if vDiscPctSpc is not null then
+       vHasil = vHasil - Round(((vHasil * vDiscPctSpc) / 100));
+    end if;
+    
+    raise notice 'nilai %', vHasil;    
+    
+	return vHasil;
+end;
+
+$function$
+;

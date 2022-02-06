@@ -1,0 +1,295 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.services;
+
+import java.util.ArrayList;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+import co.id.sofcograha.domain.invoicing.admin.freemonth.entities.EAdminFreemonth;
+import co.id.sofcograha.domain.invoicing.admin.freemonth.services.AdminFreemonthService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewal;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetAdj;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetAdjSubDetSkemaTarif;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTgh;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTghSubDetDiskon;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTghSubDetSkemaTarif;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetAdj;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetAdjSubDetSkemaTarif;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetTgh;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetTghSubDetDiskon;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetTghSubDetSkemaTarif;
+
+@Service("adminRenewalCompleteService")
+public class AdminRenewalCompleteService extends BaseService {
+	
+	@Autowired private AdminRenewalDetAdjService adminRenewalDetAdjService;
+	@Autowired private AdminRenewalDetAdjSubDetSkemaTarifService adminRenewalDetAdjSubDetSkemaTarifService;
+	@Autowired private AdminRenewalDetTghService adminRenewalDetTghService;
+	@Autowired private AdminRenewalDetTghSubDetSkemaTarifService adminRenewalDetTghSubDetSkemaTarifService;
+	@Autowired private AdminRenewalDetTghSubDetDiskonService adminRenewalDetTghSubDetDiskonService;
+	@Autowired private AdminFreemonthService adminFreemonthService;
+
+	//@Autowired private ActionAuthorizationService actionAuthorizationService;
+	
+	@Transactional
+    public ArrayList<Message> addDetailAdjustment(AdminRenewalDetAdj adminRenewalDetAdj, EAdminRenewal eAdminRenewal) {
+		
+		ArrayList<Message> result = null;
+		
+		EAdminRenewalDetAdj entityAdded = adminRenewalDetAdj.toEntity();
+		entityAdded.setHeader(eAdminRenewal);
+		
+		// cari di admin freemonth 
+	    EAdminFreemonth eAdminFreemonth = adminFreemonthService.findByBk(eAdminRenewal.getTahun(), eAdminRenewal.getBulan(), eAdminRenewal.getCustomer().getId(), eAdminRenewal.getProduk().getId());
+
+	    if (eAdminFreemonth != null) {
+	    	// bila ditemukan di admin freemonth, ini artinya adjustment tidak ditagih
+	    	entityAdded.setFltgh(BaseConstants.TIDAK);
+	    } else {
+	    	// bila tidak ditemukan di admin freemonth, ini artinya adjustment tidak ditagih
+	    	entityAdded.setFltgh(BaseConstants.YA);	    	
+	    }
+	    
+		// adminRenewalDetAdjService.add tidak ada throw batch error, karena admin ini tidak digunakan
+		// di transaksi tetapi di proses bulanan
+		entityAdded = adminRenewalDetAdjService.add(entityAdded);
+		
+		if (!isAnyBatchErrors()) {			
+			
+			result = addAdjSubDetSkemaTarif(entityAdded, adminRenewalDetAdj);
+			
+		} else {
+			for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+				
+				// khusus untuk error yang muncul di grid
+				Message message = new Message();
+				ArrayList<Object> newParameters = new ArrayList<Object>();
+				
+				for (Object object : businessException.getMessageParameters()) {
+					newParameters.add(object);
+				}
+	
+				message.setCode(businessException.getMessageCode());
+				message.setArgs(newParameters);
+				
+				if (result == null) {
+					result = new ArrayList<Message>();
+				}
+				
+				//result.clear();
+				result.add(message);					
+			}
+			
+			// bersihkan error yang ada di LocalError
+			removeBatchErrors();			
+		}
+		
+		return result;
+	}
+	
+	@Transactional
+    public ArrayList<Message> addAdjSubDetSkemaTarif(EAdminRenewalDetAdj eAdminRenewalDetAdj, AdminRenewalDetAdj adminRenewalDetAdj) {
+		
+		ArrayList<Message> result = null;
+
+		for (AdminRenewalDetAdjSubDetSkemaTarif adminRenewalDetAdjSubDetSkemaTarif : adminRenewalDetAdj.subDetailSkemaTarif) {
+			
+			EAdminRenewalDetAdjSubDetSkemaTarif entityDetail = adminRenewalDetAdjSubDetSkemaTarif.toEntity();
+			
+			entityDetail.setDetailAdjustment(eAdminRenewalDetAdj);
+			
+			adminRenewalDetAdjSubDetSkemaTarifService.add(entityDetail);
+			
+			if (isAnyBatchErrors()) {
+				
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (result == null) {
+						result = new ArrayList<Message>();
+					}
+					
+					//result.clear();
+					result.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();			
+			}
+		}
+		
+		return result;
+	}
+
+	@Transactional
+    public ArrayList<Message> addDetailTagih(AdminRenewalDetTgh adminRenewalDetTgh, EAdminRenewal eAdminRenewal) {
+		
+		ArrayList<Message> result = null;
+		
+		System.out.println("      Add detail tagih");
+		EAdminRenewalDetTgh entityAdded = adminRenewalDetTgh.toEntity();
+		entityAdded.setHeader(eAdminRenewal);
+		
+		entityAdded = adminRenewalDetTghService.add(entityAdded);
+		
+		if (!isAnyBatchErrors()) {			
+			
+			System.out.println("      Add sub detail tagih");
+			ArrayList<Message> tempMsg1 = addTghSubDetSkemaTarif(entityAdded, adminRenewalDetTgh);
+			ArrayList<Message> tempMsg2 = addTghSubDetDiskon(entityAdded, adminRenewalDetTgh);
+			
+			if (tempMsg1 != null || tempMsg2 != null) {
+				System.out.println("      Add error di sub detail tagih");
+				
+				result = new ArrayList<Message>();
+				
+				if (tempMsg1 != null) {
+					for (Message message : tempMsg1) {
+						result.add(message);
+					}
+				}
+				
+				if (tempMsg1 != null) {
+					for (Message message : tempMsg1) {
+						result.add(message);
+					}
+				}				
+			}
+			
+		} else {
+			System.out.println("      Add error di detail tagih");
+			
+			for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+				
+				// khusus untuk error yang muncul di grid
+				Message message = new Message();
+				ArrayList<Object> newParameters = new ArrayList<Object>();
+				
+				for (Object object : businessException.getMessageParameters()) {
+					newParameters.add(object);
+				}
+	
+				message.setCode(businessException.getMessageCode());
+				message.setArgs(newParameters);
+				
+				if (result == null) {
+					result = new ArrayList<Message>();
+				}
+				
+				//result.clear();
+				result.add(message);					
+			}
+			
+			// bersihkan error yang ada di LocalError
+			removeBatchErrors();			
+		}
+		
+		return result;
+	}
+	
+	@Transactional
+    public ArrayList<Message> addTghSubDetSkemaTarif(EAdminRenewalDetTgh eAdminRenewalDetTgh, AdminRenewalDetTgh adminRenewalDetTgh) {
+		
+		ArrayList<Message> result = null;
+
+		for (AdminRenewalDetTghSubDetSkemaTarif adminRenewalDetTghSubDetSkemaTarif : adminRenewalDetTgh.subDetailSkemaTarif) {
+			
+			EAdminRenewalDetTghSubDetSkemaTarif entityDetail = adminRenewalDetTghSubDetSkemaTarif.toEntity();
+			
+			entityDetail.setDetailTagih(eAdminRenewalDetTgh);
+			
+			adminRenewalDetTghSubDetSkemaTarifService.add(entityDetail);
+			
+			if (isAnyBatchErrors()) {
+				
+				System.out.println("     ada error di addTghSubDetSkemaTarif ");
+				
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (result == null) {
+						result = new ArrayList<Message>();
+					}
+					
+					//result.clear();
+					result.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();			
+			}
+		}
+		
+		return result;
+	}
+
+	@Transactional
+    public ArrayList<Message> addTghSubDetDiskon(EAdminRenewalDetTgh eAdminRenewalDetTgh, AdminRenewalDetTgh adminRenewalDetTgh) {
+		
+		ArrayList<Message> result = null;
+
+		for (AdminRenewalDetTghSubDetDiskon adminRenewalDetTghSubDetDiskon : adminRenewalDetTgh.subDetailDiskon) {
+			
+			EAdminRenewalDetTghSubDetDiskon entityDetail = adminRenewalDetTghSubDetDiskon.toEntity();
+			
+			entityDetail.setDetailTagih(eAdminRenewalDetTgh);
+			
+			adminRenewalDetTghSubDetDiskonService.add(entityDetail);
+			
+			if (isAnyBatchErrors()) {
+				
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+					
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
+					
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
+					}
+		
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
+					
+					if (result == null) {
+						result = new ArrayList<Message>();
+					}
+					
+					//result.clear();
+					result.add(message);					
+				}
+				
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();			
+			}
+		}
+		
+		return result;
+	}
+}

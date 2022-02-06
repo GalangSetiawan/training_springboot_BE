@@ -1,0 +1,68 @@
+package co.id.sofcograha.base.master.kamus.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.master.kamus.entities.EStdKamus;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Repository
+public class EStdKamusRepository extends SimpleJpaRepository<EStdKamus, String> {
+
+	protected final EntityManager em;
+
+	public EStdKamusRepository(EntityManager em) {
+		super(EStdKamus.class, em);
+		this.em = em;
+	}
+	
+	public EStdKamus findByBK(String bahasa, String key) {
+		
+		String query = "SELECT e FROM EStdKamus e " + 
+                       "WHERE e.bahasa = :bahasa And e.key = :key";
+		
+		try {
+			return em.createQuery(query, EStdKamus.class)
+					 .setParameter("bahasa", bahasa)
+					 .setParameter("key", key)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public SearchResult<EStdKamus> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EStdKamus> search = new HqlSimpleSearchBuilder<>(EStdKamus.class, em);
+		
+		String bahasa = (String) searchParameter.getValueFromMappedParam("bahasa");
+		String key = (String) searchParameter.getValueFromMappedParam("key");
+		String value = (String) searchParameter.getValueFromMappedParam("value");
+    
+		if (bahasa != null) {
+			search.addWhere("AND bahasa = :bahasa ");
+			search.addParameter("bahasa", bahasa);
+		}
+		
+		if (key != null) {
+			search.addWhere("AND key = :key ");
+			search.addParameter("key", key);
+		}
+		
+		if (!QueryUtil.isAll(value)) {
+			search.addWhere("AND LOWER(value) LIKE LOWER(:value) ");
+			search.addParameter("value", QueryUtil.formatStringForLikeFilter(value));
+		}
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}	
+}

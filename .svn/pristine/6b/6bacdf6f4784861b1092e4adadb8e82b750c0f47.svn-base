@@ -1,0 +1,95 @@
+package co.id.sofcograha.domain.invoicing.masters.grupdiskon.controllers;
+
+import java.text.ParseException;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.entities.EGrupDiskonHeader;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.pojos.GrupDiskonComplete;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.pojos.GrupDiskonHeader;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.services.GrupDiskonCompleteService;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.services.GrupDiskonHeaderService;
+
+@RestController
+@RequestMapping("/api/grup-diskon")
+public class GrupDiskonController {
+	
+	public static final Logger logger = LoggerFactory.getLogger(GrupDiskonController.class);
+	
+	@Autowired private GrupDiskonHeaderService grupDiskonHeaderService;
+	//@Autowired private SkemaHargaDetailService skemaHargaDetailService;
+	@Autowired private GrupDiskonCompleteService grupDiskonCompleteService;
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<EGrupDiskonHeader> searchResult = grupDiskonHeaderService.search(SearchParameter.generate(searchParameter, 
+				GrupDiskonHeader.getFieldMappings()));
+		
+//		return ApiResponse.dataWithPaging("items", 
+//				GrupDiskonHeader.fromEntities(searchResult.getResult()), 
+//				searchResult.getPaging());
+		return ApiResponse.dataWithPaging("items", 
+				GrupDiskonHeader.fromEntities(searchResult.getResult(), BaseConstants.DEFAULT_QUERY_DEPTH, 1), 
+				searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String nama) throws JsonProcessingException, ParseException {
+	    GrupDiskonComplete data = grupDiskonCompleteService.findByBk(nama);
+	    
+	    return ApiResponse.data("item", data);
+	}
+	
+	//@AuthAdd("TRX_PP")
+	@NoAuth
+	@PostMapping
+	public ApiResponse add(@RequestBody GrupDiskonComplete pojo) {
+
+		
+		EGrupDiskonHeader header = grupDiskonCompleteService.add(pojo);
+		
+		return ApiResponse.data("item", GrupDiskonComplete.setFromEntity(header));
+	}
+	
+	//@AuthEdit("TRX_PP")
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody GrupDiskonComplete pojo) {
+		
+		EGrupDiskonHeader header = grupDiskonCompleteService.edit(pojo);
+		
+		return ApiResponse.data("item", GrupDiskonComplete.setFromEntity(header));
+	}
+
+	//@AuthDelete("TRX_PP")
+	@NoAuth
+	@DeleteMapping
+	public ApiResponse delete(@RequestParam String id, @RequestParam(required = false) Long version) {
+		
+		grupDiskonCompleteService.delete(id, version);
+		
+		return ApiResponse.ok();
+	}
+	
+}

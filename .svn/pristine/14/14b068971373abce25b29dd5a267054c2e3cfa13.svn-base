@@ -1,0 +1,109 @@
+package co.id.sofcograha.domain.invoicing.masters.diskonkhusus.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.entities.EDiskonKhususDetail;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.entities.EDiskonKhususHeader;
+
+@Repository
+public class EDiskonKhususHeaderRepository extends SimpleJpaRepository<EDiskonKhususHeader, String> {
+
+	protected final EntityManager em;
+
+	public EDiskonKhususHeaderRepository(EntityManager em) {
+		super(EDiskonKhususHeader.class, em);
+		this.em = em;
+	}
+	
+	public EDiskonKhususHeader findByBK(String nama) {
+		
+		String query = "SELECT e FROM EDiskonKhususHeader e " + 
+                       "WHERE e.nama = :nama";
+		
+		try {
+			return em.createQuery(query, EDiskonKhususHeader.class)
+					 .setParameter("nama", nama)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EDiskonKhususHeader getFindByCustomerAndTanggal(String idMi010, String tanggal) {
+		
+		String query = "SELECT e.header FROM EDiskonKhususDetail e " + 
+                       "WHERE ((:tanggal BETWEEN e.header.tglstart And e.header.tglstop) Or (:tanggal >= e.header.tglstart and e.header.tglstop is null)) And " +
+  	                         "e.customer.id = :idMi010";
+		
+		try {
+			return em.createQuery(query, EDiskonKhususHeader.class)
+					 .setParameter("tanggal", tanggal)
+					 .setParameter("idMi010", idMi010)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EDiskonKhususHeader getOne(String id) {
+
+		String query = "SELECT e FROM EDiskonKhususHeader e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, EDiskonKhususHeader.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public SearchResult<EDiskonKhususHeader> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EDiskonKhususHeader> search = new HqlSimpleSearchBuilder<>(EDiskonKhususHeader.class, em);
+		
+		String nama = (String) searchParameter.getValueFromMappedParam("nama");
+		String keterangan = (String) searchParameter.getValueFromMappedParam("keterangan");
+		String flakt = (String) searchParameter.getValueFromMappedParam("flakt");
+
+		if (!QueryUtil.isAll(nama)) {
+            search.addWhere("AND LOWER(nama) LIKE LOWER(:nama) ");
+            search.addParameter("nama", QueryUtil.formatStringForLikeFilter(nama));
+        }
+
+		if (!QueryUtil.isAll(keterangan)) {
+            search.addWhere("AND LOWER(keterangan) LIKE LOWER(:keterangan) ");
+            search.addParameter("keterangan", QueryUtil.formatStringForLikeFilter(keterangan));
+        }
+
+	    if (!QueryUtil.isAll(flakt)) {
+	      search.addWhere("AND LOWER(flakt) LIKE LOWER(:flakt) ");
+	      search.addParameter("flakt", QueryUtil.formatStringForLikeFilter(flakt));
+	    }
+		
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EDiskonKhususHeader add(EDiskonKhususHeader entity) {
+		return save(entity);
+	}
+
+	public EDiskonKhususHeader edit(EDiskonKhususHeader entity) {
+		return save(entity);
+	}
+}

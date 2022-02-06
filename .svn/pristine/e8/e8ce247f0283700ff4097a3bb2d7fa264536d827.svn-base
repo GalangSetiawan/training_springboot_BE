@@ -1,0 +1,87 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.setting.controllers;
+
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.company.entities.ECompanyLogo;
+import co.id.sofcograha.base.master.company.services.CompanyLogoService;
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+import co.id.sofcograha.base.master.jenisTransaksi.pojos.JenisTransaksi;
+import co.id.sofcograha.base.screencontrol.DisplayControl;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingComponent;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.services.AutomaticNumberingService;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.entities.ESetting;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.pojos.SettingComplete;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.services.SettingCompleteService;
+
+@RestController
+@RequestMapping("/api/setting")
+public class SettingController {
+
+  public static final Logger logger = LoggerFactory.getLogger(SettingController.class);
+
+  @Autowired private SettingCompleteService service;
+  @Autowired private CompanyLogoService companyLogoservice;
+  @Autowired private AutomaticNumberingService automaticNumberingService;
+  
+  @NoAuth
+  @GetMapping
+  public ApiResponse get(@RequestParam String kklien) throws JsonProcessingException  {
+      return ApiResponse.data("item", service.getSettingGL());
+  }
+  
+  @NoAuth
+  @PostMapping(value = "/save-complete")
+  public ApiResponse saveComplete(@RequestBody SettingComplete pojo) throws ParseException {
+      ESetting eSettingGL = service.saveComplete(pojo);
+      
+      // Seharusnya Company Logo dapat diambil dari Company, tapi saat ini setting relasinya tidak dibuat seperti itu
+      // Apabila setting relasinya diubah, perubahannya cukup banyak
+      ECompanyLogo eCompanyLogo = companyLogoservice.findByCompanyId(eSettingGL.geteCompany().getId());
+
+      ArrayList<DisplayControl> dispCtlList = new ArrayList<DisplayControl>();
+      dispCtlList.add(new DisplayControl("idUser", "disable"));
+      dispCtlList.add(new DisplayControl("idMenu", "disable"));
+      
+      // ambil default penomoran otomatis
+      List<EAutomaticNumberingComponent> eAutomaticNumberingComponents = automaticNumberingService.getNumberComponentsByTransactionId(BaseConstants.ID_DEFAULT_PENOMORAN_OTOMATIS);
+      
+      return ApiResponse.data("item", SettingComplete.setFromEntity(eSettingGL, eSettingGL.geteCompany(), eCompanyLogo, eAutomaticNumberingComponents),
+                              dispCtlList);
+  }
+  
+  @NoAuth
+  @GetMapping(value = "/search-daftar-transaksi")
+  public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+      List<SearchFieldMapping> mappings = new ArrayList<>();
+      mappings.add(new SearchFieldMapping("id", "id", String.class));
+      
+      SearchResult<EJenisTransaksi> searchResult = service.search(SearchParameter.generate(searchParameter, 
+              mappings));
+      
+      return ApiResponse.dataWithPaging("items", 
+              JenisTransaksi.fromEntities(searchResult.getResult()), 
+              searchResult.getPaging());
+  }
+  
+}

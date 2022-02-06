@@ -1,0 +1,163 @@
+package co.id.sofcograha.base.master.usercompany.entities;
+
+import java.util.Date;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
+import javax.persistence.UniqueConstraint;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.user.entities.EUser;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(schema="public", name = "std_user_company", uniqueConstraints = @UniqueConstraint(columnNames = { "std_user_id", "std_company_id" }))
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class EUserCompany {
+
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@OneToOne
+	@JoinColumn(name = "std_user_id")
+	private EUser user;
+
+	@OneToOne
+	@JoinColumn(name = "std_company_id")
+	private ECompany company;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "start_date")
+	private Date startDate;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "end_date")
+	private Date endDate;
+	
+	@Column(name = "super_user")
+	private Boolean superUser;
+	
+	@Column(name = "version")
+	private Integer version;
+	
+	@Column(name = "user_create")
+	private String userCreate;
+	
+	@Column(name = "creation_time")
+	private Date cretionTime;
+	
+	@Column(name = "user_modify")
+	private String userModify;
+	
+	@Column(name = "modification_time")
+	private Date modificationTime;
+
+	public EUser getUser() {
+		return user;
+	}
+
+	public void setUser(EUser user) {
+		this.user = user;
+	}
+
+	public ECompany getCompany() {
+		return company;
+	}
+
+	public void setCompany(ECompany company) {
+		this.company = company;
+	}
+
+	public Date getStartDate() {
+		return startDate;
+	}
+
+	public void setStartDate(Date startDate) {
+		this.startDate = startDate;
+	}
+
+	public Date getEndDate() {
+		return endDate;
+	}
+
+	public void setEndDate(Date endDate) {
+		this.endDate = endDate;
+	}
+	
+	public Boolean getSuperUser() {
+		return superUser;
+	}
+	
+	public void setSuperUser(Boolean superUser) {
+		this.superUser = superUser;
+	}
+
+    public String getId() {
+      return id;
+    }
+  
+    public void setId(String id) {
+      this.id = id;
+    }
+  
+    public Integer getVersion() {
+      return version;
+    }
+  
+    public void setVersion(Integer version) {
+      this.version = version;
+    }
+  
+    public String getUserCreate() {
+      return userCreate;
+    }
+  
+    public void setUserCreate(String userCreate) {
+      this.userCreate = userCreate;
+    }
+  
+    public Date getCretionTime() {
+      return cretionTime;
+    }
+  
+    public void setCretionTime(Date cretionTime) {
+      this.cretionTime = cretionTime;
+    }
+  
+    public String getUserModify() {
+      return userModify;
+    }
+  
+    public void setUserModify(String userModify) {
+      this.userModify = userModify;
+    }
+  
+    public Date getModificationTime() {
+      return modificationTime;
+    }
+  
+    public void setModificationTime(Date modificationTime) {
+      this.modificationTime = modificationTime;
+    }
+    
+    @PrePersist
+    private void prePersist() {
+      
+      this.id = UUID.randomUUID().toString();
+    }
+	
+	
+}

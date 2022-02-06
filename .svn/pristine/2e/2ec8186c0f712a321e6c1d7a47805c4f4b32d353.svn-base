@@ -1,0 +1,24 @@
+package co.id.sofcograha.base.queue.common;
+
+public class QueueConstants {
+
+	static final String AUTH = "AUTH";
+	static final String PROCESS_CODE = "PROCESS_CODE";
+	static final String PROCESS_ID = "PROCESS_ID";
+	static final String PROCESS_NAME = "PROCESS_NAME";
+	static final String COMPANY_CODE = "COMPANY_CODE";
+	
+	static final String PROCES_QUEUE_PREFIX = "queue";
+	
+	public enum Status {
+		OnQueue, OnProces, Error, Done, DoneWithWarning
+	};
+	
+	public enum ProcessStatusType {
+		Done, Error, Warning, Summary
+	}
+	
+	public enum ProcessParamType {
+		Single, Multi, Table
+	}
+}

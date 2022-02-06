@@ -1,0 +1,108 @@
+package co.id.sofcograha.base.screencontrol.services;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.approval.services.ApprovalService;
+import co.id.sofcograha.base.screencontrol.entities.ScreenControl;
+import co.id.sofcograha.base.screencontrol.pojos.ScreenControlPojo;
+import co.id.sofcograha.base.screencontrol.repositories.ScreenControlRepository;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+
+@Service
+public class ScreenControlService {
+	
+	@Autowired private ApprovalService approvalService;
+	@Autowired private ScreenControlRepository screenControlRepository;
+	
+	public List<ScreenControlPojo> search(SearchParameter searchParameter) {
+		List<ScreenControlPojo> pojos = new ArrayList<ScreenControlPojo>();
+		
+		List<ScreenControl> entities = screenControlRepository.search(searchParameter).getResult();
+		if (entities.isEmpty()) return pojos;
+		
+		String transactionId = (String) searchParameter.getValueFromMappedParam("transaction.id");
+		String number = (String) searchParameter.getValueFromMappedParam("number");
+		Date date = (Date) searchParameter.getValueFromMappedParam("date");
+		
+		HashMap<String, Boolean> flags = approvalService.getFlags(transactionId, number, date);
+		
+		boolean isValid = flags.get("isValid");
+		if (!isValid) return pojos;
+		
+		boolean isUsingApproval = flags.get("isUsingApproval");
+		
+		boolean isCommonNewDocument = flags.get("isNewDocument");
+		
+		boolean isApprovalFirstUser = false;
+		boolean isApprovalConfirm = false;
+		boolean isApprovalNextConfirm = false;
+		boolean isApprovalLastConfirm = false;
+		
+		if (isUsingApproval) {
+			
+			isApprovalFirstUser = flags.get("isFirstUser");
+			isApprovalConfirm = flags.get("isConfirm");
+			isApprovalNextConfirm = flags.get("isNextConfirm");
+			isApprovalLastConfirm = flags.get("isLastConfirm");
+			
+		} else {
+			
+			isApprovalConfirm = flags.get("isConfirm");
+			// if not using approval ...
+		}
+		
+		for (ScreenControl entity : entities) {
+			if (isUsingApproval) {
+				
+				if (entity.getCommonNewDocumentFlag() != null && entity.getCommonNewDocumentFlag().booleanValue() != isCommonNewDocument) {
+					pojos.add(new ScreenControlPojo(entity.getComponentId(), entity.getComponentStateIfUsingApprovalAndResultFalse()));
+					continue;
+				}
+				
+				if (entity.getApprovalFirstUserFlag() != null && entity.getApprovalFirstUserFlag().booleanValue() != isApprovalFirstUser) {
+					pojos.add(new ScreenControlPojo(entity.getComponentId(), entity.getComponentStateIfUsingApprovalAndResultFalse()));
+					continue;
+				}
+				
+				if (entity.getApprovalConfirmFlag() != null && entity.getApprovalConfirmFlag().booleanValue() != isApprovalConfirm) {
+					pojos.add(new ScreenControlPojo(entity.getComponentId(), entity.getComponentStateIfUsingApprovalAndResultFalse()));
+					continue;
+				}
+				
+				if (entity.getApprovalNextConfirmFlag() != null && entity.getApprovalNextConfirmFlag().booleanValue() != isApprovalNextConfirm) {
+					pojos.add(new ScreenControlPojo(entity.getComponentId(), entity.getComponentStateIfUsingApprovalAndResultFalse()));
+					continue;
+				}
+				
+				if (entity.getApprovalLastConfirmFlag() != null && entity.getApprovalLastConfirmFlag().booleanValue() != isApprovalLastConfirm) {
+					pojos.add(new ScreenControlPojo(entity.getComponentId(), entity.getComponentStateIfUsingApprovalAndResultFalse()));
+					continue;
+				}
+				
+				pojos.add(new ScreenControlPojo(entity.getComponentId(), entity.getComponentStateIfUsingApprovalAndResultTrue()));
+				
+			} else {
+				
+				if (entity.getCommonNewDocumentFlag() != null && entity.getCommonNewDocumentFlag().booleanValue() != isCommonNewDocument) {
+					pojos.add(new ScreenControlPojo(entity.getComponentId(), entity.getComponentStateIfNotUsingApprovalAndResultFalse()));
+					continue;
+				}
+				
+				if (entity.getApprovalConfirmFlag() != null && entity.getApprovalConfirmFlag().booleanValue() != isApprovalConfirm) {
+					pojos.add(new ScreenControlPojo(entity.getComponentId(), entity.getComponentStateIfNotUsingApprovalAndResultFalse()));
+					continue;
+				} // here
+				
+				pojos.add(new ScreenControlPojo(entity.getComponentId(), entity.getComponentStateIfNotUsingApprovalAndResultTrue()));
+			}
+		}
+		
+		return pojos;
+	}
+}

@@ -1,0 +1,330 @@
+package co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifDetail;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifDetail;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.repositories.ECustomerProdukTarifDetailRepository;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.entities.EGrupDiskonHeader;
+import co.id.sofcograha.domain.invoicing.masters.grupdiskon.services.GrupDiskonHeaderService;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.entities.ESkemaHargaHeader;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.services.SkemaHargaHeaderService;
+
+@Service("customerProdukTarifDetailService")
+public class CustomerProdukTarifDetailService extends BaseService {
+	
+	@Autowired private ECustomerProdukTarifDetailRepository repo;
+	
+	@Autowired private SkemaHargaHeaderService skemaHargaHeaderService;
+	@Autowired private GrupDiskonHeaderService grupDiskonHeaderService;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public CustomerProdukTarifDetail findByBk(String idMi011, Integer nourut) {
+		return CustomerProdukTarifDetail.fromEntity(repo.findByBK(idMi011, nourut));
+	}
+
+	public CustomerProdukTarifDetail getByCustProdukAndJenisTarifTanpaRange(String idMi010, String idMi001, String jnstrf) {
+		return CustomerProdukTarifDetail.fromEntity(repo.getByCustProdukAndJenisTarifTanpaRange(idMi010, idMi001, jnstrf));		
+	}
+	
+	public CustomerProdukTarifDetail getByCustProdukAndJenisTarifDgnRange(String idMi010, String idMi001, String jnstrf, String tanggal) {
+		return CustomerProdukTarifDetail.fromEntity(repo.getByCustProdukAndJenisTarifDgnRange(idMi010, idMi001, jnstrf, tanggal));		
+	}
+	
+	public SearchResult<ECustomerProdukTarifDetail> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public ECustomerProdukTarifDetail add(ECustomerProdukTarifDetail entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		manageMinMaxValues(entity);
+		//throwBatchError();
+		
+		manageReferences(entity);
+		//throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		//throwBatchError();
+		
+		if (!isAnyBatchErrors()) {
+			preAdd(entity);
+			ECustomerProdukTarifDetail addedEntity = repo.add(entity);
+			postAdd(addedEntity);
+			
+			return addedEntity;	
+		}
+			
+		//throwBatchError();
+		return entity;	
+
+	}
+	
+	@Transactional
+	public ECustomerProdukTarifDetail edit(ECustomerProdukTarifDetail entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		ECustomerProdukTarifDetail toBeSaved = repo.getOne(entity.getId());
+		ECustomerProdukTarifDetail oldEntity = (ECustomerProdukTarifDetail) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, ECustomerProdukTarifDetail.class.getSimpleName());
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		ECustomerProdukTarifDetail toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		//throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		//throwBatchError();
+		
+	}
+	
+	// terkait manipulasi data
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ECustomerProdukTarifDetail dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(ECustomerProdukTarifDetail entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(ECustomerProdukTarifDetail newValues, ECustomerProdukTarifDetail toBeSaved) {
+
+		if (toBeSaved != null) {
+			toBeSaved.setNourut(newValues.getNourut());
+			toBeSaved.setJnstrf(newValues.getJnstrf());
+			toBeSaved.setPctdisc(newValues.getPctdisc());
+			toBeSaved.setNildisc(newValues.getNildisc());
+			toBeSaved.setFreemo(newValues.getFreemo());
+			toBeSaved.setTglstart(newValues.getTglstart());
+			toBeSaved.setTglstop(newValues.getTglstop());
+			toBeSaved.setJumdur(newValues.getJumdur());
+			toBeSaved.setSatdur(newValues.getSatdur());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(ECustomerProdukTarifDetail entity) {
+		valRequiredInteger(entity.getNourut(), "customerProdukTarif.detail.nourut.required");
+		valRequiredString(entity.getJnstrf(), "customerProdukTarif.detail.jnstrf.required");		
+		//valRequiredString(entity.getTglstart(), "customerProdukTarif.detail.tglstart.required");
+		//valRequiredString(entity.getTglstop(), "customerProdukTarif.detail.tglstop.required");
+		
+		if (entity.getJnstrf() != null && 
+		   (entity.getJnstrf().equals(BaseConstants.JNSTRF_FREE_MONTH) ||
+			entity.getJnstrf().equals(BaseConstants.JNSTRF_PERSEN_DISKON) ||
+			entity.getJnstrf().equals(BaseConstants.JNSTRF_NILAI_DISKON))) {
+			
+			valRequiredInteger(entity.getJumdur(), "customerProdukTarif.detail.jumdur.required");
+			valRequiredString(entity.getSatdur(), "customerProdukTarif.detail.satdur.required");
+			
+			if (entity.getJnstrf().equals(BaseConstants.JNSTRF_PERSEN_DISKON)) {
+				valRequiredDouble(entity.getPctdisc(), "customerProdukTarif.detail.pctdisc.required");				
+			}
+			if (entity.getJnstrf().equals(BaseConstants.JNSTRF_NILAI_DISKON)) {
+				valRequiredDouble(entity.getNildisc(), "customerProdukTarif.detail.nildisc.required");				
+			}
+			if (entity.getJnstrf().equals(BaseConstants.JNSTRF_FREE_MONTH)) {
+				valRequiredInteger(entity.getFreemo(), "customerProdukTarif.detail.freemo.required");				
+			}
+		}
+	}
+	
+	protected void manageMinMaxValues(ECustomerProdukTarifDetail entity) {
+		valMinInteger(entity.getNourut(), 0, "customerProdukTarif.detail.nourut.min.length");
+		valMaxInteger(entity.getNourut(), 999, "customerProdukTarif.detail.nourut.max.length");
+		valMaxString(entity.getJnstrf(), 10, "customerProdukTarif.detail.jnstrf.max.length");
+		valMaxString(entity.getTglstart(), 8, "customerProdukTarif.detail.tglstart.max.length");
+		valMaxString(entity.getTglstop(), 8, "customerProdukTarif.detail.tglstop.max.length");
+		
+		if (entity.getJnstrf() != null && 
+		   (entity.getJnstrf().equals(BaseConstants.JNSTRF_FREE_MONTH) ||
+    		entity.getJnstrf().equals(BaseConstants.JNSTRF_PERSEN_DISKON) ||
+			entity.getJnstrf().equals(BaseConstants.JNSTRF_NILAI_DISKON))) {
+
+			valMinInteger(entity.getJumdur(), 0, "customerProdukTarif.detail.jumdur.min.length");
+			valMaxInteger(entity.getJumdur(), 99999, "customerProdukTarif.detail.jumdur.max.length");
+			valMaxString(entity.getSatdur(), 50, "customerProdukTarif.detail.satdur.max.length");			
+
+			if (entity.getJnstrf().equals(BaseConstants.JNSTRF_PERSEN_DISKON)) {
+				valMinDouble(entity.getNildisc(), 0D, "customerProdukTarif.detail.pctdisc.min.length");
+				valMaxDouble(entity.getNildisc(), 999999999D, "customerProdukTarif.detail.pctdisc.max.length");
+			}
+			if (entity.getJnstrf().equals(BaseConstants.JNSTRF_NILAI_DISKON)) {
+				valMinDouble(entity.getNildisc(), 0D, "customerProdukTarif.detail.nildisc.min.length");
+				valMaxDouble(entity.getNildisc(), 999999999D, "customerProdukTarif.detail.nildisc.max.length");
+			}
+			if (entity.getJnstrf().equals(BaseConstants.JNSTRF_FREE_MONTH)) {
+				valMinInteger(entity.getFreemo(), 0, "customerProdukTarif.detail.freemo.min.length");
+				valMaxInteger(entity.getFreemo(), 999, "customerProdukTarif.detail.freemo.max.length");
+			}
+		}
+	}
+
+	protected void manageReferences(ECustomerProdukTarifDetail entity) {
+		if (entity.getSkemaHarga() != null) {
+			ESkemaHargaHeader eFromDb = skemaHargaHeaderService.get(entity.getSkemaHarga().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setSkemaHarga(eFromDb);
+				} else {
+					batchError("skemaHarga.not.active");
+				}
+			} else {
+				batchError("skemaHarga.not.found");
+			}			
+		}
+
+		if (entity.getGrupDiskon() != null) {
+			EGrupDiskonHeader eFromDb = grupDiskonHeaderService.get(entity.getGrupDiskon().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setGrupDiskon(eFromDb);
+				} else {
+					batchError("grupDiskon.not.active");
+				}
+			} else {
+				batchError("grupDiskon.not.found");
+			}			
+		}
+	}
+
+	protected void valDelete(ECustomerProdukTarifDetail toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(ECustomerProdukTarifDetail addedEntity) {
+		ECustomerProdukTarifDetail entityFromDb = repo.findByBK(addedEntity.getHeader().getId(), addedEntity.getNourut());
+		if (entityFromDb != null) {
+			throw new BusinessException("customerProdukTarif.detail.bk", addedEntity.getNourut());
+		}
+	}
+
+	protected void valUniquenessOnEdit(ECustomerProdukTarifDetail editedEntity) {
+		ECustomerProdukTarifDetail entityFromDb = repo.findByBK(editedEntity.getHeader().getId(), editedEntity.getNourut());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("customerProdukTarif.detail.bk", editedEntity.getNourut());
+			}
+		}
+	}
+
+	protected void preAdd(ECustomerProdukTarifDetail entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(ECustomerProdukTarifDetail entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(ECustomerProdukTarifDetail toBeSaved, ECustomerProdukTarifDetail oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(ECustomerProdukTarifDetail toBeSaved, ECustomerProdukTarifDetail oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(ECustomerProdukTarifDetail entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(ECustomerProdukTarifDetail entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	// ----
+	
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya	
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+}

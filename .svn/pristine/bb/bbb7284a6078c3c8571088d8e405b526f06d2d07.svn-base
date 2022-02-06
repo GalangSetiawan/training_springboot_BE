@@ -1,0 +1,40 @@
+package co.id.sofcograha.base.master.helpInfo.controllers;
+
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.master.helpInfo.entities.EStdInfoHeader;
+import co.id.sofcograha.base.master.helpInfo.pojos.StdInfoComplete;
+import co.id.sofcograha.base.master.helpInfo.pojos.StdInfoHeader;
+import co.id.sofcograha.base.master.helpInfo.services.StdInfoCompleteService;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@RestController
+@RequestMapping("/api/info-bantuan")
+public class StdInfoController {
+	
+	public static final Logger logger = LoggerFactory.getLogger(StdInfoController.class);
+	
+	@Autowired private StdInfoCompleteService stdInfoCompleteService;
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<EStdInfoHeader> searchResult = stdInfoCompleteService.search(SearchParameter.generate(searchParameter, 
+				StdInfoHeader.getFieldMappings()));
+		
+		return ApiResponse.data("items", StdInfoComplete.fromEntities(searchResult.getResult()));
+	}
+	
+}

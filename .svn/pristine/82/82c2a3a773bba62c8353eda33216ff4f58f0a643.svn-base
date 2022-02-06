@@ -1,0 +1,91 @@
+package co.id.sofcograha.domain.invoicing.masters.skemaharga.controllers;
+
+import java.text.ParseException;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.entities.ESkemaHargaHeader;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.pojos.SkemaHargaComplete;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.pojos.SkemaHargaHeader;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.services.SkemaHargaCompleteService;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.services.SkemaHargaHeaderService;
+
+@RestController
+@RequestMapping("/api/skema-harga")
+public class SkemaHargaController {
+	
+	public static final Logger logger = LoggerFactory.getLogger(SkemaHargaController.class);
+	
+	@Autowired private SkemaHargaHeaderService skemaHargaHeaderService;
+	//@Autowired private SkemaHargaDetailService skemaHargaDetailService;
+	@Autowired private SkemaHargaCompleteService skemaHargaCompleteService;
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<ESkemaHargaHeader> searchResult = skemaHargaHeaderService.search(SearchParameter.generate(searchParameter, 
+				SkemaHargaHeader.getFieldMappings()));
+		
+		return ApiResponse.dataWithPaging("items", 
+				SkemaHargaHeader.fromEntities(searchResult.getResult()), 
+				searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String nama) throws JsonProcessingException, ParseException {
+	    SkemaHargaComplete data = skemaHargaCompleteService.findByBk(nama);
+	    
+	    return ApiResponse.data("item", data);
+	}
+	
+	//@AuthAdd("TRX_PP")
+	@NoAuth
+	@PostMapping
+	public ApiResponse add(@RequestBody SkemaHargaComplete pojo) {
+
+		
+		ESkemaHargaHeader header = skemaHargaCompleteService.add(pojo);
+		
+		return ApiResponse.data("item", SkemaHargaComplete.setFromEntity(header));
+	}
+	
+	//@AuthEdit("TRX_PP")
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody SkemaHargaComplete pojo) {
+		
+		ESkemaHargaHeader header = skemaHargaCompleteService.edit(pojo);
+		
+		return ApiResponse.data("item", SkemaHargaComplete.setFromEntity(header));
+	}
+
+	//@AuthDelete("TRX_PP")
+	@NoAuth
+	@DeleteMapping
+	public ApiResponse delete(@RequestParam String id, @RequestParam(required = false) Long version) {
+		
+		skemaHargaCompleteService.delete(id, version);
+		
+		return ApiResponse.ok();
+	}
+	
+}

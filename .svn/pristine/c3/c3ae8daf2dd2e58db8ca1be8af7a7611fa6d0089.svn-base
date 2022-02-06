@@ -1,0 +1,118 @@
+package co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+
+@Repository
+public class ECustomerProdukTarifHeaderRepository extends SimpleJpaRepository<ECustomerProdukTarifHeader, String> {
+
+	protected final EntityManager em;
+
+	public ECustomerProdukTarifHeaderRepository(EntityManager em) {
+		super(ECustomerProdukTarifHeader.class, em);
+		this.em = em;
+	}
+	
+	public ECustomerProdukTarifHeader findByBK(String idMi010, String idMi001) {
+		
+		String query = "SELECT e FROM ECustomerProdukTarifHeader e " + 
+                       "WHERE e.customer.id = :idMi010 And " +
+				             "e.produk.id = :idMi001";
+		
+		try {
+			return em.createQuery(query, ECustomerProdukTarifHeader.class)
+					 .setParameter("idMi010", idMi010)
+					 .setParameter("idMi001", idMi001)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ECustomerProdukTarifHeader getOne(String id) {
+
+		String query = "SELECT e FROM ECustomerProdukTarifHeader e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, ECustomerProdukTarifHeader.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public List<EProduk> getProdukByCustomer(String idMi010, String nama) {
+
+		String query = "SELECT e.produk FROM ECustomerProdukTarifHeader e " + 
+                       "WHERE e.customer.id = :idMi010 And " +
+				             "LOWER(e.produk.nama) LIKE LOWER(:nama) And " +
+                             "e.produk.flakt = :flakt " +
+				       "ORDER BY e.produk.nama";
+	
+		try {
+			return em.createQuery(query, EProduk.class)
+					.setParameter("idMi010", idMi010)
+					.setParameter("nama", QueryUtil.formatStringForLikeFilter(nama))
+					.setParameter("flakt", BaseConstants.YA)
+					.getResultList();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public SearchResult<ECustomerProdukTarifHeader> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ECustomerProdukTarifHeader> search = new HqlSimpleSearchBuilder<>(ECustomerProdukTarifHeader.class, em);
+		
+		String customer = (String) searchParameter.getValueFromMappedParam("customer");
+		String produk = (String) searchParameter.getValueFromMappedParam("produk");
+		String tipe = (String) searchParameter.getValueFromMappedParam("tipe");
+
+		if (!QueryUtil.isAll(customer)) {
+            search.addWhere("AND LOWER(customer.nama) LIKE LOWER(:customer) ");
+            search.addParameter("customer", QueryUtil.formatStringForLikeFilter(customer));
+        }
+
+		if (!QueryUtil.isAll(produk)) {
+            search.addWhere("AND LOWER(produk.nama) LIKE LOWER(:produk) ");
+            search.addParameter("produk", QueryUtil.formatStringForLikeFilter(produk));
+        }
+
+	    if (!QueryUtil.isAll(tipe)) {
+	      search.addWhere("AND LOWER(tipe) LIKE LOWER(:tipe) ");
+	      search.addParameter("tipe", QueryUtil.formatStringForLikeFilter(tipe));
+	    }
+		
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ECustomerProdukTarifHeader add(ECustomerProdukTarifHeader entity) {
+		return save(entity);
+	}
+
+	public ECustomerProdukTarifHeader edit(ECustomerProdukTarifHeader entity) {
+		return save(entity);
+	}
+}

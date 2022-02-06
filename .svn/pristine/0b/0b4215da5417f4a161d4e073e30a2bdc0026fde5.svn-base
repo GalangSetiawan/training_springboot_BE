@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTghSubDetSkemaTarif;
+
+@Repository
+public class EAdminRenewalDetTghSubDetSkemaTarifRepository extends SimpleJpaRepository<EAdminRenewalDetTghSubDetSkemaTarif, String> {
+
+	protected final EntityManager em;
+
+	public EAdminRenewalDetTghSubDetSkemaTarifRepository(EntityManager em) {
+		super(EAdminRenewalDetTghSubDetSkemaTarif.class, em);
+		this.em = em;
+	}
+	
+	public EAdminRenewalDetTghSubDetSkemaTarif findByBK(String idAi320, Integer nourut) {
+		
+		String query = "SELECT e FROM EAdminRenewalDetTghSubDetSkemaTarif e " + 
+                       "WHERE e.detailTagih.id = :idAi320 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EAdminRenewalDetTghSubDetSkemaTarif.class)
+					 .setParameter("idAi320", idAi320)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EAdminRenewalDetTghSubDetSkemaTarif getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EAdminRenewalDetTghSubDetSkemaTarif> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EAdminRenewalDetTghSubDetSkemaTarif> search = new HqlSimpleSearchBuilder<>(EAdminRenewalDetTghSubDetSkemaTarif.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EAdminRenewalDetTghSubDetSkemaTarif add(EAdminRenewalDetTghSubDetSkemaTarif entity) {
+		return save(entity);
+	}
+
+	public EAdminRenewalDetTghSubDetSkemaTarif edit(EAdminRenewalDetTghSubDetSkemaTarif entity) {
+		return save(entity);
+	}
+}

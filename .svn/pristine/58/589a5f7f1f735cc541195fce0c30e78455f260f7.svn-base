@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailImplementasi;
+
+@Repository
+public class EInvoiceDetailImplementasiRepository extends SimpleJpaRepository<EInvoiceDetailImplementasi, String> {
+
+	protected final EntityManager em;
+
+	public EInvoiceDetailImplementasiRepository(EntityManager em) {
+		super(EInvoiceDetailImplementasi.class, em);
+		this.em = em;
+	}
+	
+	public EInvoiceDetailImplementasi findByBK(String idTi001, Integer nourut) {
+		
+		String query = "SELECT e FROM EInvoiceDetailImplementasi e " + 
+                       "WHERE e.header.id = :idTi001 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EInvoiceDetailImplementasi.class)
+					 .setParameter("idTi001", idTi001)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EInvoiceDetailImplementasi getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EInvoiceDetailImplementasi> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EInvoiceDetailImplementasi> search = new HqlSimpleSearchBuilder<>(EInvoiceDetailImplementasi.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EInvoiceDetailImplementasi add(EInvoiceDetailImplementasi entity) {
+		return save(entity);
+	}
+
+	public EInvoiceDetailImplementasi edit(EInvoiceDetailImplementasi entity) {
+		return save(entity);
+	}
+}

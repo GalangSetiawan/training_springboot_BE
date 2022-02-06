@@ -1,0 +1,114 @@
+package co.id.sofcograha.base.master.user.pojos;
+
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+
+import org.apache.commons.lang3.ArrayUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.pojos.CompanyPojo;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.utils.ImageUtil;
+import co.id.sofcograha.base.utils.pojos.PojoUtil;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.pojos.UserHakAksesMenu;
+
+@JsonInclude(Include.ALWAYS)
+public class User {
+
+    public String id;
+    public String loginName;
+    public String userName;
+    public String password;
+    public String fotoExt;
+    public String foto;
+    public Boolean locked;
+    public Boolean active;
+    public String email;
+    public CompanyPojo company;
+    public List<UserHakAksesMenu> userHakAksesMenu;
+	
+	public EUser toEntity() {
+		
+		EUser entity = new EUser();
+		
+	    entity.setId(id);
+	    entity.setLoginName(loginName);
+	    entity.setUserName(userName);
+	    entity.setPassword(password);
+	    entity.setFotoExt(fotoExt);
+	    entity.setLocked(locked);
+	    entity.setEmail(email);
+	    entity.setFoto(toEntityByteArray(ImageUtil.getBase64RawData(foto)));
+	    
+	    if (this.company != null) {
+	    	ECompany eCompany = new ECompany();
+	    	eCompany.setId(this.company.id);
+	    	entity.seteCompany(eCompany);
+	    }
+	    entity.setActive(active);
+        
+		return entity;
+	}
+	
+	protected Byte[] toEntityByteArray(String val) {
+		return val == null ? null : PojoUtil.string2Base64ByteArray(val);
+	}
+
+	public static User fromEntity (EUser entity) {
+		return fromEntity(entity,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static User fromEntity(EUser entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		
+		User pojo = null;
+		pojo = new User();
+		
+		pojo.id = entity.getId();
+	    pojo.loginName = entity.getLoginName();
+	    pojo.userName = entity.getUserName();
+	    pojo.password = entity.getPassword();
+        pojo.fotoExt = entity.getFotoExt();
+        pojo.foto = ImageUtil.getBase64FormatImage(entity.getFotoExt(), fromEntityByteArray(entity.getFoto()));
+        pojo.email = entity.getEmail();
+		
+		if (depthLevel > 0) {
+			depthLevel--;
+			// isi di sini bila ada field yang sifatnya referensi
+			 pojo.userHakAksesMenu = UserHakAksesMenu.fromEntities(entity.geteUserHakAksesMenu(), depthLevel);
+		}
+
+		return pojo;
+	}
+	
+	public static List<User> fromEntities(List<EUser> entities){
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static List<User> fromEntities(List<EUser> entities, int depthLevel){
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<User> pojos = new ArrayList<>();
+		
+		for (EUser entity : entities) {
+			pojos.add(User.fromEntity(entity, depthLevel));
+		}
+		return pojos;
+	}
+	
+	protected static String fromEntityByteArray(Byte[] val) {
+	  String result = null;
+	  if (val != null) {
+	    result = Base64.getEncoder().encodeToString(ArrayUtils.toPrimitive(val));
+	  }
+	  
+	  return result;
+	}
+}

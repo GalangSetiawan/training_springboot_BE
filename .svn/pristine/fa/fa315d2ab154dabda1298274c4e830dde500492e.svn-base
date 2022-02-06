@@ -1,0 +1,241 @@
+package co.id.sofcograha.base.queue.processstatus.entities;
+
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.exceptions.DevException;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.queue.common.QueueConstants;
+import co.id.sofcograha.base.queue.process.entities.EProcess;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(name="std_status_proses", uniqueConstraints = @UniqueConstraint(columnNames = { "std_proses_id", "process_number" }))
+@JsonIgnoreProperties(ignoreUnknown=true)
+public class EProcessStatus implements Cloneable {
+	
+	@Id
+	@Column(name = "id")
+	private String id;
+	
+	@Version
+	@Column(name = "version")
+	private Long version;
+
+	@OneToOne
+	@JoinColumn(name = "std_proses_id")
+	private EProcess process;
+
+	@Column(name = "process_number")
+	private String processNumber;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "start_date")
+	private Date startDate;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "process_date")
+	private Date processDate;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "end_date")
+	private Date endDate;
+
+	@OneToOne
+	@JoinColumn(name = "std_user_id")
+	private EUser user;
+	
+	@Column(name = "status")
+	@Enumerated(EnumType.STRING)
+	private QueueConstants.Status status;
+
+	@Column(name = "description")
+	private String description;
+	
+	@Column(name = "sys_description")
+	private String sysDescription;
+
+	@Column(name = "user_create")
+	private String userCreate;
+
+	@Column(name = "creation_time")
+	private Date creationTime;
+
+	@Column(name = "user_modify")
+	private String userModify;
+
+	@Column(name = "modification_time")
+	private Date modificationTime;
+
+	@OneToMany(fetch = FetchType.LAZY, mappedBy = "processStatus")
+	private List<EProcessStatusDetail> detailProcessStatus;
+	
+	public String getProcessNumber() {
+		return processNumber;
+	}
+
+	public void setProcessNumber(String processNumber) {
+		this.processNumber = processNumber;
+	}
+
+	public EProcess getProcess() {
+		return process;
+	}
+
+	public void setProcess(EProcess process) {
+		this.process = process;
+	}
+
+	public Date getStartDate() {
+		return startDate;
+	}
+
+	public void setStartDate(Date startDate) {
+		this.startDate = startDate;
+	}
+
+	public Date getProcessDate() {
+		return processDate;
+	}
+
+	public void setProcessDate(Date processDate) {
+		this.processDate = processDate;
+	}
+
+	public Date getEndDate() {
+		return endDate;
+	}
+
+	public void setEndDate(Date endDate) {
+		this.endDate = endDate;
+	}
+
+	public EUser getUser() {
+		return user;
+	}
+
+	public void setUser(EUser user) {
+		this.user = user;
+	}
+
+	public QueueConstants.Status getStatus() {
+		return status;
+	}
+
+	public void setStatus(QueueConstants.Status status) {
+		this.status = status;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public String getSysDescription() {
+		return sysDescription;
+	}
+	
+	public void setSysDescription(String sysDescription) {
+		this.sysDescription = sysDescription;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public String getUserCreate() {
+		return userCreate;
+	}
+
+	public void setUserCreate(String userCreate) {
+		this.userCreate = userCreate;
+	}
+
+	public Date getCreationTime() {
+		return creationTime;
+	}
+
+	public void setCreationTime(Date creationTime) {
+		this.creationTime = creationTime;
+	}
+
+	public String getUserModify() {
+		return userModify;
+	}
+
+	public void setUserModify(String userModify) {
+		this.userModify = userModify;
+	}
+
+	public Date getModificationTime() {
+		return modificationTime;
+	}
+
+	public void setModificationTime(Date modificationTime) {
+		this.modificationTime = modificationTime;
+	}
+
+	public List<EProcessStatusDetail> getDetailProcessStatus() {
+		return detailProcessStatus;
+	}
+
+	public void setDetailProcessStatus(List<EProcessStatusDetail> detailProcessStatus) {
+		this.detailProcessStatus = detailProcessStatus;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+	
+	@PrePersist
+	private void prePersist() {
+		Date currentDateTime = new Date();
+		
+		this.id = UUID.randomUUID().toString();
+		this.userCreate = CurrentUser.getUsername();
+		this.creationTime = currentDateTime;
+		this.userModify = CurrentUser.getUsername();
+		this.modificationTime = currentDateTime;
+	}
+}

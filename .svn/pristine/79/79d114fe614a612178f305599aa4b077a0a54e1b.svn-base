@@ -1,0 +1,96 @@
+package co.id.sofcograha.base.master.jenisTransaksi.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+
+@JsonInclude(Include.ALWAYS)
+public class JenisTransaksi {
+
+    public String id;
+    public String kode;
+    public String kodeDisplay;
+    public String keterangan;
+    public Integer version;
+	
+	public EJenisTransaksi toEntity() {
+		
+		EJenisTransaksi entity = new EJenisTransaksi();
+		
+	    entity.setId(id);
+	    entity.setKode(kode);
+	    entity.setKodeDisplay(kodeDisplay);
+	    entity.setKeterangan(keterangan);
+        entity.setVersion(version);
+        
+		return entity;
+	}
+	
+	public static JenisTransaksi fromEntity (EJenisTransaksi entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static JenisTransaksi fromEntity (EJenisTransaksi entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static JenisTransaksi fromEntity(EJenisTransaksi entity, int depthLevel, int detailDepthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		JenisTransaksi pojo = new JenisTransaksi();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+			
+			pojo.kode = entity.getKode();
+			pojo.kodeDisplay = entity.getKodeDisplay();
+			pojo.keterangan = entity.getKeterangan();
+	        pojo.version = entity.getVersion();
+
+	        if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+			}
+		}
+		
+		return pojo;
+	}
+	
+	public static List<JenisTransaksi> fromEntities(List<EJenisTransaksi> entities){
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static List<JenisTransaksi> fromEntities(List<EJenisTransaksi> entities, int depthLevel, int detailDepthLevel){
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<JenisTransaksi> pojos = new ArrayList<>();
+		
+		for (EJenisTransaksi entity : entities) {
+			pojos.add(JenisTransaksi.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("id", "id", String.class));
+        mappings.add(new SearchFieldMapping("kettrn", "kettrn", String.class));
+		
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}

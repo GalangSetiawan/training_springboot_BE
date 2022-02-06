@@ -1,0 +1,222 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.services;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.master.usercompany.entities.EUserCompany;
+import co.id.sofcograha.base.master.usercompany.services.UserCompanyService;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.entities.EUserHakAksesMenu;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.pojos.UserHakAksesMenu;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.pojos.UserHakAksesMenuComplete;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.repositories.EUserHakAksesMenuRepository;
+
+@Service("userHakAksesMenuCompleteService")
+public class UserHakAksesMenuCompleteService extends BaseService {
+
+	@Autowired
+	private UserHakAksesMenuService userHakAksesMenuService;	
+	@Autowired
+	private UserService userService; 
+	@Autowired
+    private UserCompanyService userCompanyService;  
+	@Autowired
+	private CompanyService companyService;
+	
+	@Autowired private EUserHakAksesMenuRepository eUserHakAksesMenuRepository;
+	
+	public EUserHakAksesMenu findByBk(String idUser, String idMenu) {
+	  return userHakAksesMenuService.findByBk(idUser, idMenu);
+	}
+	
+	public List<EUserHakAksesMenu> findByHeader(String idUser) {
+      return userHakAksesMenuService.findByHeader(idUser);
+    }
+	
+    public SearchResult<EUser> searchUser(SearchParameter searchParameter) {
+      return userService.search(searchParameter);
+    }
+    
+    public SearchResult<EUserHakAksesMenu> searchMenu(SearchParameter searchParameter) {
+      return userHakAksesMenuService.search(searchParameter);
+    }
+    
+    @Transactional
+    public EUser addUser(UserHakAksesMenuComplete pojo) {
+      EUser entityHeader = pojo.getEntityHeader();
+      
+      EUser dataFromDb = userService.findByLoginName(entityHeader.getLoginName());
+      EUser returnValue = new EUser();
+      
+      if (dataFromDb == null) {
+        ECompany currentUserCompany = companyService.get(CurrentUser.getCompanyId());
+        entityHeader.seteCompany(currentUserCompany);
+        returnValue = userService.add(entityHeader);
+        addUserCompany(entityHeader);
+      } else {
+        batchError("MasterExist", "User" , dataFromDb.getLoginName());
+        throwBatchError();
+      }
+      
+      return entityHeader;
+    }
+    
+    private void addUserCompany(final EUser pEUser) {
+      userCompanyService.add(pEUser, companyService.get(CurrentUser.getCompanyId()));
+    }
+	
+	@Transactional
+    public EUser addEditUserHakAksesMenu(UserHakAksesMenuComplete pojo) {
+	  EUser entityHeader = pojo.getEntityHeader();
+	  
+	  if (pojo.details != null) {
+	    List<EUserHakAksesMenu> listDetail = new ArrayList<EUserHakAksesMenu>();
+	    for (UserHakAksesMenu detail : pojo.details) {
+	      detail.user = pojo.header;
+          EUserHakAksesMenu entityDetail = detail.toEntity();
+	      if (detail.fladd == true || detail.fledit == true || detail.fldel == true || detail.flview == true) {
+	        listDetail.add(prosesAddEditUserHakAksesMenu(entityDetail));
+	      } else {
+	        EUserHakAksesMenu dataFromDb = userHakAksesMenuService.findByBk(entityDetail.getIdUser(), entityDetail.getIdMenu());
+	        if (dataFromDb != null) {
+	          userHakAksesMenuService.deleteByBk(entityDetail.getIdUser(), entityDetail.getIdMenu());
+	        }
+	      }
+	    }
+	    entityHeader.seteUserHakAksesMenu(listDetail);
+	  }
+	  
+	  return entityHeader;
+    }
+	
+	private EUserHakAksesMenu prosesAddEditUserHakAksesMenu(final EUserHakAksesMenu userHakAksesMenu) {
+	  EUserHakAksesMenu dataFromDb = userHakAksesMenuService.findByBk(userHakAksesMenu.geteUser().getId(), userHakAksesMenu.getIdMenu());
+	  return dataFromDb != null ? userHakAksesMenuService.edit(userHakAksesMenu) : userHakAksesMenuService.add(userHakAksesMenu);
+	}
+    
+    @Transactional
+    public EUserHakAksesMenu editHakMenuUser(EUserHakAksesMenu entity) {
+      return userHakAksesMenuService.edit(entity);
+    }
+
+    @Transactional
+    public void deleteUserHakAksesMenu(String idUser) {
+      List<EUserHakAksesMenu> userHakAksesMenu = userHakAksesMenuService.findByHeader(idUser);
+      for (EUserHakAksesMenu eUserHakAksesMenu : userHakAksesMenu) {
+        //userHakAksesMenuService.deleteByBk(eUserHakAksesMenu.getIdUser(), eUserHakAksesMenu.getIdMenu());
+        userHakAksesMenuService.deleteById(eUserHakAksesMenu.getId());
+      }
+      
+      EUser eUser = userService.findById(idUser);
+      if (eUser != null) {
+        EUserCompany eUserCompany = userCompanyService.findByUser(eUser);
+        if(eUserCompany != null) {
+          userCompanyService.delete(eUser);
+        }
+        userService.delete(idUser);
+      }
+    }
+    
+    @Transactional
+    public EUser copyUserHakAksesMenu(UserHakAksesMenuComplete pojo) {
+      EUser entityHeader = pojo.getEntityHeader();
+      
+      List<EUserHakAksesMenu> oldDetails = userHakAksesMenuService.findByHeader(pojo.getEntityHeader().getId());
+      for (EUserHakAksesMenu detail : oldDetails) {
+        userHakAksesMenuService.deleteByBk(detail.getIdUser(), detail.getIdMenu());
+      }
+      
+      List<EUserHakAksesMenu> newDetails = new ArrayList<EUserHakAksesMenu>();
+      for (UserHakAksesMenu detail : pojo.details) {
+        detail.user = pojo.header;
+        EUserHakAksesMenu entityDetail = detail.toEntity();
+        newDetails.add(prosesAddEditUserHakAksesMenu(entityDetail));
+      }
+      
+      entityHeader.seteUserHakAksesMenu(newDetails);
+      return entityHeader;
+    }
+    
+    // ambil data menu berupa tree
+    /*
+	public ArrayList<ArusKas> getMenuTreeList() {
+		
+		List<EArusKas> eArusKasList = eUserHakAksesMenuRepository.getRootArusKasList();
+
+		ArrayList<ArusKas> arusKasList = new ArrayList<ArusKas>();
+
+		if (!eArusKasList.isEmpty()) {
+			for (EArusKas item : eArusKasList) {
+				ArusKas itemArusKas = ArusKas.fromEntity(item);
+
+				scanSubArusKas(item, itemArusKas);
+
+				arusKasList.add(itemArusKas);
+
+			}
+		}
+		return arusKasList;
+	}
+	*/
+
+	public ArrayList<UserHakAksesMenu> getMenuTreeByUser(String idUser) {
+		
+		List<EUserHakAksesMenu> eMenus = eUserHakAksesMenuRepository.getCertainMenuList(3, "", idUser);
+
+		ArrayList<UserHakAksesMenu> menus = new ArrayList<UserHakAksesMenu>();
+
+		if (!eMenus.isEmpty()) {
+			
+			for (EUserHakAksesMenu item : eMenus) {
+				
+				UserHakAksesMenu itemMenu = UserHakAksesMenu.fromEntity(item);
+				
+				scanSubMenu(item, 3, itemMenu, idUser);
+				
+				menus.add(itemMenu);
+			}
+		}
+
+		testConstructedMenu(menus, " ");
+
+		return menus;
+	}
+
+	private void testConstructedMenu(ArrayList<UserHakAksesMenu> menus, String spasi) {
+
+		for (UserHakAksesMenu item : menus) {
+			
+			if (!item.subItems.isEmpty()) {
+				testConstructedMenu(item.subItems, spasi + "  ");
+			}
+		}
+		
+	}
+
+	private void scanSubMenu(EUserHakAksesMenu eMenu, int menuCodeLength, UserHakAksesMenu menu, String idUser) {
+
+		List<EUserHakAksesMenu> eSubMenus = eUserHakAksesMenuRepository.getCertainMenuList(menuCodeLength + 3, eMenu.geteMenu().getMenuCode(), idUser);
+
+		for (EUserHakAksesMenu item : eSubMenus) {
+			
+			UserHakAksesMenu itemMenu = UserHakAksesMenu.fromEntity(item);
+			//itemMenu.menu.path = menu.menu.path + "/" + itemMenu.menu.path;
+			menu.subItems.add(itemMenu);
+			
+			scanSubMenu(item, menuCodeLength + 3, itemMenu, idUser);
+		}
+		
+	}
+
+}

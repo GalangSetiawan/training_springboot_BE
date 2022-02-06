@@ -1,0 +1,39 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.pojos;
+
+import java.text.ParseException;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.pojos.User;
+
+@JsonInclude(Include.ALWAYS)
+public class UserHakAksesMenuComplete {
+  public User header;
+  public List<UserHakAksesMenu> details;
+  
+  
+  @JsonIgnore
+  public EUser getEntityHeader() {
+    return header.toEntity();
+  }
+
+  public static UserHakAksesMenuComplete setFromEntity(EUser entity) throws ParseException {
+    
+    int depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+    
+    UserHakAksesMenuComplete pojo = new UserHakAksesMenuComplete();
+    pojo.header = User.fromEntity(entity, depthLevel);
+    pojo.details = UserHakAksesMenu.fromEntities(entity.geteUserHakAksesMenu(), depthLevel);
+    
+    return pojo;
+  }
+  
+  public static List<User> fromEntities(List<EUser> entities){
+    return User.fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
+  }
+}

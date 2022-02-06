@@ -1,0 +1,109 @@
+package co.id.sofcograha.base.master.helpInfo.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.helpInfo.entities.EStdInfoHeader;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+
+@JsonInclude(Include.ALWAYS)
+public class StdInfoHeader {
+	
+	public String id;
+	public String urlLayar;
+	public Integer nourut;
+	public String keterangan;
+	public Long version;  
+	
+	public List<StdInfoDetail> detailInfo;
+	
+	public EStdInfoHeader toEntity() {
+		
+		EStdInfoHeader entity = new EStdInfoHeader();
+		
+		entity.setId(id);
+		entity.setNourut(nourut);
+		entity.setKeterangan(keterangan);
+		entity.setUrlLayar(urlLayar);
+		entity.setVersion(version);
+		
+		return entity;
+	}
+	
+	public static List<EStdInfoHeader> toEntities(List<StdInfoHeader> pojos) {
+		if (pojos == null) return null;
+
+		List<EStdInfoHeader> entities = new ArrayList<EStdInfoHeader>();
+		for (StdInfoHeader pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static StdInfoHeader fromEntity (EStdInfoHeader entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static StdInfoHeader fromEntity (EStdInfoHeader entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static StdInfoHeader fromEntity(EStdInfoHeader entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+	    StdInfoHeader pojo = new StdInfoHeader();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.nourut = entity.getNourut();
+			pojo.keterangan = entity.getKeterangan();
+			pojo.urlLayar = entity.getUrlLayar();
+			pojo.version = entity.getVersion();
+	      
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+				pojo.detailInfo = StdInfoDetail.fromEntities(entity.getDetailInfo(), depthLevel + 1, detailDepthLevel);
+			}
+		}
+
+		return pojo;
+	}
+	
+	public static List<StdInfoHeader> fromEntities(List<EStdInfoHeader> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static List<StdInfoHeader> fromEntities(List<EStdInfoHeader> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<StdInfoHeader> pojos = new ArrayList<>();
+		
+		for (EStdInfoHeader entity : entities) {
+			pojos.add(StdInfoHeader.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("nourut", "nourut", String.class));
+		mappings.add(new SearchFieldMapping("urlLayar", "urlLayar", String.class));
+		
+		return mappings;
+	}
+}	

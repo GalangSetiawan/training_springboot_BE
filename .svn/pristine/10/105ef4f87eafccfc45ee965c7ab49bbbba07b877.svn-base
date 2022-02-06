@@ -1,0 +1,266 @@
+package co.id.sofcograha.base.queue.common;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.queue.common.QueueConstants.Status;
+import co.id.sofcograha.base.queue.process.entities.EProcess;
+import co.id.sofcograha.base.queue.process.pojos.ProcessPojo;
+import co.id.sofcograha.base.queue.process.services.ProcessService;
+import co.id.sofcograha.base.queue.processparam.services.ProcessParamService;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatusDetail;
+import co.id.sofcograha.base.queue.processstatus.services.ProcessStatusDetailService;
+import co.id.sofcograha.base.queue.processstatus.services.ProcessStatusService;
+import co.id.sofcograha.base.utils.StringUtil;
+import co.id.sofcograha.base.utils.TimeUtil;
+
+@Service
+public class QueueUtilService extends BaseService {
+
+	private static final String ACTIVEMQ_SUFFIX = "paketgl.activemq.suffix";
+	
+	@Autowired
+	private CompanyService companyService;
+	
+	@Autowired
+	private UserService userService;
+	
+	@Autowired
+	private ProcessService processService;
+	
+	@Autowired
+	private ProcessStatusService processStatusService;
+	
+	@Autowired
+	private ProcessStatusDetailService processStatusDetailService;
+	
+	@Autowired
+	private ProcessParamService processParamService;
+	
+	@Autowired
+	private Environment env;
+	
+	private EProcess getProcess(String processCode) {
+		EProcess process = processService.findByBk(processCode);
+		if (process == null)
+			throw getError("process.not.found");
+		
+		return process;
+	}
+	
+	public ProcessPojo getProcesPojo(String processCode) {
+		return ProcessPojo.fromEntity(getProcess(processCode));
+	}
+	
+	private EProcessStatus getProcessStatus(String processNumber, EProcess process) {
+		EProcessStatus processStatus = processStatusService.findByBk(processNumber, process);
+		if (processStatus == null)
+			throw getError("processStatus.not.found");
+		
+		return processStatus;
+	}
+	
+	private EProcessStatus getProcessStatus(String processCode, String processNumber) {
+		EProcess process = getProcess(processCode);
+		EProcessStatus processStatus = getProcessStatus(processNumber, process);
+		
+		return processStatus;
+	}
+	
+	String getProcessStatusId(String processCode, String processNumber) {
+		return getProcessStatus(processCode, processNumber).getId();
+	}
+	
+	public String getCurrentCompanyCode() {
+		ECompany company = companyService.get(CurrentUser.getCompanyId());
+		return company.getCode();
+	}
+	
+	public String getCurrentQueueDestination() {
+		String activemqSuffix = env.getProperty(ACTIVEMQ_SUFFIX);
+		return getCurrentCompanyCode() + QueueConstants.PROCES_QUEUE_PREFIX + activemqSuffix;
+	}
+	
+	public List<String> getListActiveQueueDestination() {
+		String activemqSuffix = env.getProperty(ACTIVEMQ_SUFFIX);
+		List<String> resultList = new ArrayList<>();
+		List<ECompany> listActiveCompany = companyService.getListActiveCompany();
+		for (ECompany company : listActiveCompany) {
+			resultList.add(company.getCode() + QueueConstants.PROCES_QUEUE_PREFIX + activemqSuffix);
+		}
+		
+		return resultList;
+	}
+	
+	public void validateProcesActive(String processCode) {
+		EProcess process = getProcess(processCode);
+		
+		if (!process.getActive()) {
+			throw getError("process.not.active");
+		}
+	}
+	
+	void updateProsesStatusFinish(String processCode, String processNumber) {
+		EProcess process = getProcess(processCode);
+		EProcessStatus processStatus = processStatusService.findByBk(processNumber, process);
+		
+		if (processStatus != null) {
+			List<EProcessStatusDetail> errorProcessStatusDetailList = processStatusDetailService
+					.getListProcessStatusDetail(processStatus, QueueConstants.ProcessStatusType.Error);
+
+			if (errorProcessStatusDetailList != null && !errorProcessStatusDetailList.isEmpty()) {
+				setProsesStatus(processCode, processNumber, Status.Error, "process.error.onDetail");
+			} else {
+				List<EProcessStatusDetail> warningProcessStatusDetailList = processStatusDetailService
+						.getListProcessStatusDetail(processStatus, QueueConstants.ProcessStatusType.Warning);
+				
+				if (warningProcessStatusDetailList != null && !warningProcessStatusDetailList.isEmpty()) {
+					setProsesStatus(processCode, processNumber, Status.DoneWithWarning);
+				} else {
+					setProsesStatus(processCode, processNumber, Status.Done);
+				}
+			}
+		}
+	}
+	
+	void setProsesStatus(String processCode, String processNumber, Status status) {
+		setProsesStatus(processCode, processNumber, status, null, null);
+	}
+	
+	void setProsesStatus(String processCode, String processNumber, Status status, String desc) {
+		setProsesStatus(processCode, processNumber, status, desc, null);
+	}
+	
+	public void setProsesStatus(String processCode, String processNumber, Status status, String desc, String sysDesc) {
+		EProcess process = getProcess(processCode);
+		EProcessStatus processStatus = null;
+		
+		switch (status) {
+		case OnQueue:
+			processStatus = processStatusService.findByBk(processNumber, process);
+			if (processStatus == null) {
+				EUser user = userService.get(CurrentUser.getUserId());
+				
+				processStatus = new EProcessStatus();
+				processStatus.setProcessNumber(processNumber);
+				processStatus.setProcess(process);
+				processStatus.setStartDate(TimeUtil.getSystemDateTime());
+				processStatus.setUser(user);
+				processStatus.setStatus(status);
+				processStatus.setDescription(desc);
+				processStatus = processStatusService.add(processStatus);
+			} else {
+				processStatus.setStartDate(TimeUtil.getSystemDateTime());
+				processStatus.setStatus(status);
+				processStatus.setSysDescription(sysDesc);
+				processStatus = processStatusService.edit(processStatus);
+			}
+			break;
+
+		case OnProces:
+			processStatus = getProcessStatus(processNumber, process);
+			
+			processStatus.setProcessDate(TimeUtil.getSystemDateTime());
+			processStatus.setStatus(status);
+			processStatus.setSysDescription(sysDesc);
+			processStatus = processStatusService.edit(processStatus);
+			break;
+			
+		case Error:
+		case Done:
+			processStatus = getProcessStatus(processNumber, process);
+			
+			processStatus.setEndDate(TimeUtil.getSystemDateTime());
+			processStatus.setStatus(status);
+			processStatus.setSysDescription(sysDesc);
+			processStatus = processStatusService.edit(processStatus);
+				
+			break;
+			
+		default:
+			throw getError("process.error");
+		}
+	}
+	
+	public void addStatusError(String processCode, String processNumber, String key, String...param) {
+		addStatusDetailMessage(processCode, processNumber, QueueConstants.ProcessStatusType.Error, key, param);
+	}
+	
+	public void addStatusWarning(String processCode, String processNumber, String key, String...param) {
+		addStatusDetailMessage(processCode, processNumber, QueueConstants.ProcessStatusType.Warning, key, param);
+	}
+	
+	public void addStatusSummary(String processCode, String processNumber, String key, String...param) {
+		addStatusDetailMessage(processCode, processNumber, QueueConstants.ProcessStatusType.Summary, key, param);
+	}
+	
+	private void addStatusDetailMessage(String processCode, String processNumber, 
+										QueueConstants.ProcessStatusType processStatusType, 
+										String key, 
+										String...param) {
+		EProcessStatus processStatus = getProcessStatus(processCode, processNumber);
+		
+		EProcessStatusDetail processStatusDetail = new EProcessStatusDetail();
+		processStatusDetail.setProcessStatus(processStatus);
+		processStatusDetail.setProcessStatusType(processStatusType);
+		processStatusDetail.setMsgKey(key);
+		processStatusDetail.setMsgParam(StringUtil.arrayToString(param));
+		
+		processStatusDetailService.add(processStatusDetail);
+	}
+	
+	public String getParamSingleValue(String processCode, String processNumber, String paramKey) {
+		EProcessStatus processStatus = getProcessStatus(processCode, processNumber);
+		return processParamService.getSingleValue(processStatus, paramKey);
+	}
+	
+	public List<String> getParamMultiValue(String processCode, String processNumber, String paramKey) {
+		EProcessStatus processStatus = getProcessStatus(processCode, processNumber);
+		return processParamService.getMultiValue(processStatus, paramKey);
+	}
+	
+	public List<Map<String, String>> getParamTableValue(String processCode, String processNumber, String paramKey) {
+		EProcessStatus processStatus = getProcessStatus(processCode, processNumber);
+		return processParamService.getTableValue(processStatus, paramKey);
+	}
+	
+	@Transactional
+	public void saveAllParamSingleValue(String processCode, String processNumber, Map<String, String> values) {
+		EProcessStatus processStatus = getProcessStatus(processCode, processNumber);
+		for (String paramKey : values.keySet()) {
+			processParamService.setSingleValue(processStatus, paramKey, values.get(paramKey));			
+		}
+	}
+	
+	@Transactional
+	public void saveParamMultiValue(String processCode, String processNumber, Map<String, List<String>> values) {
+		EProcessStatus processStatus = getProcessStatus(processCode, processNumber);
+		for (String paramKey : values.keySet()) {
+			processParamService.setMultiValue(processStatus, paramKey, values.get(paramKey));			
+		}
+	}
+	
+	@Transactional
+	public void saveParamTableValue(String processCode, String processNumber,  
+									Map<String, List<String>> headersParams, 
+									Map<String, List<Map<String, String>>> values) {
+		EProcessStatus processStatus = getProcessStatus(processCode, processNumber);
+		for (String paramKey : values.keySet()) {
+			processParamService.setTableValue(processStatus, paramKey, headersParams.get(paramKey), values.get(paramKey));			
+		}
+		
+	}
+}

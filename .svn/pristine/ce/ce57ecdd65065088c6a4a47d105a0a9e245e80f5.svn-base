@@ -1,0 +1,9 @@
+package co.id.sofcograha.base.authentication.token;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class TokenAuthenticationPojo {
+	public String username;
+	public String password;
+}

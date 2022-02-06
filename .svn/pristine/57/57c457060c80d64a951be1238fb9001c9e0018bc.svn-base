@@ -1,0 +1,80 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetAdj;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTgh;
+
+@Repository
+public class EAdminRenewalDetTghRepository extends SimpleJpaRepository<EAdminRenewalDetTgh, String> {
+
+	protected final EntityManager em;
+
+	public EAdminRenewalDetTghRepository(EntityManager em) {
+		super(EAdminRenewalDetTgh.class, em);
+		this.em = em;
+	}
+	
+	public EAdminRenewalDetTgh findByBK(String idAi003, Integer nourut) {
+		
+		String query = "SELECT e FROM EAdminRenewalDetTgh e " + 
+                       "WHERE e.header.id = :idAi003 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EAdminRenewalDetTgh.class)
+					 .setParameter("idAi003", idAi003)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public List<EAdminRenewalDetTgh> findByHeaderId(String idAi003) {
+		
+		String query = "SELECT e FROM EAdminRenewalDetTgh e " + 
+                       "WHERE e.header.id = :idAi003 " +
+  	                   "ORDER BY e.nourut"; 
+		
+		try {
+			return em.createQuery(query, EAdminRenewalDetTgh.class)
+					 .setParameter("idAi003", idAi003)
+					 .getResultList();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EAdminRenewalDetTgh getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EAdminRenewalDetTgh> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EAdminRenewalDetTgh> search = new HqlSimpleSearchBuilder<>(EAdminRenewalDetTgh.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EAdminRenewalDetTgh add(EAdminRenewalDetTgh entity) {
+		return save(entity);
+	}
+
+	public EAdminRenewalDetTgh edit(EAdminRenewalDetTgh entity) {
+		return save(entity);
+	}
+}

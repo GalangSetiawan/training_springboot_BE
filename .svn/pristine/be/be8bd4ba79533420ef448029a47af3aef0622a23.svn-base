@@ -1,0 +1,187 @@
+package co.id.sofcograha.domain.invoicing.saldo.deposit.data.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.entities.ESaldoDepositDetailKurang;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.entities.ESaldoDepositDetailTambah;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.entities.ESaldoDepositHeader;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.pojos.SaldoDepositHeader;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.repositories.ESaldoDepositDetailKurangRepository;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.repositories.ESaldoDepositDetailTambahRepository;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.repositories.ESaldoDepositHeaderRepository;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+
+@Service("saldoDepositCompleteService")
+public class SaldoDepositCompleteService extends BaseService {
+	
+	@Autowired private SaldoDepositHeaderService saldoDepositHeaderService;
+	@Autowired private SaldoDepositDetailTambahService saldoDepositDetailTambahService;
+	@Autowired private SaldoDepositDetailKurangService saldoDepositDetailKurangService;
+	
+	@Autowired private ESaldoDepositHeaderRepository eSaldoDepositHeaderRepository;
+	@Autowired private ESaldoDepositDetailTambahRepository eSaldoDepositDetailTambahRepository;
+	@Autowired private ESaldoDepositDetailKurangRepository eSaldoDepositDetailKurangRepository;
+	
+	public SaldoDepositHeader findByBk(String idMi010) {
+		return SaldoDepositHeader.fromEntity(eSaldoDepositHeaderRepository.findByBK(idMi010));
+	}
+
+	public SearchResult<ESaldoDepositHeader> search(SearchParameter searchParameter) {
+		return eSaldoDepositHeaderRepository.search(searchParameter);
+	}
+	
+	@Transactional
+	public void deleteSaldoDeposit(EInvoiceHeader entityInvoice) {
+		
+		// bila flag deposit di invoice = Y
+		if (entityInvoice.getFltodep().equals(BaseConstants.YA)) {
+			// cari di saldo,
+			ESaldoDepositHeader eSaldoDepositHeader = eSaldoDepositHeaderRepository.findByBK(entityInvoice.getCustomer().getId());
+			
+			if (eSaldoDepositHeader != null) {
+				// bila ditemukan
+				
+				// hapus detail invoice ini
+				ESaldoDepositDetailTambah eSaldoDepositDetailTambah = eSaldoDepositDetailTambahRepository.findByBK(eSaldoDepositHeader.getId(), entityInvoice.getId());
+				if (eSaldoDepositDetailTambah != null) {
+					saldoDepositDetailTambahService.delete(eSaldoDepositDetailTambah.getId(), eSaldoDepositDetailTambah.getVersion());					
+				}
+				
+				// update nildep di header dengan nilai dpp
+				eSaldoDepositHeader.setNildep(eSaldoDepositHeader.getNildep() - entityInvoice.getDpp());
+				//saldoDepositHeaderService.edit(eSaldoDepositHeader); -> tidak perlu lagi, karena ssetNildep di atas sudah persistent
+			}
+		}
+		
+	}
+	
+	@Transactional
+	public ESaldoDepositHeader updateSaldoDeposit(EInvoiceHeader entityInvoice) {
+
+		ESaldoDepositHeader eSaldoDepositHeader = eSaldoDepositHeaderRepository.findByBK(entityInvoice.getCustomer().getId());
+		
+		// bila flag deposit di invoice = Y
+		if (entityInvoice.getFltodep().equals(BaseConstants.YA)) {
+			// cari di saldo,
+			if (eSaldoDepositHeader == null) {
+				// bila tidak ditemukan
+				
+				// tambah header, isi nildep dengan nilai nildep dari transaksi invoice
+				eSaldoDepositHeader = new ESaldoDepositHeader();
+				eSaldoDepositHeader.setCustomer(entityInvoice.getCustomer());
+				//eSaldoDepositHeader.setNildep(entityInvoice.getDpp());
+				eSaldoDepositHeader.setNildep(entityInvoice.getNildep());
+				eSaldoDepositHeader.setNildepused(0.0);
+				eSaldoDepositHeader =  saldoDepositHeaderService.add(eSaldoDepositHeader);
+				
+				// tambah detail (tambah), dengan nomor invoice ini
+				ESaldoDepositDetailTambah eSaldoDepositDetailTambah = new ESaldoDepositDetailTambah();
+				eSaldoDepositDetailTambah.setHeader(eSaldoDepositHeader);
+				eSaldoDepositDetailTambah.setInvoice(entityInvoice);
+				//eSaldoDepositDetailTambah.setNildep(entityInvoice.getDpp());
+				eSaldoDepositDetailTambah.setNildep(entityInvoice.getNildep());
+				saldoDepositDetailTambahService.add(eSaldoDepositDetailTambah);
+				
+			} else {
+				// bila ditemukan
+				
+				// update header, isi nildep dengan nildep + nilai nildep dari transaksi invoice
+				//eSaldoDepositHeader.setNildep(eSaldoDepositHeader.getNildep() + entityInvoice.getDpp());
+				eSaldoDepositHeader.setNildep(eSaldoDepositHeader.getNildep() + entityInvoice.getNildep());
+				//eSaldoDepositHeader = saldoDepositHeaderService.edit(eSaldoDepositHeader); -> tidak perlu karena setNildep di entity persistent
+				
+				// tambah detail (tambah), dengan nomor invoice ini
+				ESaldoDepositDetailTambah eSaldoDepositDetailTambah = new ESaldoDepositDetailTambah();
+				eSaldoDepositDetailTambah.setHeader(eSaldoDepositHeader);
+				eSaldoDepositDetailTambah.setInvoice(entityInvoice);
+				//eSaldoDepositDetailTambah.setNildep(entityInvoice.getDpp());
+				eSaldoDepositDetailTambah.setNildep(entityInvoice.getNildep());
+				saldoDepositDetailTambahService.add(eSaldoDepositDetailTambah);
+				
+			}
+			
+		}
+		
+		return eSaldoDepositHeader;
+
+	}
+
+	@Transactional
+	public void deleteSaldoDepositPakai(EInvoiceHeader entityInvoice) {
+		
+		// bila ada pemakaian deposit di invoice ini
+		if (entityInvoice.getDepused() > 0.0) {
+			// cari di saldo,
+			ESaldoDepositHeader eSaldoDepositHeader = eSaldoDepositHeaderRepository.findByBK(entityInvoice.getCustomer().getId());
+			
+			if (eSaldoDepositHeader != null) {
+				// bila ditemukan
+				
+				// hapus detail invoice ini
+				ESaldoDepositDetailKurang eSaldoDepositDetailKurang = eSaldoDepositDetailKurangRepository.findByBK(eSaldoDepositHeader.getId(), entityInvoice.getId());
+				if (eSaldoDepositDetailKurang != null) {
+					saldoDepositDetailKurangService.delete(eSaldoDepositDetailKurang.getId(), eSaldoDepositDetailKurang.getVersion());					
+				}
+				
+				// update nildep di header dengan nilai dpp
+				eSaldoDepositHeader.setNildepused(eSaldoDepositHeader.getNildepused() - entityInvoice.getDepused());
+				//saldoDepositHeaderService.edit(eSaldoDepositHeader); -> tidak perlu karena setNildepused dilakukan di entity persistent
+			}
+		}
+		
+	}
+
+	@Transactional
+	public ESaldoDepositHeader updateSaldoDepositPakai(EInvoiceHeader entityInvoice) {
+
+		ESaldoDepositHeader eSaldoDepositHeader = eSaldoDepositHeaderRepository.findByBK(entityInvoice.getCustomer().getId());
+		
+		// bila ada pemakaian deposit di invoice ini
+		if (entityInvoice.getDepused() > 0.0) {
+			// cari di saldo,
+			if (eSaldoDepositHeader == null) {
+				// bila tidak ditemukan
+				
+				// tambah header, isi nildepused dengan nilai depused dari invoice
+				eSaldoDepositHeader = new ESaldoDepositHeader();
+				eSaldoDepositHeader.setCustomer(entityInvoice.getCustomer());
+				eSaldoDepositHeader.setNildep(0.0);
+				eSaldoDepositHeader.setNildepused(entityInvoice.getDepused());
+				eSaldoDepositHeader =  saldoDepositHeaderService.add(eSaldoDepositHeader);
+				
+				// tambah detail (kurang), dengan nomor invoice ini
+				ESaldoDepositDetailKurang eSaldoDepositDetailKurang = new ESaldoDepositDetailKurang();
+				eSaldoDepositDetailKurang.setHeader(eSaldoDepositHeader);
+				eSaldoDepositDetailKurang.setInvoice(entityInvoice);
+				eSaldoDepositDetailKurang.setNildepused(entityInvoice.getDepused());
+				saldoDepositDetailKurangService.add(eSaldoDepositDetailKurang);
+			} else {
+				// bila ditemukan
+				
+				// update header, isi nildepused dengan nildepused + nilai depused dari invoice
+				eSaldoDepositHeader.setNildepused(eSaldoDepositHeader.getNildepused() + entityInvoice.getDepused());
+				//eSaldoDepositHeader = saldoDepositHeaderService.edit(eSaldoDepositHeader);
+				
+				// tambah detail (kurang), dengan nomor invoice ini
+				ESaldoDepositDetailKurang eSaldoDepositDetailKurang = new ESaldoDepositDetailKurang();
+				eSaldoDepositDetailKurang.setHeader(eSaldoDepositHeader);
+				eSaldoDepositDetailKurang.setInvoice(entityInvoice);
+				eSaldoDepositDetailKurang.setNildepused(entityInvoice.getDepused());
+				saldoDepositDetailKurangService.add(eSaldoDepositDetailKurang);
+				
+			}
+			
+		}
+		
+		return eSaldoDepositHeader;
+
+	}
+	
+}

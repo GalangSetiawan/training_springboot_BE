@@ -1,0 +1,219 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.entities;
+
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import co.id.sofcograha.base.exceptions.DevException;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(name = "ui001", uniqueConstraints = @UniqueConstraint(columnNames = { "tahunbulan", "kodept", "npwp", "kodekp" }))
+public class EUploadData implements Cloneable {
+
+	@Id
+	@Column(name = "id_ui001")
+	private String id;
+
+	@Column(name = "tahunbulan")
+	private String tahunbulan;
+
+	@Column(name = "kodept")
+	private String kodept;
+
+	@Column(name = "namapt")
+	private String namapt;
+
+	@Column(name = "npwp")
+	private String npwp;
+
+	@Column(name = "namanpwp")
+	private String namanpwp;
+
+	@Column(name = "kodekp")
+	private String kodekp;
+
+	@Column(name = "namakp")
+	private String namakp;
+
+	@Column(name = "jkbulini")
+	private Integer jkbulini;
+
+	@Column(name = "revjkbullalu")
+	private Integer revjkbullalu;
+
+	@Column(name = "seljkbullalu")
+	private Integer seljkbullalu;
+
+	@Column(name = "jnkbulini")
+	private Integer jnkbulini;
+
+	@Column(name = "revjnkbullalu")
+	private Integer revjnkbullalu;
+
+	@Column(name = "seljnkbullalu")
+	private Integer seljnkbullalu;
+
+	@Column(name = "flexist")
+	private String flexist;
+
+	@Version
+	@Column(name = "version")
+	private Long version;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getTahunbulan() {
+		return tahunbulan;
+	}
+
+	public void setTahunbulan(String tahunbulan) {
+		this.tahunbulan = tahunbulan;
+	}
+
+	public String getKodept() {
+		return kodept;
+	}
+
+	public void setKodept(String kodept) {
+		this.kodept = kodept;
+	}
+
+	public String getNamapt() {
+		return namapt;
+	}
+
+	public void setNamapt(String namapt) {
+		this.namapt = namapt;
+	}
+
+	public String getNpwp() {
+		return npwp;
+	}
+
+	public void setNpwp(String npwp) {
+		this.npwp = npwp;
+	}
+
+	public String getNamanpwp() {
+		return namanpwp;
+	}
+
+	public void setNamanpwp(String namanpwp) {
+		this.namanpwp = namanpwp;
+	}
+
+	public String getKodekp() {
+		return kodekp;
+	}
+
+	public void setKodekp(String kodekp) {
+		this.kodekp = kodekp;
+	}
+
+	public String getNamakp() {
+		return namakp;
+	}
+
+	public void setNamakp(String namakp) {
+		this.namakp = namakp;
+	}
+
+	public Integer getJkbulini() {
+		return jkbulini;
+	}
+
+	public void setJkbulini(Integer jkbulini) {
+		this.jkbulini = jkbulini;
+	}
+
+	public Integer getRevjkbullalu() {
+		return revjkbullalu;
+	}
+
+	public void setRevjkbullalu(Integer revjkbullalu) {
+		this.revjkbullalu = revjkbullalu;
+	}
+
+	public Integer getSeljkbullalu() {
+		return seljkbullalu;
+	}
+
+	public void setSeljkbullalu(Integer seljkbullalu) {
+		this.seljkbullalu = seljkbullalu;
+	}
+
+	public Integer getJnkbulini() {
+		return jnkbulini;
+	}
+
+	public void setJnkbulini(Integer jnkbulini) {
+		this.jnkbulini = jnkbulini;
+	}
+
+	public Integer getRevjnkbullalu() {
+		return revjnkbullalu;
+	}
+
+	public void setRevjnkbullalu(Integer revjnkbullalu) {
+		this.revjnkbullalu = revjnkbullalu;
+	}
+
+	public Integer getSeljnkbullalu() {
+		return seljnkbullalu;
+	}
+
+	public void setSeljnkbullalu(Integer seljnkbullalu) {
+		this.seljnkbullalu = seljnkbullalu;
+	}
+
+	public String getFlexist() {
+		return flexist;
+	}
+
+	public void setFlexist(String flexist) {
+		this.flexist = flexist;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+
+	@PrePersist
+	private void prePersist() {
+
+		this.id = UUID.randomUUID().toString();
+
+	}
+
+	@PreUpdate
+	private void preUpdate() {
+	}
+}

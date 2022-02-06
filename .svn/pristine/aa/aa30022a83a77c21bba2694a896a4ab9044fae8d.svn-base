@@ -1,0 +1,11 @@
+package co.id.sofcograha.base.utils;
+
+public class Base64StringEncodedPojo {
+	
+	public String contentType;
+	public String base64String;
+	public Base64StringEncodedPojo(String contentType, String base64String) {
+		this.contentType = contentType;
+		this.base64String = base64String;
+	}
+}

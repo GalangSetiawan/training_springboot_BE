@@ -1,0 +1,34 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.pojos;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+@JsonInclude(Include.ALWAYS)
+public class UploadModel {
+	
+	public String tahunBulan;
+    public String kodePerusahaan;
+    public String namaPerusahaan;
+    public String npwpPerusahaan;
+    public String namaNpwpPerusahaan;
+    public String kodeKelompokPayroll;
+    public String namaKelompokPayroll;
+	public Integer jumlahPegawaiBulanIni;
+	public Integer revisiJumlahPegawaiBulanLalu;
+	public Integer penambahanJumlahPegawaiBulanLalu;
+	public Integer jumlahNonPegawai;
+	public Integer revisiJumlahNonPegawaiBulanLalu;
+	public Integer penambahanJumlahNonPegawaiBulanLalu;
+	
+	/*
+	// untuk keperluan matching error message di front end (bila input di grid)
+	public String keyIn;
+
+	// untuk penanda apakah detail ini tertandai delete (dari front end)
+	public boolean isSelect;
+	
+	// Untuk menampung message error di grid
+	public ArrayList<Message> errorMsg;
+	*/
+	
+}

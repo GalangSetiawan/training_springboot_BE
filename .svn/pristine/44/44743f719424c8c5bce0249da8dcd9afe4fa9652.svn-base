@@ -1,0 +1,593 @@
+package co.id.sofcograha.domain.invoicing.report.invoice.service;
+
+import java.text.ParseException;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.poi.hssf.usermodel.HSSFDataFormat;
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.excel.BaseExcelService;
+import co.id.sofcograha.base.excel.TemplateExcelUtil;
+import co.id.sofcograha.base.master.company.pojos.CompanyPojo;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailHslPro;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailImplementasi;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailLainLain;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailLainLainMaster;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailTraining;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+
+@Service
+public class RekapInvoicePerBulanExportXlsService extends BaseExcelService {
+	
+	@Autowired
+	private InvoiceHeaderService invoiceHeaderService;
+	
+	@Autowired
+	private RekapInvoiceService rekapInvoiceService;
+	
+	@Autowired
+	private CompanyService companyService;
+  
+	public String judul = "REKAP INVOICE";
+	public String subJudul = "";
+	private int lastCellNumber = 14;
+  
+	private TemplateExcelUtil excel;
+
+	List<InvoiceHeader> data;
+	
+	private String tahun;
+	private String bulan;
+
+	@Transactional
+	public Base64StringEncodedPojo exportExcel(Map<String, String> searchParameter) throws ParseException {
+	  
+		SearchResult<EInvoiceHeader> searchResult = invoiceHeaderService.search(SearchParameter.generate(searchParameter, 
+				InvoiceHeader.getFieldMappings()));
+		
+//
+//		SearchResult<EInvoiceHeader> searchResult = invoiceHeaderService.search(searchParam);
+		
+		data = InvoiceHeader.fromEntities(searchResult.getResult(), 2, 2);
+		
+		SearchParameter searchParam = SearchParameter.generate(searchParameter, InvoiceHeader.getFieldMappings());
+		tahun = (String) searchParam.getValueFromMappedParam("tahun");
+		bulan = (String) searchParam.getValueFromMappedParam("bulan");
+		String strBulan = TimeUtil.getMonthToIndonesian(bulan);
+		
+		subJudul = "Tahun Bulan : " + strBulan + " " + tahun;
+
+		excel = new TemplateExcelUtil(judul, "", 5);
+	      
+		header();
+		body();
+		footer();
+    
+		return excel.generateAsBase64();
+	}
+
+	@Override
+	protected void header() {
+	  
+		CompanyPojo company = CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId()));
+
+		XSSFSheet currSheet = excel.getDefaultSheetByName();
+		
+		currSheet.setColumnWidth(0, 1000); 
+		currSheet.setColumnWidth(1, 1400);
+		currSheet.setColumnWidth(2, 10000);
+		currSheet.setColumnWidth(3, 6200);
+		currSheet.setColumnWidth(4, 12000);
+		currSheet.setColumnWidth(5, 4000);
+		currSheet.setColumnWidth(6, 4000);
+		currSheet.setColumnWidth(7, 4500);
+		currSheet.setColumnWidth(8, 4500);
+		currSheet.setColumnWidth(9, 4500);
+		currSheet.setColumnWidth(10, 4500);
+		currSheet.setColumnWidth(11, 4500);
+		currSheet.setColumnWidth(12, 4500);
+		currSheet.setColumnWidth(13, 4500);
+		currSheet.setColumnWidth(14, 10000);
+		
+		Row row = excel.createRow();
+		
+		// baris 1
+		XSSFCellStyle cellStyle = excel.getWorkbook().createCellStyle();        
+		cellStyle.setAlignment(HorizontalAlignment.LEFT);
+		cellStyle.setWrapText(false);
+		cellStyle.setShrinkToFit(false);
+
+		Cell cell1 = row.createCell(1);
+		cell1.setCellStyle(cellStyle);
+		cell1.setCellValue(company.name);
+		
+		XSSFCellStyle cellStyle2 = excel.getWorkbook().createCellStyle();        
+		cellStyle2.setAlignment(HorizontalAlignment.RIGHT);
+		cellStyle2.setWrapText(false);
+		cellStyle2.setShrinkToFit(false);
+        
+		Cell cell2 = row.createCell(lastCellNumber);
+		cell2.setCellStyle(cellStyle2);
+		cell2.setCellValue("Tanggal" + " : " + TimeUtil.convertDateToString(new Date(), "dd-MM-yyyy HH:mm:ss"));
+
+		// baris kosong
+		excel.addEmptyRow();
+
+		// baris judul
+		row = excel.createRow();
+		Cell cell3 = row.createCell(1);
+		cell3.setCellStyle(excel.getStyleAlignCenter());
+		cell3.setCellValue(judul);
+		
+		excel.setMerge(3, 3, 1, lastCellNumber, false);
+
+		// baris sub judul 1
+		row = excel.createRow();
+		cell3 = row.createCell(1);
+		cell3.setCellStyle(excel.getStyleAlignCenter());
+		cell3.setCellValue(subJudul);
+		
+		excel.setMerge(4, 4, 1, lastCellNumber, false);
+
+		// baris kosong
+		excel.addEmptyRow();
+		
+	}
+  
+	@Override
+	protected void body() {
+		setHeaderTabel();
+        
+		int counter = 1;
+		double totalNetto = 0.0;
+		double totalDPP = 0.0;
+		double totalPPN = 0.0;
+		if (data.size() > 0) {
+			for (InvoiceHeader pojo : data) {
+
+				Map<String, Integer> jumkar = rekapInvoiceService.getJumlahKaryawanPerBulanPerCustomer(pojo.customer.id, pojo.produk.id, tahun, bulan);
+				
+				Font font = excel.getWorkbook().createFont();
+			    font.setFontHeightInPoints((short) 10);
+			    font.setFontName("Monospaced");
+				
+				XSSFCellStyle styleAlignRightInt = excel.getWorkbook().createCellStyle();
+				styleAlignRightInt.setFont(font);
+				styleAlignRightInt.setAlignment(HorizontalAlignment.RIGHT);
+				styleAlignRightInt.setWrapText(true);
+				
+				XSSFCellStyle styleAlignRight = excel.getWorkbook().createCellStyle();
+				styleAlignRight.setFont(font);
+				styleAlignRight.setAlignment(HorizontalAlignment.RIGHT);
+				styleAlignRight.setWrapText(true);
+	        	styleAlignRight.setDataFormat(HSSFDataFormat.getBuiltinFormat("#,##0.00")); // english
+				
+				XSSFCellStyle styleAlignLeft = excel.getWorkbook().createCellStyle();
+				styleAlignLeft.setFont(font);
+				styleAlignLeft.setAlignment(HorizontalAlignment.LEFT);
+				styleAlignLeft.setWrapText(true);
+				
+				String keterangan = "";
+				if (pojo.detailHasilProses != null) {
+					for (InvoiceDetailHslPro item : pojo.detailHasilProses) {
+						if (keterangan.equals("")) {
+							keterangan = item.keterangan;
+							int posAwal = keterangan.indexOf("untuk");
+							keterangan = keterangan.substring(0, posAwal - 1);
+						} else {
+							keterangan = keterangan + "\n" + item.keterangan;
+						}
+					}					
+				}
+
+				if (pojo.detailImplementasi != null) {
+					for (InvoiceDetailImplementasi item : pojo.detailImplementasi) {
+						if (keterangan.equals("")) {
+							keterangan = item.keterangan;
+						} else {
+							keterangan = keterangan + "\n" + item.keterangan;
+						}					
+					}					
+				}
+				
+				if (pojo.detailTraining != null) {
+					for (InvoiceDetailTraining item : pojo.detailTraining) {
+						if (keterangan.equals("")) {
+							keterangan = item.keterangan;
+						} else {
+							keterangan = keterangan + "\n" + item.keterangan;
+						}					
+					}					
+				}
+				
+				if (pojo.detailLainLain != null) {
+					for (InvoiceDetailLainLain item : pojo.detailLainLain) {
+						if (keterangan.equals("")) {
+							keterangan = item.keterangan;
+						} else {
+							keterangan = keterangan + "\n" + item.keterangan;
+						}					
+					}
+				}
+
+				if (pojo.detailLainLainMaster != null) {
+					for (InvoiceDetailLainLainMaster item : pojo.detailLainLainMaster) {
+						if (keterangan.equals("")) {
+							keterangan = item.keterangan;
+						} else {
+							keterangan = keterangan + "\n" + item.keterangan;
+						}					
+					}
+				}
+				
+		        Row row = excel.createRow();
+				
+				//excel.addCell(1, counter);
+				Cell cell = row.createCell(1);
+				cell.setCellValue(counter);
+				cell.setCellStyle(styleAlignRightInt);
+				
+				//excel.addCell(2, pojo.customer.nama.toString());
+				cell = row.createCell(2);
+				cell.setCellValue(pojo.customer.nama.toString());
+				cell.setCellStyle(styleAlignLeft);
+				
+				//excel.addCell(3, pojo.nomor.toString());
+				cell = row.createCell(3);
+				cell.setCellValue(pojo.nomor.toString());
+				cell.setCellStyle(styleAlignLeft);
+
+				cell = row.createCell(4);
+				cell.setCellValue(keterangan);
+				cell.setCellStyle(styleAlignLeft);
+				
+				if (jumkar != null && jumkar.get("kary") != null) {
+					if (jumkar.get("kary") > 0) {
+						cell = row.createCell(5);
+						cell.setCellValue(jumkar.get("kary").intValue());
+						cell.setCellStyle(styleAlignRightInt);											
+					} else {
+						cell = row.createCell(5);
+						cell.setCellValue("");
+						cell.setCellStyle(styleAlignRightInt);											
+					}
+				} else {
+					cell = row.createCell(5);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRightInt);					
+				}
+
+				if (jumkar != null && jumkar.get("nonKary") != null) {
+					if (jumkar.get("nonKary") > 0) {
+						cell = row.createCell(6);
+						cell.setCellValue(jumkar.get("nonKary").intValue());
+						cell.setCellStyle(styleAlignRightInt);											
+					} else {
+						cell = row.createCell(6);
+						cell.setCellValue("");
+						cell.setCellStyle(styleAlignRightInt);											
+					}
+				} else {
+					cell = row.createCell(6);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRightInt);					
+				}
+
+				//excel.addCell(4, pojo.bruto);
+				if (pojo.bruto > 0) {
+					//excel.addCell(12, pojo.defaultNilai);
+					cell = row.createCell(7);
+					cell.setCellValue(pojo.bruto);
+					cell.setCellStyle(styleAlignRight);
+				} else {
+					cell = row.createCell(7);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				//excel.addCell(5, pojo.totdisc);
+				if (pojo.totdisc > 0) {
+					cell = row.createCell(8);
+					cell.setCellValue(pojo.totdisc);
+					cell.setCellStyle(styleAlignRight);
+				} else {
+					cell = row.createCell(8);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				Double total = pojo.bruto - pojo.totdisc;
+				//excel.addCell(6, total);
+				if (total > 0) {
+					cell = row.createCell(9);
+					cell.setCellValue(total);
+					cell.setCellStyle(styleAlignRight);
+				} else {
+					cell = row.createCell(9);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				//excel.addCell(7, pojo.depused);
+				if (pojo.depused > 0) {
+					cell = row.createCell(10);
+					cell.setCellValue(pojo.depused);
+					cell.setCellStyle(styleAlignRight);
+				} else {
+					cell = row.createCell(10);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				//excel.addCell(8, pojo.dpp);
+				if (pojo.dpp > 0) {
+					cell = row.createCell(11);
+					cell.setCellValue(pojo.dpp);
+					cell.setCellStyle(styleAlignRight);
+				} else {
+					cell = row.createCell(11);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+
+				//excel.addCell(9, pojo.ppn);
+				if (pojo.ppn > 0) {
+					cell = row.createCell(12);
+					cell.setCellValue(pojo.ppn);
+					cell.setCellStyle(styleAlignRight);
+				} else {
+					cell = row.createCell(12);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				//excel.addCell(10, pojo.netto);
+				if (pojo.netto > 0) {
+					cell = row.createCell(13);
+					cell.setCellValue(pojo.netto);
+					cell.setCellStyle(styleAlignRight);
+				} else {
+					cell = row.createCell(13);
+					cell.setCellValue("");
+					cell.setCellStyle(styleAlignRight);										
+				}
+				
+				cell = row.createCell(14);
+				cell.setCellValue(pojo.notes);
+				cell.setCellStyle(styleAlignLeft);
+				
+				totalNetto = totalNetto + pojo.netto;
+				totalDPP = totalDPP + pojo.dpp;
+				totalPPN = totalPPN + pojo.ppn;
+				counter = counter + 1;
+			}			
+		}
+		
+	    excel.addEmptyRow();
+	    
+		//excel.createRow();
+		Row row = excel.createRow();
+		
+		Font font = excel.getWorkbook().createFont();
+	    font.setFontHeightInPoints((short) 10);
+	    font.setFontName("Monospaced");
+		
+		XSSFCellStyle styleAlignRight = excel.getWorkbook().createCellStyle();
+		styleAlignRight.setFont(font);
+		styleAlignRight.setAlignment(HorizontalAlignment.RIGHT);
+		styleAlignRight.setWrapText(true);
+    	//styleAlignRight.setDataFormat(HSSFDataFormat.getBuiltinFormat("#.##0,00")); // indonesian		        	
+		styleAlignRight.setDataFormat(HSSFDataFormat.getBuiltinFormat("#,##0.00")); // english
+		
+		XSSFCellStyle styleAlignLeft = excel.getWorkbook().createCellStyle();
+		styleAlignLeft.setFont(font);
+		styleAlignLeft.setAlignment(HorizontalAlignment.LEFT);
+		styleAlignLeft.setWrapText(true);
+		
+		excel.addCell(10, "TOTAL : ");
+		
+		//excel.addCell(8, totalDPP);
+		if (totalDPP > 0) {
+			Cell cell = row.createCell(11);
+			cell.setCellValue(totalDPP);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(11);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+
+		//excel.addCell(9, totalPPN);
+		if (totalPPN > 0) {
+			Cell cell = row.createCell(12);
+			cell.setCellValue(totalPPN);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(12);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+
+		//excel.addCell(10, totalNetto);
+		if (totalNetto > 0) {
+			Cell cell = row.createCell(13);
+			cell.setCellValue(totalNetto);
+			cell.setCellStyle(styleAlignRight);					
+		} else {
+			Cell cell = row.createCell(13);
+			cell.setCellValue("");
+			cell.setCellStyle(styleAlignRight);										
+		}
+
+	}
+	
+  
+	private void setHeaderTabel() {
+
+		XSSFCellStyle styleKeterangan = excel.getWorkbook().createCellStyle();
+		XSSFCellStyle styleNilai = excel.getWorkbook().createCellStyle();
+
+		styleKeterangan.setAlignment(HorizontalAlignment.LEFT);
+		styleKeterangan.setFont(excel.getColumnHeaderFont());
+		styleKeterangan.setVerticalAlignment(VerticalAlignment.CENTER);
+		styleKeterangan.setBorderTop(BorderStyle.THIN);
+		styleKeterangan.setBorderRight(BorderStyle.THIN);
+		styleKeterangan.setBorderBottom(BorderStyle.THIN);
+		styleKeterangan.setBorderLeft(BorderStyle.THIN);
+		
+		styleNilai = (XSSFCellStyle) styleKeterangan.clone();
+		styleNilai.setAlignment(HorizontalAlignment.RIGHT);
+		
+		excel.createRow();
+		
+		excel.addCell(1, "No.", true, true, true);
+		excel.addCell(2, "Nama Customer", true, true, true);
+		excel.addCell(3, "Nomor Invoice", true, true, true);
+		excel.addCell(4, "Keterangan", true, true, true);
+		excel.addCell(5, "Karyawan", true, true, true);
+		excel.addCell(6, "Non Karyawan", true, true, true);
+		excel.addCell(7, "Bruto", true, true, true);
+		excel.addCell(8, "Diskon", true, true, true);
+		excel.addCell(9, "Netto", true, true, true);
+		excel.addCell(10, "Deposit", true, true, true);
+		excel.addCell(11, "DPP", true, true, true);
+		excel.addCell(12, "PPN", true, true, true);
+		excel.addCell(13, "Total", true, true, true);
+		excel.addCell(14, "Notes", true, true, true);
+    
+		// ini untuk melakukan merge
+		Integer currentRowIndex = excel.getCurrentRowIndex();
+		
+		Row row = excel.setRow(currentRowIndex);
+		Cell cell = row.getCell(1);
+		//cell.setCellStyle(styleKeterangan);
+
+		cell = row.getCell(2);
+		cell.setCellStyle(styleKeterangan);
+		
+		cell = row.getCell(3);
+		cell.setCellStyle(styleKeterangan);
+		
+		cell = row.getCell(4);
+		cell.setCellStyle(styleKeterangan);
+		
+		cell = row.getCell(5);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(6);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(7);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(8);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(9);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(10);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(11);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(12);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(13);
+		cell.setCellStyle(styleNilai);
+		
+		cell = row.getCell(14);
+		cell.setCellStyle(styleKeterangan);
+		
+		excel.createRow();
+		
+		/*
+		excel.createRow();
+		
+		excel.addCell(0, "No. Urut", true, true, true);
+		excel.addCell(1, "Nama Customer", true, true, true);
+		excel.addCell(2, "Nomor Invoice", true, true, true);
+		excel.addCell(3, "Bruto", true, true, true);
+		excel.addCell(4, "Diskon", true, true, true);
+		excel.addCell(5, "Netto", true, true, true);
+		excel.addCell(6, "Deposit", true, true, true);
+		excel.addCell(7, "DPP", true, true, true);
+		excel.addCell(8, "PPN", true, true, true);
+		excel.addCell(9, "Total", true, true, true);
+    
+		// ini untuk melakukan merge
+		//Integer currentRowIndex = excel.getCurrentRowIndex();
+		//excel.setMerge(currentRowIndex, currentRowIndex, 0, 1, false);
+		*/
+		
+	}
+	
+	@Override
+	protected void footer() {
+		
+	    excel.addEmptyRow();
+	    
+	    Row row = excel.createRow();
+		//excel.addCell(1, "Dicetak oleh : " + CurrentUser.getUsername());
+		Cell cell = row.createCell(1);
+		cell.setCellStyle(excel.getStyleAlignLeft());
+		cell.setCellValue("Dicetak oleh : " + CurrentUser.getUsername());
+		excel.setMerge(excel.getCurrentRowIndex(), excel.getCurrentRowIndex(), 1, lastCellNumber, false);
+	    
+	    row = excel.createRow();
+		//excel.addCell(1, TimeUtil.convertDateToString(TimeUtil.getSystemDateTime(), BaseConstants.DATE_FORMAT_DISPLAY_LONG));
+		cell = row.createCell(1);
+		cell.setCellStyle(excel.getStyleAlignLeft());
+		cell.setCellValue(TimeUtil.convertDateToString(TimeUtil.getSystemDateTime(), BaseConstants.DATE_FORMAT_DISPLAY_LONG));	    
+		excel.setMerge(excel.getCurrentRowIndex(), excel.getCurrentRowIndex(), 1, lastCellNumber, false);
+	    
+//		Integer currentRowIndex = excel.getCurrentRowIndex();
+//		excel.setMerge(currentRowIndex, currentRowIndex, 1, lastCellNumber, false);
+//		
+//		XSSFCellStyle style = excel.getWorkbook().createCellStyle();        
+//		style.setAlignment(HorizontalAlignment.LEFT);
+//		style.setWrapText(false);
+//		style.setShrinkToFit(false);
+//        style.setBorderTop(BorderStyle.HAIR);
+//	    
+//		Row row = excel.setRow(excel.getCurrentRowIndex());
+//		Cell cell = row.getCell(1);
+//		cell.setCellStyle(style);
+	    
+	}
+
+	@Override
+	protected void validasi() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void filter() {
+		// TODO Auto-generated method stub
+		
+	}
+}

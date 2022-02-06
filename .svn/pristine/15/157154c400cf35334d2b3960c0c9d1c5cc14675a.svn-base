@@ -1,0 +1,16 @@
+package co.id.sofcograha.domain.invoicing.proses.upload.pojos;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class TahunBulanProses {
+
+	public String tahun;
+	public String bulan;
+	public String idMi010;
+	public String idMi001;
+	
+}

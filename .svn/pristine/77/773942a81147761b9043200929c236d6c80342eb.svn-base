@@ -1,0 +1,576 @@
+package co.id.sofcograha.base.utils.download;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.util.IOUtils;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.utils.FileUtil;
+
+public class FileGenerator {
+
+	private static final String FILE_TEMPLATE_NOT_FOUND_ERROR = "file.template.not.found";
+	private static final String IO_ERROR = "IO.error";
+	//private static final String JASPER_GENERATE_REPORT_ERROR = "jasper.generate.report.error";
+	//private static final String JASPER_FILL_REPORT_ERROR = "jasper.fill.report.error";
+	//private static final String JASPER_COMPILE_TEMPLATE_ERROR = "jasper.compile.template.error";
+	private static final String CREATE_FILE_ERROR = "create.file.error";
+	
+	public static final String TEMPLATE_FILE_LOCATION = File.separator + "templates";
+	public static final String TEMP_PDFS_FILE_LOCATION = File.separator + "pdfs_temp";
+	public static final String CONTENT_TYPE_EXCEL = "application/vnd.ms-excel";
+	public static final String CONTENT_TYPE_EXCEL_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+	public static final String CONTENT_TYPE_PDF = "application/pdf";
+	
+	public static byte[] generateExcelFile(HttpServletResponse response, String fileNameWithExtension, Workbook workbook) {
+		validateExcelFileNameWithExtension(fileNameWithExtension);
+
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		try {
+			workbook.write(baos);
+		} catch (IOException e) {
+			fileCreationError(fileNameWithExtension);
+		} finally {
+			closeBaos(baos);
+		}
+
+		try {
+			response.flushBuffer();
+			return baos.toByteArray();
+		} catch (IOException e) {
+			fileCreationError(fileNameWithExtension);
+		}
+		return null;
+	}
+
+	public static void prepareHttpResponse(HttpServletResponse response, String contentType) {
+		response.setContentType(contentType);
+	}
+
+	public static void prepareHttpResponse(HttpServletResponse response, String contentType, String fileNameWithExtension) {
+		response.setContentType(contentType);
+		response.setHeader("Content-disposition", "attachment; filename = " + fileNameWithExtension);
+	}
+
+	private static void validateExcelFileNameWithExtension(String fileNameWithExtension) {
+		if (!getFileExtension(fileNameWithExtension).equalsIgnoreCase("xls") && !getFileExtension(fileNameWithExtension).equalsIgnoreCase("xlsx")) error("file.excel.extension.unrecognized");
+	}
+
+	private static String getFileExtension(String fileNameWithExtension) {
+		if (!fileNameWithExtension.contains(".")) error("file.extension.required");
+		return fileNameWithExtension.substring(fileNameWithExtension.lastIndexOf('.') + 1);
+	}
+
+	public static byte[] getFromTemplateFile(String fileNameWithExtension) {
+		try {
+			InputStream is = FileGenerator.class.getResourceAsStream(TEMPLATE_FILE_LOCATION + File.separator + fileNameWithExtension);
+			return IOUtils.toByteArray(is);
+		} catch (IOException|NullPointerException e) {
+			error(FILE_TEMPLATE_NOT_FOUND_ERROR, fileNameWithExtension, "/resources/templates");
+		}
+		return new byte[0];
+	}
+	
+	public static File getFile(String fileNameWithExtension) {
+		try {
+			File templateFile = new ClassPathResource(TEMPLATE_FILE_LOCATION + File.separator + fileNameWithExtension).getFile();
+			return templateFile;
+		} catch (IOException e) {
+			error(FILE_TEMPLATE_NOT_FOUND_ERROR, fileNameWithExtension, "/resources/templates");
+		}
+		return null;
+	}
+	
+	public static FileInputStream getTemplateFileInputStream(String fileNameWithExtension) {
+		try {
+			FileInputStream fileInputStream = new FileInputStream(FileUtil.class.getResource(TEMPLATE_FILE_LOCATION + File.separator + fileNameWithExtension).getPath());
+			return fileInputStream;
+		} catch (FileNotFoundException e) {
+			error(FILE_TEMPLATE_NOT_FOUND_ERROR, fileNameWithExtension, "/resources/templates");
+		}
+		return null;
+	}
+
+	public static File createPdfTempFile(String fileNameWithExtension) {
+		
+		String strFile = System.getProperty("user.home")+"/invoicing_gaji_id/pdfs_temp";
+		makeDirectories(strFile);
+			
+		File templateFile = new File(strFile + "/" + fileNameWithExtension);
+		
+		return templateFile;
+	}
+	
+	public static FileInputStream getFileInputStream(String folderPath, String fileNameWithExtension) {
+		try {
+			FileInputStream fileInputStream = new FileInputStream(FileUtil.class.getResource(folderPath + File.separator + fileNameWithExtension).getPath());
+			return fileInputStream;
+		} catch (FileNotFoundException e) {
+			error(FILE_TEMPLATE_NOT_FOUND_ERROR, fileNameWithExtension, "/resources/" + folderPath + "/" + fileNameWithExtension);
+		}
+		return null;
+	}
+
+	/* paket gl tidak menggunakan jasper
+	public static ResponseEntity<byte[]> generateXlsFile(HttpServletResponse response, String jrxmlFileName,
+		String generatedFileName, Map<String,Object> parameters, List<Object[]> records, String[] columnNames) {
+
+		validateJrxmlFileName(jrxmlFileName);
+		generatedFileName = manageGeneratedFileName(generatedFileName, "xls");
+
+		Locale locale = checkLocale((String) parameters.get("localeCurrency"));
+		parameters.put("REPORT_LOCALE", locale);
+
+		InputStream inputStream = FileGenerator.class.getResourceAsStream("/jasper/" + jrxmlFileName);
+		JasperReport jasperReport = null;
+		try {
+			jasperReport = JasperCompileManager.compileReport(inputStream);
+		} catch (JRException e) {
+			error(JASPER_COMPILE_TEMPLATE_ERROR, jrxmlFileName);
+		}
+
+		JasperPrint jasperPrint = null;
+		JRDataSource dataSource = new ListOfArrayDataSource(records, columnNames);
+		try {
+			jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, dataSource);
+		} catch (JRException e) {
+			error(JASPER_FILL_REPORT_ERROR);
+		}
+
+		JRXlsExporter exporter = new JRXlsExporter();
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		SimpleXlsReportConfiguration config = new SimpleXlsReportConfiguration();
+		
+		config.setDetectCellType(true);
+		if(jrxmlFileName.contains("RptBukuBesar") || jrxmlFileName.contains("RptKartuStokKomersial")) { 
+			config.setOnePagePerSheet(true);
+		}
+		
+		try {
+			exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
+			exporter.setConfiguration(config);
+			exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(baos));
+			exporter.exportReport();
+		} catch (JRException e) {
+			
+			error(JASPER_GENERATE_REPORT_ERROR);
+		} finally {
+			closeBaos(baos);
+		}
+
+		try {
+			response.flushBuffer();
+		} catch (IOException e) {
+			ioError();
+		}
+
+		return new ResponseEntity<>(baos.toByteArray(), HttpStatus.OK);
+	}
+
+	public static final Logger logger = LoggerFactory.getLogger(FileGenerator.class);
+	public static ResponseEntity<byte[]> generatePdfFile(HttpServletResponse response, String jrxmlFileName,
+		String generatedFileName, Map<String,Object> parameters, List<Object[]> records, String[] columnNames) {
+
+		validateJrxmlFileName(jrxmlFileName);
+		generatedFileName = manageGeneratedFileName(generatedFileName, "pdf");
+
+		Locale locale = checkLocale((String) parameters.get("localeCurrency"));
+		parameters.put("REPORT_LOCALE", locale);
+
+		InputStream inputStream = FileGenerator.class.getResourceAsStream("/jasper/" + jrxmlFileName);
+		JasperReport jasperReport = null;
+		
+		try {
+			jasperReport = JasperCompileManager.compileReport(inputStream);
+		} catch (JRException e) {
+			error(JASPER_COMPILE_TEMPLATE_ERROR, jrxmlFileName);
+		}
+
+		JasperPrint jasperPrint = null;
+		JRDataSource dataSource = new ListOfArrayDataSource(records, columnNames);
+		try {
+			jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, dataSource);
+		} catch (JRException e) {
+			error(JASPER_FILL_REPORT_ERROR);
+		}
+
+		JRPdfExporter exporter = new JRPdfExporter();
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		SimpleXlsReportConfiguration config = new SimpleXlsReportConfiguration();
+		config.setDetectCellType(true);
+		config.setOnePagePerSheet(true);
+		try {
+			exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
+			exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(baos));
+
+			exporter.exportReport();
+		} catch (JRException e) {
+			logger.error("trace", e);
+			error(JASPER_GENERATE_REPORT_ERROR);
+		} catch (Exception e) {
+			logger.error("trace", e);
+		} finally {
+			closeBaos(baos);
+		}
+
+		try {
+			response.flushBuffer();
+		} catch (IOException e) {
+			ioError();
+		}
+
+		return new ResponseEntity<>(baos.toByteArray(), HttpStatus.OK);
+	}
+	*/
+
+	/*
+	private static Locale checkLocale(String localeCurrency) {
+		if(new String("").equals(localeCurrency) || new String("IDR").equals(localeCurrency)) {
+			return new Locale("in", "ID");
+		} else {
+			return new Locale("en", "US");
+		}
+	}
+	*/
+	
+	/*
+	private static void validateJrxmlFileName(String jrxmlFileName) {
+		if (StringUtil.isBlank(jrxmlFileName)) {
+			error("file.jrxml.empty.name");
+		}
+	}
+	*/
+	
+	/*
+	private static String manageGeneratedFileName(String generatedFileName, String extension) {
+		return manageExtension(generatedFileName, extension);
+	}
+	*/
+
+	/*
+	private static void validateGeneratedFileName(String generatedFileName) {
+		if (StringUtil.isBlank(generatedFileName)) {
+			error("file.generated.empty.name");
+		}
+	}
+	*/
+
+	/*
+	private static String manageExtension(String generatedFileName, String extension) {
+		validateGeneratedFileName(generatedFileName);
+		if (generatedFileName.substring(generatedFileName.lastIndexOf('.') + 1).equalsIgnoreCase(extension)) {
+			return generatedFileName;
+		} else {
+			return generatedFileName + "." + extension;
+		}
+	}
+	*/
+
+	/*
+	public static void bulkGenerateXlsFile(HttpServletResponse response, String jrxmlFileName, String generatedFileName, 
+			Map<String,Object> parameters, List<Object[]> records, String[] columnNames, String subOrderCode, String boxNumber) {
+
+		makeDirectories(System.getProperty("user.home")+"/tmp/zip");
+
+		validateJrxmlFileName(jrxmlFileName);
+
+		InputStream inputStream = FileGenerator.class.getResourceAsStream("/jasper/" + jrxmlFileName);
+		JasperReport jasperReport = null;
+		try {
+			jasperReport = JasperCompileManager.compileReport(inputStream);
+		} catch (JRException e) {
+			e.printStackTrace();
+			error(JASPER_COMPILE_TEMPLATE_ERROR, jrxmlFileName);
+		}
+
+		JasperPrint jasperPrint = null;
+		JRDataSource dataSource = new ListOfArrayDataSource(records, columnNames);
+		try {
+			jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, dataSource);
+		} catch (JRException e) {
+			e.printStackTrace();
+			error(JASPER_FILL_REPORT_ERROR);
+		}
+
+		JRXlsExporter exporter = new JRXlsExporter();
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		SimpleXlsReportConfiguration config = new SimpleXlsReportConfiguration();
+		config.setOnePagePerSheet(true);
+		config.setDetectCellType(true);
+		try {
+			exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
+			exporter.setConfiguration(config);
+			if(!boxNumber.equals(""))
+				exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(new FileOutputStream(System.getProperty("user.home")+"/tmp/zip/"+generatedFileName+"-"+subOrderCode+"-"+boxNumber+".xls")));
+			else
+				exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(new FileOutputStream(System.getProperty("user.home")+"/tmp/zip/"+generatedFileName+"-"+subOrderCode+".xls")));
+
+			exporter.exportReport();
+		} catch (Exception e) {
+			e.printStackTrace();
+			error(JASPER_GENERATE_REPORT_ERROR);
+		} finally {
+			closeBaos(baos);
+		}
+
+		try {
+			response.flushBuffer();
+		} catch (IOException e) {
+			ioError();
+		}
+	}
+
+	public static void bulkGeneratePdfFile(HttpServletResponse response, String jrxmlFileName, String generatedFileName, 
+		Map<String,Object> parameters, List<Object[]> records, String[] columnNames, String subOrderCode, String boxNumber) {
+
+		makeDirectories(System.getProperty("user.home")+"/tmp/zip/");
+
+		validateJrxmlFileName(jrxmlFileName);
+
+		InputStream inputStream = FileGenerator.class.getResourceAsStream("/jasper/" + jrxmlFileName);
+		JasperReport jasperReport = null;
+		try {
+			jasperReport = JasperCompileManager.compileReport(inputStream);
+		} catch (JRException e) {
+			e.printStackTrace();
+			error(JASPER_COMPILE_TEMPLATE_ERROR, jrxmlFileName);
+		}
+
+		JasperPrint jasperPrint = null;
+		JRDataSource dataSource = new ListOfArrayDataSource(records, columnNames);
+		try {
+			jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, dataSource);
+		} catch (JRException e) {
+			e.printStackTrace();
+			error(JASPER_FILL_REPORT_ERROR);
+		}
+
+		JRPdfExporter exporter = new JRPdfExporter();
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		SimpleXlsReportConfiguration config = new SimpleXlsReportConfiguration();
+		config.setOnePagePerSheet(true);
+		config.setDetectCellType(true);
+		try {
+			exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
+			if(!boxNumber.equals(""))
+				exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(new FileOutputStream(System.getProperty("user.home")+"/tmp/zip/"+generatedFileName+"-"+subOrderCode+"-"+boxNumber+".pdf")));
+			else
+				exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(new FileOutputStream(System.getProperty("user.home")+"/tmp/zip/"+generatedFileName+"-"+subOrderCode+".pdf")));
+
+
+			exporter.exportReport();
+		} catch (Exception e) {
+			e.printStackTrace();
+			error(JASPER_GENERATE_REPORT_ERROR);
+		} finally {
+			closeBaos(baos);
+		}
+
+		try {
+			response.flushBuffer();
+		} catch (IOException e) {
+			ioError();
+		}
+	}
+	*/
+
+	public static ResponseEntity<byte[]> zip(HttpServletResponse response, ByteArrayOutputStream baos, String generatedFileName, String type) {
+
+		File folder = new File(System.getProperty("user.home")+"/tmp/zip");
+		File[] listOfFiles = folder.listFiles();
+		byte[] buf = new byte[1024];
+		try {
+			ZipOutputStream out = new ZipOutputStream(baos);
+			for(int i = 0; i < listOfFiles.length; i++) {
+				String extension = listOfFiles[i].getName().substring(listOfFiles[i].getName().lastIndexOf(".") + 1, listOfFiles[i].getName().length());
+				if(extension.equals("xls") || extension.equals("pdf")) {
+					if(listOfFiles[i].getName().contains(generatedFileName)){
+						FileInputStream in = new FileInputStream(listOfFiles[i].getCanonicalFile());
+						out.putNextEntry(new ZipEntry(listOfFiles[i].getName()));
+						int len;
+						while((len = in.read(buf)) > 0) {
+							out.write(buf, 0, len);
+						}
+						out.closeEntry();
+						in.close();
+					}
+				}
+			}
+			out.close();
+
+			for(int i = 0; i < listOfFiles.length; i++) {
+				String extension = listOfFiles[i].getName().substring(listOfFiles[i].getName().lastIndexOf(".") + 1, listOfFiles[i].getName().length());
+				if(extension.equals("xls") || extension.equals("pdf")) {
+					if(listOfFiles[i].getName().contains(generatedFileName)){
+						listOfFiles[i].delete();
+					}
+				}
+			}
+
+			return new ResponseEntity<byte[]>(baos.toByteArray(), HttpStatus.OK);
+		} catch (IOException ex) {
+			System.err.println(ex.getMessage());
+		}
+
+		return null;
+	}
+
+	// zip sekelompok nama file 
+	/*
+	public static String zipSeveralPdfFiles(String[] files) {
+
+		String encodedBase64 = null;
+		
+		byte[] buf = new byte[1024];
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		try {
+			ZipOutputStream out = new ZipOutputStream(baos);
+			for(int i = 0; i < files.length; i++) {
+				
+				//File file = new File (files[i]);
+				
+				//FileInputStream in = new FileInputStream(file.getCanonicalFile());
+				FileInputStream in = getFileInputStream(TEMP_PDFS_FILE_LOCATION, files[i]);
+				out.putNextEntry(new ZipEntry(files[i]));
+				int len;
+				while((len = in.read(buf)) > 0) {
+					out.write(buf, 0, len);
+				}
+				out.closeEntry();
+				in.close();
+			}
+			out.close();
+
+			for(int i = 0; i < files.length; i++) {
+				//File file = new File (files[i]);
+				File file = new File(FileUtil.class.getResource(TEMP_PDFS_FILE_LOCATION + File.separator + files[i]).getPath());
+				System.out.println(file.getCanonicalPath());
+				System.out.println(file.getAbsolutePath());
+				System.out.println(file.getPath());
+				file.delete();
+			}
+
+			//return new ByteArrayInputStream(baos.toByteArray());
+			byte[] bytes = baos.toByteArray();
+			encodedBase64 = new String(Base64.getEncoder().encode(bytes));
+			return encodedBase64;
+		} catch (IOException ex) {
+			System.err.println(ex.getMessage());
+		}
+
+		return encodedBase64;
+	}
+	*/
+	public static String zipSeveralPdfFiles(List<String> files) {
+
+		String encodedBase64 = null;
+		
+		byte[] buf = new byte[1024];
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		try {
+			ZipOutputStream out = new ZipOutputStream(baos);
+			for(String file : files) {
+				
+				String strFilePath = System.getProperty("user.home") + "/invoicing_gaji_id/pdfs_temp" + "/" + file;
+				
+				FileInputStream in = new FileInputStream(strFilePath);
+				
+				out.putNextEntry(new ZipEntry(file));
+				int len;
+				while((len = in.read(buf)) > 0) {
+					out.write(buf, 0, len);
+				}
+				out.closeEntry();
+				in.close();
+			}
+			out.close();
+
+			for(String file : files) {
+				File objFile = new File(System.getProperty("user.home") + "/invoicing_gaji_id/pdfs_temp" + "/" + file);
+				objFile.delete();
+			}
+
+			byte[] bytes = baos.toByteArray();
+			encodedBase64 = new String(Base64.getEncoder().encode(bytes));
+			return encodedBase64;
+		} catch (IOException ex) {
+			System.err.println(ex.getMessage());
+		}
+
+		return encodedBase64;
+	}
+	
+	public static String checkFileName(File folder, String fileName, Integer counter) {
+		File[] listOfFiles = folder.listFiles();
+		String file = "";
+
+		List<String> asd = new ArrayList<String>();
+		for(int i=0; i<listOfFiles.length; i++) {
+			asd.add(listOfFiles[i].getName());
+		}
+
+		if(asd.contains(fileName+counter)) {
+			file = checkFileName(folder, fileName, counter+1);
+		}
+		else 
+			file = fileName+(counter);
+
+		return file;
+	}
+
+	public static void makeDirectories(String directory) {
+		if(!Files.exists(Paths.get(directory))) {
+			new File(directory).mkdirs();
+		}
+	}
+
+	public static File checkFileExists(String directory) {
+		if(!Files.exists(Paths.get(directory))) {
+			try {
+				new File(directory).createNewFile();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		File result = new File(directory);
+		return result;
+	}
+
+	private static void ioError() {
+		error(IO_ERROR);
+	}
+
+	private static void closeBaos(ByteArrayOutputStream baos) {
+		try {
+			baos.close();
+		} catch (IOException e) {
+			ioError();
+		}
+	}
+
+	private static void fileCreationError(String fileNameWithExtension) {
+		error(CREATE_FILE_ERROR, fileNameWithExtension);
+	}
+
+	private static void error(String code, Object...args) {
+		throw new BusinessException(code, args);
+	}
+}

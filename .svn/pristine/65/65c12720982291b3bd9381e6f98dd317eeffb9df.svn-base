@@ -1,0 +1,20 @@
+CREATE OR REPLACE FUNCTION public.set_process_messages (VARCHAR)
+RETURNS void
+AS'
+
+DECLARE
+	PProcesStatusId			alias for $1;
+BEGIN
+	/* Insert all message from table temp to main table */
+	INSERT INTO std_status_proses_detail (id, std_status_proses_id, nomor_item, process_status_type, msg_key, 
+						   msg_param, version, user_create, creation_time, user_modify, modification_time) 
+	SELECT	id, std_status_proses_id, ROW_NUMBER() OVER (PARTITION BY process_status_type ORDER BY msg_key, msg_param), process_status_type, msg_key, msg_param, version, 
+			user_create, creation_time, user_modify, modification_time
+	FROM 	ht_set_message_i001
+	WHERE	std_status_proses_id = PProcesStatusId;
+
+	/* Delete from table temp */
+	DELETE FROM ht_set_message_i001
+	WHERE std_status_proses_id = PProcesStatusId;
+END;
+' language 'plpgsql';

@@ -1,0 +1,245 @@
+package co.id.sofcograha.domain.invoicing.admin.freemonth.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.freemonth.entities.EAdminFreemonth;
+import co.id.sofcograha.domain.invoicing.admin.freemonth.repositories.EAdminFreemonthRepository;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.services.CustomerGajiIdService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifDetail;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.services.ProdukService;
+
+@Service("adminFreemonthService")
+public class AdminFreemonthService extends BaseService {
+	
+	@Autowired private CustomerGajiIdService customerGajiIdService;
+	@Autowired private ProdukService produkService;
+
+	@Autowired private EAdminFreemonthRepository repo;
+	
+	//@Autowired private ActionAuthorizationService actionAuthorizationService;
+	
+	public Integer getJumFreemonthBdskNourutMaster(String idMi010, String idMi001, Integer nomst) {
+		return repo.getJumFreemonthBdskNourutMaster(idMi010, idMi001, nomst);
+	}
+	
+	public EAdminFreemonth findByBk(String tahun, String bulan, String idMi010, String idMi001) {
+		return repo.findByBK(tahun, bulan, idMi010, idMi001);
+	}
+	
+	public EAdminFreemonth findById(final String id) {
+		return repo.getOne(id);
+	}
+
+	public SearchResult<EAdminFreemonth> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+    
+	public boolean isUsed(CustomerProdukTarifDetail data) {
+		
+		List<EAdminFreemonth> list = repo.findPenggunaanFreemonth(data.header.customer.id, data.header.produk.id, data.nourut);
+		
+		if (!list.isEmpty()) {
+			return true;
+		} else {
+			return false;
+		}
+	}	
+	
+	@Transactional
+    public EAdminFreemonth add(EAdminFreemonth entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EAdminFreemonth addedEntity = repo.add(entity);		
+		throwBatchError();
+		
+		return addedEntity;	
+		
+    }
+       
+    //private void valOnAdd(final EAdminFreemonth valuta) {
+    //}
+
+	@Transactional
+	public EAdminFreemonth edit(EAdminFreemonth entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EAdminFreemonth toBeSaved = repo.getOne(entity.getId());
+		//EAdminFreemonth oldEntity = (EAdminFreemonth) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+		
+		throwBatchError();
+		return toBeSaved;
+		
+	}
+
+	//private void valOnEdit(final EAdminFreemonth valuta) {
+    //}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EAdminFreemonth.class.getSimpleName());
+		throwBatchError();
+		
+		EAdminFreemonth toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		repo.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	//private void valOnDelete(EAdminFreemonth entity) {
+    //}
+	
+	//private void valAuthAdd() {
+	//  if(!actionAuthorizationService.valHakAdd()) {
+	//    error("NoRightToAdd");
+	//  }
+	//}
+	
+	//private void valAuthEdit() {
+    //  if(!actionAuthorizationService.valHakEdit()) {
+    //    error("NoRightToChange");
+    //  }
+    //}
+	
+    //private void valAuthDelete() {
+    //  if(!actionAuthorizationService.valHakDelete()) {
+    //    error("NoRightToDelete");
+    //  }
+    //}
+
+    protected void defineDefaultValuesOnAdd(EAdminFreemonth entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+    
+    protected void valRequiredValues(EAdminFreemonth entity) {
+	}
+    
+    protected void manageMinMaxValues(EAdminFreemonth entity) {
+	}
+    
+    protected void manageReferences(EAdminFreemonth entity) {
+		if (entity.getCustomer() != null) {
+			ECustomerGajiId eFromDb = customerGajiIdService.get(entity.getCustomer().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setCustomer(eFromDb);
+				} else {
+					batchError("customerGajiId.not.active");
+				}
+			} else {
+				batchError("customerGajiId.not.found");
+			}			
+		}		
+
+		if (entity.getProduk() != null) {
+			EProduk eFromDb = produkService.get(entity.getProduk().getId());
+			if (eFromDb != null) {
+				if (eFromDb.getFlakt().equals(BaseConstants.YA)) {
+					entity.setProduk(eFromDb);
+				} else {
+					batchError("produk.not.active");
+				}
+			} else {
+				batchError("produk.not.found");
+			}			
+		}		
+
+    }
+
+    protected void valUniquenessOnAdd(EAdminFreemonth addedEntity) {
+		EAdminFreemonth entityFromDb = repo.findByBK(addedEntity.getTahun(), addedEntity.getBulan(), addedEntity.getCustomer().getId(), addedEntity.getProduk().getId());
+		if (entityFromDb != null) {
+			throw new BusinessException("admin.freemonth.bk");
+		}
+	}
+    
+    private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EAdminFreemonth dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+    
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void valUniquenessOnEdit(EAdminFreemonth editedEntity) {
+		EAdminFreemonth entityFromDb = repo.findByBK(editedEntity.getTahun(), editedEntity.getBulan(), editedEntity.getCustomer().getId(), editedEntity.getProduk().getId());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("admin.freemonth.bk");
+			}
+		}
+	}
+	
+	protected void defineEditableValues(EAdminFreemonth newValues, EAdminFreemonth toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setTahun(newValues.getTahun());
+			toBeSaved.setBulan(newValues.getBulan());
+			toBeSaved.setNomst(newValues.getNomst());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valDelete(EAdminFreemonth toBeDeleted) {	}
+    
+    
+	public EAdminFreemonth get(String id) {
+		return repo.getOne(id);
+	}
+}

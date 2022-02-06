@@ -1,0 +1,196 @@
+package co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.entities.EPenerimaanBayarHeader;
+
+@Repository
+public class EPenerimaanBayarHeaderRepository extends SimpleJpaRepository<EPenerimaanBayarHeader, String> {
+
+	protected final EntityManager em;
+
+	public EPenerimaanBayarHeaderRepository(EntityManager em) {
+		super(EPenerimaanBayarHeader.class, em);
+		this.em = em;
+	}
+	
+	public EPenerimaanBayarHeader findByBK(String nomor) {
+		
+		String query = "SELECT e FROM EPenerimaanBayarHeader e " + 
+                       "WHERE e.nomor = :nomor";
+		
+		try {
+			return em.createQuery(query, EPenerimaanBayarHeader.class)
+					 .setParameter("nomor", nomor)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EPenerimaanBayarHeader getOne(String id) {
+
+		String query = "SELECT e FROM EPenerimaanBayarHeader e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, EPenerimaanBayarHeader.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public SearchResult<EPenerimaanBayarHeader> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EPenerimaanBayarHeader> search = new HqlSimpleSearchBuilder<>(EPenerimaanBayarHeader.class, em);
+		
+		String nomor = (String) searchParameter.getValueFromMappedParam("nomor");
+		String tipe = (String) searchParameter.getValueFromMappedParam("tipe");
+		String bank = (String) searchParameter.getValueFromMappedParam("bank");
+		String tahun = (String) searchParameter.getValueFromMappedParam("tahun");
+		String bulan = (String) searchParameter.getValueFromMappedParam("bulan");
+
+		if (!QueryUtil.isAll(nomor)) {
+            search.addWhere("AND LOWER(nomor) LIKE LOWER(:nomor) ");
+            search.addParameter("nomor", QueryUtil.formatStringForLikeFilter(nomor));
+        }
+
+		if (!QueryUtil.isAll(tipe)) {
+            search.addWhere("AND LOWER(tipe) LIKE LOWER(:tipe) ");
+            search.addParameter("tipe", QueryUtil.formatStringForLikeFilter(tipe));
+        }
+
+		if (!QueryUtil.isAll(bank)) {
+            search.addWhere("AND LOWER(bank) LIKE LOWER(:bank) ");
+            search.addParameter("bank", QueryUtil.formatStringForLikeFilter(bank));
+        }
+
+	    if (tahun != null) {
+	    	String strTahunBulan = tahun;
+	    	
+	    	if (bulan != null) {
+	    		strTahunBulan = strTahunBulan + bulan;
+	    		
+	            search.addWhere("AND substring(tgtrn, 1, 6) = :tahunBulan ");
+	            search.addParameter("tahunBulan", strTahunBulan);
+	    	}
+	    }
+	    
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public SearchResult<EPenerimaanBayarHeader> searchOnlyInvoice(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EPenerimaanBayarHeader> search = new HqlSimpleSearchBuilder<>(EPenerimaanBayarHeader.class, em);
+		
+		String nomor = (String) searchParameter.getValueFromMappedParam("nomor");
+		String nama = (String) searchParameter.getValueFromMappedParam("nama");
+		String alamat = (String) searchParameter.getValueFromMappedParam("alamat");
+		String email = (String) searchParameter.getValueFromMappedParam("email");
+		String customer = (String) searchParameter.getValueFromMappedParam("customer");
+		String produk = (String) searchParameter.getValueFromMappedParam("produk");
+		String status = (String) searchParameter.getValueFromMappedParam("status");
+		String fltodep = (String) searchParameter.getValueFromMappedParam("fltodep");
+		String jentrn = (String) searchParameter.getValueFromMappedParam("jentrn");
+		String tahun = (String) searchParameter.getValueFromMappedParam("tahun");
+		String bulan = (String) searchParameter.getValueFromMappedParam("bulan");
+
+        search.addWhere("AND (jenisTransaksi.kode = :invoto OR jenisTransaksi.kode = :invmanual) ");
+        search.addParameter("invoto", BaseConstants.JENIS_TRX_INVOICE_OTOMATIS);
+        search.addParameter("invmanual", BaseConstants.JENIS_TRX_INVOICE_MANUAL);
+		
+		if (!QueryUtil.isAll(nomor)) {
+            search.addWhere("AND LOWER(nomor) LIKE LOWER(:nomor) ");
+            search.addParameter("nomor", QueryUtil.formatStringForLikeFilter(nomor));
+        }
+
+		if (!QueryUtil.isAll(nama)) {
+            search.addWhere("AND LOWER(nama) LIKE LOWER(:nama) ");
+            search.addParameter("nama", QueryUtil.formatStringForLikeFilter(nama));
+        }
+
+		if (!QueryUtil.isAll(alamat)) {
+            search.addWhere("AND LOWER(alamat) LIKE LOWER(:alamat) ");
+            search.addParameter("alamat", QueryUtil.formatStringForLikeFilter(alamat));
+        }
+
+		if (!QueryUtil.isAll(email)) {
+            search.addWhere("AND LOWER(email) LIKE LOWER(:email) ");
+            search.addParameter("email", QueryUtil.formatStringForLikeFilter(email));
+        }
+
+		if (!QueryUtil.isAll(customer)) {
+            search.addWhere("AND LOWER(customer.nama) LIKE LOWER(:customer) ");
+            search.addParameter("customer", QueryUtil.formatStringForLikeFilter(customer));
+        }
+
+		if (!QueryUtil.isAll(produk)) {
+            search.addWhere("AND LOWER(produk.nama) LIKE LOWER(:produk) ");
+            search.addParameter("produk", QueryUtil.formatStringForLikeFilter(produk));
+        }
+
+//	    if (!QueryUtil.isAll(status)) {
+//	      search.addWhere("AND LOWER(status) LIKE LOWER(:status) ");
+//	      search.addParameter("status", QueryUtil.formatStringForLikeFilter(status));
+//	    }
+		System.out.println("-"+status+"-");
+	    if (status != null && !status.equals("")) {
+	    	if (status.equals("UNPAID")) {
+	  	      search.addWhere("AND (status = 'SENT' OR status = 'NOSENT') ");
+	    	} else {
+	    		search.addWhere("AND status = :status ");
+	    		search.addParameter("status", status);	    			    		
+	    	}
+	    }
+
+	    if (!QueryUtil.isAll(fltodep)) {
+	    	search.addWhere("AND LOWER(fltodep) LIKE LOWER(:fltodep) ");
+	    	search.addParameter("fltodep", QueryUtil.formatStringForLikeFilter(fltodep));
+	    }
+	    
+	    if (jentrn != null) {
+	    	search.addWhere("AND jenisTransaksi.kode = :jentrn ");
+	    	search.addParameter("jentrn", jentrn);
+	    }
+	    
+	    if (tahun != null) {
+	    	String strTahunBulan = tahun;
+	    	
+	    	if (bulan != null) {
+	    		strTahunBulan = strTahunBulan + bulan;
+	    	}
+	    	
+            search.addWhere("AND LOWER(tgtrn) LIKE LOWER(:tahunBulan) ");
+            search.addParameter("tahunBulan", QueryUtil.formatStringForLikeFilter(strTahunBulan));
+	    }
+	    
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EPenerimaanBayarHeader add(EPenerimaanBayarHeader entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+
+	public EPenerimaanBayarHeader edit(EPenerimaanBayarHeader entity) {
+		return save(entity);
+	}
+}

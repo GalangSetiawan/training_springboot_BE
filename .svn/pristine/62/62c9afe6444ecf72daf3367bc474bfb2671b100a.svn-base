@@ -1,0 +1,263 @@
+package co.id.sofcograha.base.master.company.services;
+
+//import id.co.sofcograha.gajiidapi.base.constants.BaseConstants;
+//import id.co.sofcograha.gajiidapi.base.exceptions.BusinessException;
+//import id.co.sofcograha.gajiidapi.base.extendables.BaseService;
+//import id.co.sofcograha.gajiidapi.base.mst.company.entities.Company;
+//import id.co.sofcograha.gajiidapi.base.mst.company.entities.CompanyLogo;
+//import id.co.sofcograha.gajiidapi.base.mst.company.pojos.CompanyLogoPojo;
+//import id.co.sofcograha.gajiidapi.base.mst.company.repositories.CompanyLogoRepository;
+//import id.co.sofcograha.gajiidapi.base.search.SearchParameter;
+//import id.co.sofcograha.gajiidapi.base.search.SearchResult;
+//import id.co.sofcograha.gajiidapi.base.utils.OptionalConsumerUtil;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.entities.ECompanyLogo;
+import co.id.sofcograha.base.master.company.pojos.CompanyLogoPojo;
+import co.id.sofcograha.base.master.company.repositories.CompanyLogoRepository;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Service
+public class CompanyLogoService extends BaseService {
+	
+	@Autowired CompanyService companyService;
+
+	@Autowired CompanyLogoRepository companyLogoRepository;
+	
+	@Transactional
+	public ECompanyLogo add(ECompanyLogo entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		ECompanyLogo addedEntity = companyLogoRepository.add(entity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+
+	@Transactional
+	public ECompanyLogo edit(ECompanyLogo entity) {
+		
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		ECompanyLogo toBeSaved = companyLogoRepository.getOne(entity.getId());
+//		ECompanyLogo oldEntity = (ECompanyLogo) toBeSaved.clone();
+		
+		//TODO: this may cause org.hibernate.TransientPropertyValueException
+		// (set reference to non existing data, then before reaching manageReferences, another thread trigger hibernate flush)
+		defineEditableValues(entity, toBeSaved);
+		
+		toBeSaved = companyLogoRepository.edit(toBeSaved);
+
+		throwBatchError();
+		return toBeSaved;	
+	}
+	
+	@Transactional
+	public void delete(String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, ECompany.class.getSimpleName());
+		throwBatchError();
+		
+		ECompanyLogo toBeDeleted = companyLogoRepository.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		companyLogoRepository.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ECompanyLogo dbEntity = companyLogoRepository.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (companyLogoRepository.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(ECompanyLogo entity) {
+		int defaultOrderNumber = 0;
+		entity.setOrderNumber(defaultOrderNumber);
+	}
+
+	protected void defineEditableValues(ECompanyLogo newValues, ECompanyLogo toBeSaved) {
+		toBeSaved.setOrderNumber(newValues.getOrderNumber());
+		toBeSaved.setFileExtension(newValues.getFileExtension());
+		toBeSaved.setFileName(newValues.getFileName());
+		toBeSaved.setFileSize(newValues.getFileSize());
+		toBeSaved.setFile(newValues.getFile());
+	}
+
+	protected void valRequiredValues(ECompanyLogo entity) {
+		valRequiredReference(entity.getCompany(), "companyLogo.company.required");
+		valRequiredInteger(entity.getOrderNumber(), "companyLogo.orderNumber.required");
+		valRequiredString(entity.getFileExtension(), "companyLogo.fileExtension.required");
+		valRequiredString(entity.getFileName(), "companyLogo.fileName.required");
+		valRequiredInteger(entity.getFileSize(), "companyLogo.fileSize.required");
+		if (entity.getFile() == null) {
+			batchError("companyLogo.file.required");
+		}
+	}
+	
+	protected void valRequiredReference(ECompany ref, String msgCode, Object... args) {
+		if (ref == null) { batchError(msgCode, args); return; }
+		if (ref.getId() == null) { batchError(msgCode, args); return; }
+		if (ref.getId().equals("")) { batchError(msgCode, args); return; }
+	}
+	
+//	@Override
+//	protected void valValid(ECompanyLogo entity) {	}
+
+	protected void manageMinMaxValues(ECompanyLogo entity) {
+		valMaxInteger(entity.getOrderNumber(), 999999, "companyLogo.orderNumber.max.length");
+		valMaxString(entity.getFileExtension(), 10, "companyLogo.fileExtension.max.length");
+		valMaxString(entity.getFileName(), 200, "companyLogo.fileName.max.length");
+		valMaxInteger(entity.getFileSize(), 999999999, "companyLogo.fileSize.max.length");
+		valImageMaxSize(entity);
+	}
+
+	protected void manageReferences(ECompanyLogo entity) {
+//		OptionalConsumerUtil.of(companyService.find(entity.getCompany().getId()))
+//		.ifPresent(company -> {
+//			if (company .getActive()) {
+//				entity.setCompany(company);
+//			} else {
+//				batchError("companyLogo.company.not.active");
+//			}
+//		})
+//		.ifNotPresent(() -> {
+//			batchError("companyLogo.company.not.found");
+//		});
+		ECompany eCompanyFromDb = companyService.get(entity.getCompany().getId());
+		if (eCompanyFromDb != null) {
+			if (eCompanyFromDb.getActive()) {
+				entity.setCompany(eCompanyFromDb);
+			} else {
+				batchError("companyLogo.company.not.active");
+			}
+		} else {
+			batchError("companyLogo.company.not.found");
+		}
+	}
+/*
+	@Override
+	protected void valAdd(CompanyLogo entity) {	}
+
+	@Override
+	protected void valEdit(CompanyLogo entity, CompanyLogo fromDb) { }
+*/
+
+	protected void valDelete(ECompanyLogo toBeDeleted) {	}
+
+	protected void valUniquenessOnAdd(ECompanyLogo addedEntity) {
+		reIndexOrderNumber(addedEntity);
+//		OptionalConsumerUtil.of(findByBk(addedEntity.getCompany(), addedEntity.getOrderNumber()))
+//		.ifPresent(fromDb -> {
+//			throw new BusinessException("companyLogo.bk", addedEntity.getCompany().getName(), addedEntity.getOrderNumber());
+//		});
+		ECompanyLogo eCompanyLogoFromDb = companyLogoRepository.findByBK(addedEntity.getCompany(), addedEntity.getOrderNumber());
+		if (eCompanyLogoFromDb != null) {
+			throw new BusinessException("companyLogo.bk", addedEntity.getCompany().getName(), addedEntity.getOrderNumber());
+		}
+	}
+
+	protected void valUniquenessOnEdit(ECompanyLogo editedEntity) {
+//		OptionalConsumerUtil.of(findByBk(editedEntity.getCompany(), editedEntity.getOrderNumber()))
+//		.ifPresent(fromDb -> {
+//			if (!editedEntity.getId().equals(fromDb.getId())) {
+//				throw new BusinessException("companyLogo.bk", editedEntity.getCompany().getName(), editedEntity.getOrderNumber());
+//			}
+//		});
+		ECompanyLogo eCompanyLogoFromDb = companyLogoRepository.findByBK(editedEntity.getCompany(), editedEntity.getOrderNumber());
+		if (eCompanyLogoFromDb != null) {
+			if (!editedEntity.getId().equals(eCompanyLogoFromDb.getId())) {
+				throw new BusinessException("companyLogo.bk", editedEntity.getCompany().getName(), editedEntity.getOrderNumber());
+			}
+		}
+	}
+	
+	private void valImageMaxSize(ECompanyLogo entity) {
+		if (entity.getFile().length > BaseConstants.MAX_LOGO_SIZE_IN_BYTES) {			
+			batchError("clientLogo.image.max.size", BaseConstants.MAX_LOGO_SIZE_IN_BYTES / 1024, entity.getFile().length / 1024, "KB");
+		}
+	}
+	
+	public void reIndexOrderNumber(ECompanyLogo entity) {
+		Map<String, String> mapParams = new HashMap<>();
+		mapParams.put("companyId", entity.getCompany().getId());
+		mapParams.put("sort", "orderNumber-desc");
+		SearchParameter searchParams = SearchParameter.generate(mapParams, CompanyLogoPojo.getFieldMappings());
+		
+		List<ECompanyLogo> companyLogosToChange =  companyLogoRepository.search(searchParams).getResult();
+		for(ECompanyLogo companyLogo: companyLogosToChange) {
+			int newOrderNumber = companyLogo.getOrderNumber() + 1;
+			companyLogo.setOrderNumber(newOrderNumber);
+			companyLogoRepository.edit(companyLogo);
+		}
+	}
+
+	public ECompanyLogo findByBk(ECompany company, Integer orderNumber) {
+		return companyLogoRepository.findByBK(company, orderNumber);
+	}
+
+	public SearchResult<ECompanyLogo>search(SearchParameter searchParameter) {
+		return companyLogoRepository.search(searchParameter);
+	}
+	
+	public ECompanyLogo get(String id) {
+		return companyLogoRepository.getOne(id);
+	}
+	
+	public ECompanyLogo findByCompanyId(String companyId) {
+		return companyLogoRepository.findByCompanyId(companyId);
+	}
+}

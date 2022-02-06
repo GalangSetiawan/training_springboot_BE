@@ -1,0 +1,120 @@
+package co.id.sofcograha.base.approval.services;
+
+import java.util.Date;
+import java.util.HashMap;
+
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.extendables.BaseService;
+
+@Service
+public class ApprovalService extends BaseService {
+			
+	public HashMap<String, Boolean> getFlags(String transactionId, String number, Date date) {
+		HashMap<String, Boolean> flags = new HashMap<String, Boolean>();
+		
+		if (!isParametersValid(transactionId, number, date)) {
+			flags.put("isValid", false);
+			return flags;
+		}
+
+		/*
+		Optional<Transaction> transaction = getTransaction(transactionId);
+		if (!transaction.isPresent()) {
+			flags.put("isValid", false);
+			return flags;
+		}
+		
+		Optional<ApprovalSetting> approvalSetting = getApprovalSetting(transaction.get());
+		if (!approvalSetting.isPresent()) {
+			flags.put("isValid", false);
+			return flags;
+		}
+		*/
+		
+		flags.put("isValid", true);
+		
+		// Optional<ApprovalLog> logHeader = getLogHeaderByBk(transaction.get(), number, date);
+		
+		// boolean isNewDocument = isNewDocument(logHeader);
+		boolean isNewDocument = true;
+		flags.put("isNewDocument", isNewDocument);
+		
+		/*
+		boolean isUsingApproval;
+		if (isNewDocument) {
+			isUsingApproval = isUsingApproval(approvalSetting.get());
+		} else {
+			isUsingApproval = isUsingApproval(logHeader.get());
+		}
+		flags.put("isUsingApproval", isUsingApproval);
+		*/
+		boolean isUsingApproval = false;
+		flags.put("isUsingApproval", false);
+		
+		if (isUsingApproval) {
+			if (isNewDocument) {
+				
+				flags.put("isFirstUser", true);
+				flags.put("isConfirm", false);
+				flags.put("isNextConfirm", false);
+				flags.put("isLastConfirm", false);
+				
+			} else {
+				
+				/*
+				User user = getCurrentUser();
+				Optional<ApprovalLogConfirmationDetail> logDetail = getLastConfirmedLevelLog(logHeader.get(), user);
+				
+				flags.put("isFirstUser", isFirstUser(logHeader, user));
+				
+				boolean isConfirm = isConfirm(logDetail);
+				flags.put("isConfirm", isConfirm);
+				
+				if (isConfirm) {
+					flags.put("isNextConfirm", isNextConfirm(logHeader, logDetail));
+				} else {
+					flags.put("isNextConfirm", false);
+				}
+				
+				flags.put("isLastConfirm", isLastConfirm(logHeader));
+				*/
+				flags.put("isFirstUser", true);
+				flags.put("isConfirm", false);
+				flags.put("isNextConfirm", false);
+				flags.put("isLastConfirm", false);
+			}
+			
+		} else {
+
+			// if not using approval ...
+			/*
+			User user = getCurrentUser();
+			Optional<ApprovalLogConfirmationDetail> logDetail = getLastConfirmedLevelLog(logHeader.get(), user);
+			boolean isConfirm = isConfirm(logDetail);
+			*/
+			boolean isConfirm = false;
+			flags.put("isConfirm", isConfirm);
+		}
+		
+		return flags;
+	}
+	
+	private boolean isParametersValid(String transactionId, String number, Date date) {
+		if (transactionId == null || transactionId.trim().equals(BaseConstants.EMPTY)) {
+			return false;
+		}
+		
+		if (number == null || number.trim().equals(BaseConstants.EMPTY)) {
+			return false;
+		}
+		
+		if (date == null) {
+			return false;
+		}
+		
+		return true;
+	}
+	
+}

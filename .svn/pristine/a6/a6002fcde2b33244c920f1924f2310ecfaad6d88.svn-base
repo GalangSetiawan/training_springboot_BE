@@ -1,0 +1,162 @@
+package co.id.sofcograha.base.loginlogoutlog.services;
+
+import java.util.Date;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.enums.AccessTypeLog;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.loginlogoutlog.entities.ELoginLogoutLog;
+import co.id.sofcograha.base.loginlogoutlog.repositories.LoginLogoutLogRepository;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+//import id.co.sofcograha.gajiidapi.base.constants.enums.AccessTypeLog;
+//import id.co.sofcograha.gajiidapi.base.extendables.BaseService;
+//import id.co.sofcograha.gajiidapi.base.mst.loginlogoutlog.entities.LoginLogoutLog;
+//import id.co.sofcograha.gajiidapi.base.mst.loginlogoutlog.repositories.LoginLogoutLogRepository;
+//import id.co.sofcograha.gajiidapi.base.search.SearchParameter;
+//import id.co.sofcograha.gajiidapi.base.search.SearchResult;
+
+@Service
+public class LoginLogoutLogService extends BaseService {
+	
+	@Autowired
+	private LoginLogoutLogRepository loginLogoutLogRepository;
+	
+	@Transactional
+	public ELoginLogoutLog add(ELoginLogoutLog entity) {
+		
+		entity.setId(null);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		ELoginLogoutLog addedEntity = loginLogoutLogRepository.add(entity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+	
+	@Transactional
+	public ELoginLogoutLog edit(ELoginLogoutLog entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		ELoginLogoutLog toBeSaved = loginLogoutLogRepository.getOne(entity.getId());
+		ELoginLogoutLog oldEntity = (ELoginLogoutLog) toBeSaved.clone();
+		
+		//TODO: this may cause org.hibernate.TransientPropertyValueException
+		// (set reference to non existing data, then before reaching manageReferences, another thread trigger hibernate flush)
+		defineEditableValues(entity, toBeSaved);
+		
+		toBeSaved = loginLogoutLogRepository.edit(toBeSaved);
+
+		throwBatchError();
+		return toBeSaved;	
+	}
+	
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ELoginLogoutLog dbEntity = loginLogoutLogRepository.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (loginLogoutLogRepository.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+		
+	
+/*
+	@Override
+	protected void defineDefaultValuesOnAdd(LoginLogoutLog entity) {
+	}
+*/
+
+	private void defineEditableValues(ELoginLogoutLog newValues, ELoginLogoutLog toBeSaved) {
+		toBeSaved.setLogDate(newValues.getLogDate());
+		toBeSaved.setUsername(newValues.getUsername());
+		toBeSaved.setAccessType(newValues.getAccessType());
+		toBeSaved.setAccessStatus(newValues.getAccessStatus());
+		toBeSaved.setFromCompanyName(newValues.getFromCompanyName());
+		toBeSaved.setToCompanyName(newValues.getToCompanyName());
+		toBeSaved.setDataOutput(newValues.getDataOutput());
+	}
+
+	protected void valRequiredValues(ELoginLogoutLog entity) {
+		valRequiredDate(entity.getLogDate(), "loginLogoutLog.logDate.required");
+		valRequiredString(entity.getUsername(), "loginLogoutLog.username.required");
+		valRequiredEnum(entity.getAccessType(), AccessTypeLog.class, "loginLogoutLog.accessType.required");
+	}
+
+
+	protected void manageMinMaxValues(ELoginLogoutLog entity) {
+		valMaxString(entity.getUsername(), 100, "loginLogoutLog.username.max.length");
+		valMaxString(entity.getFromCompanyName(), 100, "loginLogoutLog.fromCompanyName.max.length");
+		valMaxString(entity.getToCompanyName(), 100, "loginLogoutLog.toCompanyName.max.length");
+	}
+/*
+	@Override
+	protected void manageReferences(LoginLogoutLog entity) {
+	}
+
+	@Override
+	protected void valValid(LoginLogoutLog entity) {  }
+	
+	@Override
+	protected void valAdd(LoginLogoutLog entity) {	}
+
+	@Override
+	protected void valEdit(LoginLogoutLog entity, LoginLogoutLog fromDb) { }
+
+	@Override
+	protected void valDelete(LoginLogoutLog toBeDeleted) {	}
+
+	@Override
+	protected void valUniquenessOnAdd(LoginLogoutLog addedEntity) {
+//		OptionalConsumerUtil.of(findByBk(addedEntity.getLogDate()))
+//		.ifPresent(fromDb -> {
+//			throw new BusinessException("loginLogoutLog.bk", addedEntity.getLogDate());
+//		});
+	}
+
+	@Override
+	protected void valUniquenessOnEdit(LoginLogoutLog editedEntity) {
+//		OptionalConsumerUtil.of(findByBk(editedEntity.getLogDate()))
+//		.ifPresent(fromDb -> {
+//			if (!editedEntity.getId().equals(fromDb.getId())) {
+//				throw new BusinessException("loginLogoutLog.bk", editedEntity.getLogDate());
+//			}
+//		});
+	}
+*/
+	
+	public ELoginLogoutLog find(String id) {
+		return loginLogoutLogRepository.getOne(id);
+	}
+	
+	public ELoginLogoutLog findByBk(Date logDate) {
+		return loginLogoutLogRepository.findByBK(logDate);
+	}
+
+	public SearchResult<ELoginLogoutLog>search(SearchParameter searchParameter) {
+		return loginLogoutLogRepository.search(searchParameter);
+	}
+}

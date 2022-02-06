@@ -1,0 +1,966 @@
+package co.id.sofcograha.domain.invoicing.proses.invoiceOtomatis.services;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+import co.id.sofcograha.domain.invoicing.admin.diskon.entities.EAdminDiskon;
+import co.id.sofcograha.domain.invoicing.admin.diskon.services.AdminDiskonService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewal;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetAdj;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTgh;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewal;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetAdj;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetAdjSubDetSkemaTarif;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetTgh;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetTghSubDetDiskon;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetTghSubDetSkemaTarif;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalCompleteService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetAdjService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetTghService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalService;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.ESumDetailUpload;
+import co.id.sofcograha.domain.invoicing.admin.upload.services.AdminUploadDetailService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifDetail;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifDetailService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifHeaderService;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.pojos.SkemaHargaDetail;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.services.SkemaHargaDetailService;
+import co.id.sofcograha.domain.invoicing.saldo.live.pojos.SaldoLive;
+import co.id.sofcograha.domain.invoicing.saldo.live.services.SaldoLiveCompleteService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailInitial;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceSubDetailPerhitunganSkemaTarif;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.invoiceManual.services.InvoiceManualCompleteService;
+
+@Service
+public class InvoiceOtomatisService extends BaseService {
+  
+	@Autowired private CustomerProdukTarifDetailService customerProdukTarifDetailService;
+	@Autowired private SkemaHargaDetailService skemaHargaDetailService;
+	
+	@Autowired private SaldoLiveCompleteService saldoLiveCompleteService;
+	@Autowired private AdminDiskonService adminDiskonService;
+	@Autowired private InvoiceManualCompleteService invoiceManualCompleteService;
+	
+	@Autowired private AdminRenewalService adminRenewalService;
+	@Autowired private AdminUploadDetailService adminUploadDetailService;
+	@Autowired private CustomerProdukTarifHeaderService customerProdukTarifHeaderService;
+	@Autowired private AdminRenewalCompleteService adminRenewalCompleteService;
+	
+	@Autowired private AdminRenewalDetAdjService adminRenewalDetAdjService;
+	@Autowired private AdminRenewalDetTghService adminRenewalDetTghService;
+		
+	@Transactional
+	public void prosesBatalInvoiceOtomatis(String tahun, String bulan) {
+		
+		// ambil data customer yang masih live (belum dihentikan) dari SI004
+		List<SaldoLive> liveCustomers = SaldoLive.fromEntities(saldoLiveCompleteService.getLiveCustomer());
+		
+		for (SaldoLive saldoLive : liveCustomers) {
+
+			String idMi010 = saldoLive.customer.id;
+			String idMi001 = saldoLive.produk.id;
+		
+			AdminRenewal adminRenewal = AdminRenewal.fromEntity(adminRenewalService.findByBk(tahun, bulan, idMi010, idMi001));
+			
+			// hapus ai310 bdsk id_ai003
+			//    jadi ambil data ai310 utk id_ai003 yg ditemukan, lalu loop utk hapus
+			List<EAdminRenewalDetAdj> detAdjs = adminRenewalDetAdjService.findByHeaderId(adminRenewal.id);
+			for (EAdminRenewalDetAdj eAdminRenewalDetAdj : detAdjs) {
+				adminRenewalDetAdjService.delete(eAdminRenewalDetAdj.getId(), eAdminRenewalDetAdj.getVersion());
+				
+				if (isAnyBatchErrors()) {			
+
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+						
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+						
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+			
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+						
+						saldoLive.errorMsg.add(message);
+					}
+					
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();			
+				}
+				
+			}
+			
+			// hapus ai320 bdsk id_ai003
+			//    jadi ambil data ai310 utk id_ai003 yg ditemukan, lalu loop utk hapus
+			List<EAdminRenewalDetTgh> detTghs = adminRenewalDetTghService.findByHeaderId(adminRenewal.id);
+			for (EAdminRenewalDetTgh eAdminRenewalDetTgh : detTghs) {
+				adminRenewalDetTghService.delete(eAdminRenewalDetTgh.getId(), eAdminRenewalDetTgh.getVersion());
+				
+				if (isAnyBatchErrors()) {			
+
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+						
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+						
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+			
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+						
+						saldoLive.errorMsg.add(message);
+					}
+					
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();			
+				}
+				
+			}
+		}
+	}
+	
+	
+	// sebelum method ini dijalankan, data harus sudah ada di AI002 dan lengkap (v1 dan v2)
+	// ini adalah method proses, validasi-validasi dilakukan di luar method ini
+	// hasil dari method ini adalah : terciptanya data di AI021, AI0211, AI0212 atau AI031, AI032 (tergantung siklus dari data ini)
+	@Transactional
+	public void prosesInvoiceOtomatis(String tahun, String bulan) {
+		
+		// ambil data customer yang masih live (belum dihentikan) dari SI004
+		List<SaldoLive> liveCustomers = SaldoLive.fromEntities(saldoLiveCompleteService.getLiveCustomer());
+		
+		for (SaldoLive saldoLive : liveCustomers) {
+
+			String idMi010 = saldoLive.customer.id;
+			String idMi001 = saldoLive.produk.id;
+			
+			System.out.println(saldoLive.customer.nama);
+			
+			// skema tarif untuk satu PT + npwp pasti sama, meskipun data bagi PT + npwp ini ada di V.1 dan V.2
+			// jadi data karyawan yang sudah diupload tinggal di total saja.
+			// jadi berdasarkan customer + produk dan mapping (MI013), 
+			// ambil total : jkbulini, revjkbullalu, seljkbullalu, jnkbulini, revjnkbullalu, seljnkbullalu
+			// dari AI002
+			ESumDetailUpload eSumDetailUpload = adminUploadDetailService.getTotalJumlahKaryByCustomerProdukTahunBulan(idMi010, idMi001, tahun, bulan);
+			
+			// ambil admin renewal untuk customer + produk dan tahun bulan proses
+			// untuk tahun bulan proses ini catatan yang harus diingat !!
+			// belum tentu tahun bulan proses, kan renewal itu tahun bulan invoice,
+			// jadi kalau misal periodik 3 bulanan, ya ini baru ada isinya di 3 bulan ke depan kan
+			// jadi kalau dicari tahun bulan proses ya pasti ngga ketemu, pertanyaannya gimana caranya kita bisa cari dta 3 bulan ke depan itu
+			// dan gimana caranya kita bisa yakin bahwa yang diproses saat ini tu untuk data 3 bulan ke depan itu ?
+			//    JAWAB : cari ke AI003 nya jelas pakai customer + produk, kabar baiknya adalah customer + produk yang live ini pasti hanya
+			//            ada satu, artinya tinggal cari tahun bulan nya yang mana
+			//            bagaimana kalau cari tahun bulan yang >= dari tahun bulan proses tapi yg terdekat (pakai MIN)			
+			
+			//EAdminRenewal eAdminRenewal = adminRenewalService.findByBk(tahun, bulan, idMi010, idMi001);
+			EAdminRenewal eAdminRenewal = adminRenewalService.getNearestRenewal(idMi010, idMi001, tahun + bulan);
+
+			// ambil header master customer tarif produk
+			CustomerProdukTarifHeader customerProdukTarifHeader = customerProdukTarifHeaderService.findByBk(idMi010, idMi001);
+						
+			if ((customerProdukTarifHeader.satsiklus.equals("BULAN") || customerProdukTarifHeader.satsiklus.equals("TAHUN")) && 
+				 customerProdukTarifHeader.jumsiklus > 1) {
+
+				System.out.println("customer periodik, hitung adjustment bila ada");
+				
+				// bila siklus adalah periodik, hitung adjustment untuk tahun bulan ini
+				//    jadi misal siklus 6 bulanan, live bulan januari 2021 (tagihan berikutnya adalah juli 2021)
+				//       saat proses untuk bulan januari 2021  -> tidak ada yang dilakukan
+				//       saat proses untuk bulan pebruari 2021 -> lakukan adjustment untuk bulan januari 2021
+				//       ... dst ...
+				//       saat proses untuk bulan juli 2021 -> lakukan adjustment untuk bulan juni 2021
+				
+				// tahunya bahwa dia harus disimpan di "renewal yang itu" dari mana ?
+				//    semisal untuk contoh di atas, tahun bulan proses adalah : pebruari 2021, adjustment nya untuk januari 2021
+				//    jadi 'seek' nya di renewal bdsk : customer + produk untuk pebruari 2021
+				
+				AdminRenewalDetAdj adminRenewalDetAdj = hitungAdjustment(idMi010, idMi001, tahun, bulan, eSumDetailUpload);
+				
+				if (adminRenewalDetAdj != null) {
+					// bila ditemukan ada perhitungan renewal, sebab bisa saja terjadi di bulan ini tidak ada data revisi jumlah
+					
+					adminRenewalDetAdj.header = AdminRenewal.fromEntity(eAdminRenewal);
+
+					// simpan hasil hitung ke AI310 dan AI311
+					// proses simpan ini termasuk memeriksa ke admin ada tidaknya freemonth (AI006), bila ada, maka flag tagih di detail 
+					// adjustment akan ditandai : T
+					ArrayList<Message> messages = adminRenewalCompleteService.addDetailAdjustment(adminRenewalDetAdj, eAdminRenewal);
+					
+					// ada error yang ditemukan
+					if (messages != null) {
+						for (Message message : messages) {
+							saldoLive.errorMsg.add(message);
+						}
+					}
+					
+				}
+				
+			}
+			
+			// di admin renewal, bila tahun bulan untuk customer + produk ini ada dan belum diproses
+			// maka harus dijalankan proses generate invoice nya
+			if (eAdminRenewal != null && eAdminRenewal.getFlproi().equals(BaseConstants.TIDAK)) {
+
+				// hitung tagihan
+				System.out.println("Ada renewal berarti harus dihitung tagihannya");
+
+				if (eSumDetailUpload != null) {
+					
+					boolean isError = false;
+					if (customerProdukTarifHeader.satsiklus.equals("BULAN") && 
+						customerProdukTarifHeader.jumsiklus == 1) {
+						
+						System.out.println("bulanan");
+						
+						// siklus adalah bulanan (tiap satu bulan), hitung tarif bulanan
+						ArrayList<Message> messages = hitungTagihanPeriodeBulanan(customerProdukTarifHeader, tahun, bulan, eSumDetailUpload, eAdminRenewal);
+							
+						// ada error yang ditemukan
+						if (messages != null) {
+							isError = true;
+							for (Message message : messages) {
+								saldoLive.errorMsg.add(message);
+							}
+						}
+					} else {
+						// siklus adalah periodik (tiap n tahun / n bulan), hitung tarif periodik
+							
+						// ini kan dalam if yang ada di renewal, jadi artinya ya dia harus create invoice initial
+						// cara createnya, ambil base hitungan jumlah karyawan dari invoice initial termuda, lalu hitung ulang
+						// dengan skema tarif saat ini
+						
+						System.out.println("periodik");
+						
+						ArrayList<Message> messages = hitungTagihanPeriodik(idMi010, idMi001, tahun, bulan, eAdminRenewal);
+						
+						// ada error yang ditemukan
+						if (messages != null) {
+							isError = true;
+							for (Message message : messages) {
+								saldoLive.errorMsg.add(message);
+							}
+						}
+
+						// rekap adjustment-adjustment mulai awal periode yg lalu sampai dengan saat ini
+						// ini nanti saja dilakukan waktu generate invoice
+						
+					}
+					
+					if (!isError) {
+
+						// generate next renewal (generate admin renewal ini sudah termasuk generate admin freemonth)
+						adminRenewalService.createNextAdmin(eAdminRenewal.getCustomer(), eAdminRenewal.getProduk(), saldoLive.tglive, tahun, bulan);
+						
+						adminDiskonService.createNextAdmin(tahun, bulan, eAdminRenewal.getCustomer(), eAdminRenewal.getProduk());
+						
+					}
+				}				
+			}			
+		}
+		
+	}
+	
+	// tagihan periodik pasti pra bayar
+	public ArrayList<Message> hitungTagihanPeriodik(String idMi010, String idMi001, String tahun, String bulan, EAdminRenewal eAdminRenewal) {
+		
+		ArrayList<Message> result = null;
+		
+		// ambil data invoice manual termuda (acuan adalah tahun bulan proses) untuk customer + produk ini dan
+		// memiliki detail initial
+		EInvoiceHeader eInvoiceHeader = invoiceManualCompleteService.getInvoiceInitialTerakhirByTanggal(idMi010, idMi001, tahun + bulan + "01");
+		
+		// ambil jumlah karyawan basis perhitungan di detail invoice tersebut
+		EInvoiceDetailInitial eInvoiceDetailInitial = eInvoiceHeader.getDetailInitial().get(0);
+		Integer jumkar = 0;
+		if (eInvoiceDetailInitial != null) {
+			jumkar = eInvoiceDetailInitial.getJumkar();
+		}
+		
+		// ambil detail skema tarif berdasarkan tanggal hitung
+		CustomerProdukTarifDetail detailTarifSkemaHarga = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(idMi010, idMi001, "SKEMA", tahun + bulan + "01");
+		
+		AdminRenewalDetTgh adminRenewalDetTgh = null;
+		if (detailTarifSkemaHarga.jnstrf.equals("PRG")) {
+			// hitung tarif progresif berdasarkan jumlah karyawan tersebut		
+			adminRenewalDetTgh = hitungTarifProgresif(idMi010, idMi001, detailTarifSkemaHarga, jumkar);						
+		} else {
+			// hitung tarif flat berdasarkan jumlah karyawan tersebut		
+			adminRenewalDetTgh = hitungTarifFlat(idMi010, idMi001, detailTarifSkemaHarga, jumkar);			
+		}
+
+		// hitung diskon
+        hitungDiskon(idMi010, idMi001, tahun, bulan, adminRenewalDetTgh);
+
+		// simpan hasil hitung ke AI320, AI321 dan AI322
+        result = adminRenewalCompleteService.addDetailTagih(adminRenewalDetTgh, eAdminRenewal);
+		
+        return result;
+	}
+	
+	// untuk pasca bayar (MI011.jnstgh = PASCA), jadi kalau tahun bulan dikirim = 2021/02,
+	//    pakai dulu baru bayar
+	//    ini artinya sebenarnya datanya adalah data januari 2021, jadi hitung dengan tarif januari
+	// untuk pra bayar (MI011.jnstgh = PRA), biasanya yg tarif flat), ini artinya pra bayar, jadi kalau tahun bulan dikirim = 2021/02
+	//    bayar dulu baru pakai
+	//    ini artinya datanya adalah data pebruari 2021, jadi hitung dengan tarif pebruari
+	@Transactional
+	public ArrayList<Message> hitungTagihanPeriodeBulanan(CustomerProdukTarifHeader customerProdukTarifHeader, String tahun, String bulan, ESumDetailUpload eSumDetailUpload, EAdminRenewal eAdminRenewal) {
+		
+		ArrayList<Message> result = null;
+		
+		// Ambil dari master tarif, untuk mengetahui tipe skema tarif progresif atau flat
+		String jenisTagih = customerProdukTarifHeader.jnstgh;
+		
+		String idCustomer = customerProdukTarifHeader.customer.id;
+		String idProduk   = customerProdukTarifHeader.produk.id;
+		String tanggal    = "";
+		
+		if (jenisTagih.equals("PASCA")) {
+			// pasca bayar, artinya tidak ada penyesuaian jumlah karyawan
+
+			System.out.println("pasca bayar");
+			
+			// bila pasca bayar, maka ini artinya ya itung aja untuk tahun bulan ini
+			//if (Integer.valueOf(bulan) == 1) {
+			//	tanggal = tahun + "12" + "01";
+			//} else {
+			//	String bln = "0" + String.valueOf(Integer.valueOf(bulan) - 1);
+			//	tanggal = tahun + bln.substring(bln.length()-2, bln.length()) + "01";
+			//}
+			
+			tanggal = tahun + bulan + "01";
+			System.out.println("   " + tanggal);
+			
+			// ambil skema perhitungan tarif dari master customer tarif produk (MI011-MI012)
+			// karena ini pasti sudah live, maka cari dengan berdasar range periode		
+			CustomerProdukTarifDetail detailTarifSkemaHarga = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(idCustomer, idProduk, "SKEMA", tanggal);
+			
+			// hitung tarif progresif
+			Integer totalKary = eSumDetailUpload.getJkbulini() + eSumDetailUpload.getJnkbulini();
+			
+			System.out.println("   totalKary: " + totalKary);
+			System.out.println("   detailTarifSkemaHarga.skemaHarga: =" + detailTarifSkemaHarga.skemaHarga + "=");
+			
+			AdminRenewalDetTgh adminRenewalDetTgh = null;
+			if (detailTarifSkemaHarga.skemaHarga.tipe.equals("PRG")) {
+				System.out.println("   PROGRESIF");
+				adminRenewalDetTgh = hitungTarifProgresif(idCustomer, idProduk, detailTarifSkemaHarga, totalKary);				
+			} else {
+				System.out.println("   FLAT");
+				adminRenewalDetTgh = hitungTarifFlat(idCustomer, idProduk, detailTarifSkemaHarga, totalKary);								
+			}
+
+            for (AdminRenewalDetTghSubDetSkemaTarif item : adminRenewalDetTgh.subDetailSkemaTarif) {
+            	System.out.println("   > " + item.jnstrf);
+            }
+			
+			// hitung diskon
+            hitungDiskon(idCustomer, idProduk, tahun, bulan, adminRenewalDetTgh);
+			
+            for (AdminRenewalDetTghSubDetSkemaTarif item : adminRenewalDetTgh.subDetailSkemaTarif) {
+            	System.out.println("   > " + item.jnstrf);
+            }
+            
+			// simpan hasil hitung ke AI320, AI321 dan AI322
+            result = adminRenewalCompleteService.addDetailTagih(adminRenewalDetTgh, eAdminRenewal);
+            
+            if (result != null) {
+                for (Message message : result) {
+                	System.out.println("      " + message.getCode());
+                }            	
+            }
+								
+		} else {
+			// bayar dulu baru pakai (biasanya untuk skema flat), artinya ada penyesuaian tarif untuk jumlah karyawan bulan lalu
+			// jadi ada dua perhitungan :
+			// - perhitungan untuk tarif dasar nya
+			
+			// untuk flat tarif mengikuti skema tarif yang berlaku di bulan yang diproses ini
+			tanggal = tahun + bulan + "01";
+			
+			// ambil skema perhitungan tarif dari master customer tarif produk (MI011-MI012)
+			// karena ini pasti sudah live, maka cari dengan berdasar range periode		
+			CustomerProdukTarifDetail detailTarifSkemaHarga = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(idCustomer, idProduk, "SKEMA", tanggal);
+			
+			Integer totalKary = eSumDetailUpload.getJkbulini() + eSumDetailUpload.getJnkbulini();
+
+			AdminRenewalDetTgh adminRenewalDetTgh = null;
+			if (detailTarifSkemaHarga.skemaHarga.tipe.equals("PRG")) {
+				System.out.println("   PROGRESIF");
+				adminRenewalDetTgh = hitungTarifProgresif(idCustomer, idProduk, detailTarifSkemaHarga, totalKary);								
+			} else {
+				System.out.println("   FLAT");
+				adminRenewalDetTgh = hitungTarifFlat(idCustomer, idProduk, detailTarifSkemaHarga, totalKary);				
+			}
+						
+			// hitung diskon
+            hitungDiskon(idCustomer, idProduk, tahun, bulan, adminRenewalDetTgh);
+            
+			// simpan hasil hitung ke AI320, AI321 dan AI322
+            result = adminRenewalCompleteService.addDetailTagih(adminRenewalDetTgh, eAdminRenewal);
+			
+			// - perhitungan untuk penyesuaiannya 
+            //   tapi kalau ini adalah bulan pertama bagaimana ? kan ngga perlu hitung adjustment bulan lalu 
+            //      JAWAB : data dari gaji.id utk selisih bulan lalu harusnya 0, kalau 0 ya ngga dihitung
+
+			AdminRenewalDetAdj adminRenewalDetAdj = null;
+			if (eSumDetailUpload.getSeljkbullalu() != 0 || eSumDetailUpload.getSeljnkbullalu() != 0) {
+				// ada adjustment, hitung
+				
+				adminRenewalDetAdj = hitungAdjustment(idCustomer, idProduk, tahun, bulan, eSumDetailUpload);
+				
+				// simpan hasil hitung ke AI310 dan AI311				
+				ArrayList<Message> messages = adminRenewalCompleteService.addDetailAdjustment(adminRenewalDetAdj, eAdminRenewal);
+				
+				if (messages != null) {
+					if (result != null) {
+						for (Message message : messages) {
+							result.add(message);
+						}
+					} else {
+						result = messages;
+					}
+				}
+				
+			}
+			
+		}
+
+		return result;
+	}
+	
+	public AdminRenewalDetAdj hitungAdjustment(String idMi010, String idMi001, String tahun, String bulan, ESumDetailUpload eSumDetailUpload) {
+
+		AdminRenewalDetAdj result = null;
+		
+		// cari tanggal bulan lalu
+		String tanggal = "";
+		if (Integer.valueOf(bulan) == 1) {
+			tanggal = tahun + "12" + "01";
+		} else {
+			String bln = "0" + String.valueOf(Integer.valueOf(bulan) - 1);
+			tanggal = tahun + bln.substring(bln.length()-2, bln.length()) + "01";
+		}
+		
+		// ambil detail tarif berdasar tanggal bulan lalu
+		CustomerProdukTarifDetail detailTarifSkemaHarga = customerProdukTarifDetailService.getByCustProdukAndJenisTarifDgnRange(idMi010, idMi001, "SKEMA", tanggal);
+
+		// tentukan jumlah adjustment yang dijadikan acuan perhitungan
+		Integer totalKary = 0;
+		if (eSumDetailUpload != null) {
+			if (eSumDetailUpload.getSeljkbullalu() != 0) {
+				totalKary = eSumDetailUpload.getRevjkbullalu() - eSumDetailUpload.getSeljkbullalu();
+			}
+			
+			if (eSumDetailUpload.getSeljnkbullalu() != 0) {
+				totalKary = totalKary  + (eSumDetailUpload.getRevjnkbullalu() - eSumDetailUpload.getSeljnkbullalu());			
+			}			
+		}
+		
+		if (totalKary > 0) {
+			
+			// hitung tarif flat berdasar tarif tersebut
+			AdminRenewalDetTgh adminRenewalDetTgh = ambilTarifFlat(detailTarifSkemaHarga, totalKary);
+			
+			if (adminRenewalDetTgh != null) {
+				
+				// definisikan return value
+				result = new AdminRenewalDetAdj();
+				
+				result.tahun = tanggal.substring(0, 4);
+				result.bulan = tanggal.substring(4, 6);
+				result.keterangan = "Adjustment";
+				result.jkbulini = eSumDetailUpload.getJkbulini();
+				result.revjkbullalu = eSumDetailUpload.getRevjkbullalu();
+				result.seljkbullalu = eSumDetailUpload.getSeljkbullalu();
+				result.jnkbulini = eSumDetailUpload.getJnkbulini();
+				result.revjnkbullalu = eSumDetailUpload.getRevjnkbullalu();
+				result.seljnkbullalu = eSumDetailUpload.getSeljnkbullalu();
+				result.harga = adminRenewalDetTgh.harga;
+				result.nouskm = adminRenewalDetTgh.nouskm;
+				
+				result.subDetailSkemaTarif = new ArrayList<AdminRenewalDetAdjSubDetSkemaTarif>();
+				
+				for (AdminRenewalDetTghSubDetSkemaTarif temp : adminRenewalDetTgh.subDetailSkemaTarif) {
+				
+					AdminRenewalDetAdjSubDetSkemaTarif adminRenewalDetAdjSubDetSkemaTarif = new AdminRenewalDetAdjSubDetSkemaTarif();
+					
+					adminRenewalDetAdjSubDetSkemaTarif.nourut = temp.nourut;
+					adminRenewalDetAdjSubDetSkemaTarif.jnstrf = temp.jnstrf;
+					adminRenewalDetAdjSubDetSkemaTarif.jumlah = temp.jumlah;
+					adminRenewalDetAdjSubDetSkemaTarif.harga = temp.harga;
+					adminRenewalDetAdjSubDetSkemaTarif.bruto = temp.bruto;
+					adminRenewalDetAdjSubDetSkemaTarif.netto = temp.netto;
+					adminRenewalDetAdjSubDetSkemaTarif.keterangan = temp.keterangan;
+					
+					result.subDetailSkemaTarif.add(adminRenewalDetAdjSubDetSkemaTarif);
+				}
+			}			
+		}
+				
+		return result;
+	}
+	
+	// AdminRenewalDetTgh hanya digunakan sebagai perantara saja
+	public AdminRenewalDetTgh ambilTarifFlat(CustomerProdukTarifDetail detailTarifSkemaHarga, Integer totalKary) {
+		
+		AdminRenewalDetTgh adminRenewalDetTgh = null;
+		
+		if (detailTarifSkemaHarga != null) {
+
+            adminRenewalDetTgh = new AdminRenewalDetTgh();
+            adminRenewalDetTgh.harga = 0.0;
+            adminRenewalDetTgh.nouskm = detailTarifSkemaHarga.nourut;
+            
+			List<AdminRenewalDetTghSubDetSkemaTarif> detailPerhitungan = new ArrayList<AdminRenewalDetTghSubDetSkemaTarif>();
+            
+			// ambil data detail tarif utama master customer tarif produk, urutkan berdasarkan nilai Max
+			List<SkemaHargaDetail> utamas = skemaHargaDetailService.getByIdAndKelTarifSortByMax(detailTarifSkemaHarga.skemaHarga.id, "UTAMA");
+
+            // Perhitungan flat
+			// ambil tarif utama				
+            int nourut = 1;
+            for (SkemaHargaDetail utama : utamas) {
+            	if (totalKary >= utama.min && totalKary >= utama.max) {
+
+            		AdminRenewalDetTghSubDetSkemaTarif perhitungan = new AdminRenewalDetTghSubDetSkemaTarif();
+    	            perhitungan.nourut = nourut;
+    	            perhitungan.jnstrf = "UTAMA";
+    	            perhitungan.keterangan = utama.min + " - " + utama.max;
+    	            perhitungan.jumlah = (totalKary - utama.min + 1);
+    	            perhitungan.harga = utama.harga;
+    	            perhitungan.bruto = 0.0;
+    	            perhitungan.netto = 0.0;	    	            
+    	            detailPerhitungan.add(perhitungan);
+            		
+            		adminRenewalDetTgh.harga = utama.harga;
+            		
+    	            break;
+
+            	}
+            }
+            
+            adminRenewalDetTgh.subDetailSkemaTarif = detailPerhitungan;
+		}	
+
+		return adminRenewalDetTgh;
+	}
+	
+	public AdminRenewalDetTgh hitungTarifProgresif(String idCustomer, String idProduk, CustomerProdukTarifDetail detailTarifSkemaHarga, Integer totalKary) {
+		
+		AdminRenewalDetTgh adminRenewalDetTgh = null;
+		
+		if (detailTarifSkemaHarga != null) {
+
+            adminRenewalDetTgh = new AdminRenewalDetTgh();
+			Integer nouskm = null;
+			
+			List<AdminRenewalDetTghSubDetSkemaTarif> detailPerhitungan = new ArrayList<AdminRenewalDetTghSubDetSkemaTarif>();
+			//List<AdminRenewalDetTghSubDetDiskon> detailDiskon = new ArrayList<AdminRenewalDetTghSubDetDiskon>();
+			
+			// mulai perhitungan
+			//Integer totalKary = eSumDetailUpload.getJkbulini() + eSumDetailUpload.getJnkbulini();
+
+			nouskm = detailTarifSkemaHarga.nourut;
+			
+			// ambil data detail overhead master customer tarif produk, urutkan berdasarkan nilai Max
+			List<SkemaHargaDetail> overheads = skemaHargaDetailService.getByIdAndKelTarifSortByMax(detailTarifSkemaHarga.skemaHarga.id, "OVERH");
+			  
+			// ambil data detail tarif utama master customer tarif produk, urutkan berdasarkan nilai Max
+			List<SkemaHargaDetail> utamas = skemaHargaDetailService.getByIdAndKelTarifSortByMax(detailTarifSkemaHarga.skemaHarga.id, "UTAMA");
+
+			// ambil tarif overhead				
+            Double hargaOverhead = 0.0;
+            Integer jumlah = 1;
+            for (SkemaHargaDetail overhead : overheads) {
+            	if (totalKary >= overhead.min && totalKary <= overhead.max) {
+            		jumlah = overhead.max - overhead.min + 1;
+            		hargaOverhead = overhead.harga;
+            		break;
+            	} else {
+            		if (totalKary >= overhead.max) {
+                		jumlah = overhead.max - overhead.min + 1;
+            			hargaOverhead = overhead.harga;
+            		}
+            	}
+            }
+			
+            int nourut = 1;
+            
+            AdminRenewalDetTghSubDetSkemaTarif perhitungan = new AdminRenewalDetTghSubDetSkemaTarif();
+            perhitungan.nourut = nourut;
+            perhitungan.jnstrf = "OVERH";
+            perhitungan.keterangan = "Overhead";
+            perhitungan.jumlah = jumlah;
+            perhitungan.harga = hargaOverhead;
+            perhitungan.bruto = hargaOverhead;
+            perhitungan.netto = hargaOverhead;
+            detailPerhitungan.add(perhitungan);
+            nourut = nourut + 1;
+
+            adminRenewalDetTgh.harga = hargaOverhead;
+            //Double harga = hargaOverhead;
+            
+            // Perhitungan progresif
+			// ambil tarif utama				
+            for (SkemaHargaDetail utama : utamas) {
+            	if (totalKary >= utama.min && totalKary >= utama.max) {
+            		
+                    perhitungan = new AdminRenewalDetTghSubDetSkemaTarif();
+    	            perhitungan.nourut = nourut;
+    	            perhitungan.jnstrf = "UTAMA";
+    	            perhitungan.keterangan = utama.min + " - " + utama.max;
+    	            perhitungan.jumlah = (utama.max - utama.min + 1);
+    	            perhitungan.harga = utama.harga;
+    	            perhitungan.bruto = perhitungan.jumlah * utama.harga;
+    	            perhitungan.netto = perhitungan.jumlah * utama.harga;	    	            
+    	            detailPerhitungan.add(perhitungan);
+    	            nourut = nourut + 1;
+    	            
+    	            adminRenewalDetTgh.harga = adminRenewalDetTgh.harga + (perhitungan.jumlah * utama.harga);
+
+            	} else {
+            		if (totalKary >= utama.min && totalKary < utama.max) {
+
+	                    perhitungan = new AdminRenewalDetTghSubDetSkemaTarif();
+	    	            perhitungan.nourut = nourut;
+	    	            perhitungan.jnstrf = "UTAMA";
+	    	            perhitungan.keterangan = utama.min + " - " + utama.max;
+	    	            perhitungan.jumlah = (totalKary - utama.min + 1);
+	    	            perhitungan.harga = utama.harga;
+	    	            perhitungan.bruto = perhitungan.jumlah * utama.harga;
+	    	            perhitungan.netto = perhitungan.jumlah * utama.harga;	    	            
+	    	            detailPerhitungan.add(perhitungan);
+	    	            nourut = nourut + 1;
+	    	            
+	    	            adminRenewalDetTgh.harga = adminRenewalDetTgh.harga + (perhitungan.jumlah * utama.harga);
+            		}
+            	}
+            }
+            
+            adminRenewalDetTgh.subDetailSkemaTarif = detailPerhitungan;
+            adminRenewalDetTgh.nouskm = nouskm;            
+            adminRenewalDetTgh.pengali = 1;
+            adminRenewalDetTgh.jumkar = totalKary;
+            adminRenewalDetTgh.bruto = adminRenewalDetTgh.pengali * adminRenewalDetTgh.harga;
+            adminRenewalDetTgh.nourut = 1;
+            
+            //hitungDiskon(idCustomer, idProduk, tahun, bulan, adminRenewalDetTgh);
+            
+		}	
+
+		return adminRenewalDetTgh;
+	}
+	
+	public AdminRenewalDetTgh hitungTarifFlat(String idCustomer, String idProduk, CustomerProdukTarifDetail detailTarifSkemaHarga, Integer totalKary) {
+		
+		AdminRenewalDetTgh adminRenewalDetTgh = null;
+		
+		if (detailTarifSkemaHarga != null) {
+
+            adminRenewalDetTgh = new AdminRenewalDetTgh();
+			Integer nouskm = null;
+			
+			List<AdminRenewalDetTghSubDetSkemaTarif> detailPerhitungan = new ArrayList<AdminRenewalDetTghSubDetSkemaTarif>();
+			//List<AdminRenewalDetTghSubDetDiskon> detailDiskon = new ArrayList<AdminRenewalDetTghSubDetDiskon>();
+			
+			// mulai perhitungan
+			//Integer totalKary = eSumDetailUpload.getJkbulini() + eSumDetailUpload.getJnkbulini();
+
+			nouskm = detailTarifSkemaHarga.nourut;
+			
+			// ambil data detail overhead master customer tarif produk, urutkan berdasarkan nilai Max
+			List<SkemaHargaDetail> overheads = skemaHargaDetailService.getByIdAndKelTarifSortByMax(detailTarifSkemaHarga.skemaHarga.id, "OVERH");
+			  
+			// ambil data detail tarif utama master customer tarif produk, urutkan berdasarkan nilai Max
+			List<SkemaHargaDetail> utamas = skemaHargaDetailService.getByIdAndKelTarifSortByMax(detailTarifSkemaHarga.skemaHarga.id, "UTAMA");
+
+			for (SkemaHargaDetail item : utamas) {
+				System.out.println("     " + item.nourut + " " + item.min + " - " + item.max + " " + item.kltrf);
+			}
+			// ambil tarif overhead				
+            Double hargaOverhead = 0.0;
+            Integer jumlah = 1;
+            for (SkemaHargaDetail overhead : overheads) {
+            	if (totalKary >= overhead.min && totalKary <= overhead.max) {
+            		jumlah = overhead.max - overhead.min + 1;
+            		hargaOverhead = overhead.harga;
+            		break;
+            	} else {
+            		if (totalKary >= overhead.max) {
+                		jumlah = overhead.max - overhead.min + 1;
+            			hargaOverhead = overhead.harga;
+            		}
+            	}
+            }
+			
+            int nourut = 1;
+            
+            AdminRenewalDetTghSubDetSkemaTarif perhitungan = new AdminRenewalDetTghSubDetSkemaTarif();
+            perhitungan.nourut = nourut;
+            perhitungan.jnstrf = "OVERH";
+            perhitungan.keterangan = "Overhead";
+            perhitungan.jumlah = jumlah;
+            perhitungan.harga = hargaOverhead;
+            perhitungan.bruto = hargaOverhead;
+            perhitungan.netto = hargaOverhead;
+            detailPerhitungan.add(perhitungan);
+            nourut = nourut + 1;
+			
+            adminRenewalDetTgh.harga = hargaOverhead;
+            
+            // Perhitungan flat
+			// ambil tarif utama				
+            for (SkemaHargaDetail utama : utamas) {
+            	if (totalKary >= utama.min && totalKary <= utama.max) {
+            		
+                    perhitungan = new AdminRenewalDetTghSubDetSkemaTarif();
+    	            perhitungan.nourut = nourut;
+    	            perhitungan.jnstrf = "UTAMA";
+    	            perhitungan.keterangan = utama.min + " - " + utama.max;
+    	            perhitungan.jumlah = (totalKary - utama.min + 1);
+    	            perhitungan.harga = utama.harga;
+    	            perhitungan.bruto = perhitungan.jumlah * utama.harga;
+    	            perhitungan.netto = perhitungan.jumlah * utama.harga;	    	            
+    	            detailPerhitungan.add(perhitungan);
+    	            nourut = nourut + 1;
+
+    	            adminRenewalDetTgh.harga = adminRenewalDetTgh.harga + (perhitungan.jumlah * utama.harga);
+    	            break;
+
+            	}
+            }
+            
+            adminRenewalDetTgh.subDetailSkemaTarif = detailPerhitungan;
+            adminRenewalDetTgh.nouskm = nouskm;            
+            adminRenewalDetTgh.pengali = 1;
+            adminRenewalDetTgh.jumkar = totalKary;
+            adminRenewalDetTgh.bruto = adminRenewalDetTgh.pengali * adminRenewalDetTgh.harga;
+            adminRenewalDetTgh.nourut = 1;
+            
+            //hitungDiskon(idCustomer, idProduk, tahun, bulan, adminRenewalDetTgh);
+            
+		}	
+
+		return adminRenewalDetTgh;
+	}
+	
+	// hasil dari method ini diisikan di parameter adminUploadSubDetailHarga, sebab yang diisi bukan hanya
+	// sub sub detail perhitungan diskon saja, tetapi juga meng-update nilai total harga dan total diskon di sub detail harga nya
+	public void hitungDiskon(String idCustomer, String idProduk, String tahun, 
+			                 String bulan, AdminRenewalDetTgh adminRenewalDetTgh) {
+
+		List<AdminRenewalDetTghSubDetDiskon> detailDiskon = new ArrayList<AdminRenewalDetTghSubDetDiskon>();
+		
+        // Hitung diskon-diskon
+		int nourutDiskon = 1;
+		Double nilai = adminRenewalDetTgh.bruto;
+		Double totalDiskon = 0.0;
+		
+		// Ambil diskon-diskon dari tabel admin diskon (AI004)
+		// list yang didapat sudah diurutkan berdasarkan urutan perhitungan diskon bertingkat :
+		// diskon %, diskon nilai, grup diskon %, grup diskon nilai, diskon khusus
+		List<EAdminDiskon> listDiskon = adminDiskonService.getByCustomerProdukDanTahunBulan(idCustomer, idProduk, tahun, bulan);
+
+		for (EAdminDiskon eAdminDiskon : listDiskon) {
+
+			if (eAdminDiskon.getJnsdis().equals("PCTDIS")) {
+				Double nildasar = nilai;
+				Double diskon = (eAdminDiskon.getPctdisc() * nilai) / 100.0;
+				totalDiskon = totalDiskon + diskon;
+				nilai = nilai - diskon;
+				
+				AdminRenewalDetTghSubDetDiskon dataDiskon = new AdminRenewalDetTghSubDetDiskon();
+				
+	            dataDiskon.nourut = nourutDiskon;
+	            dataDiskon.jenis = "PRODIS";
+	            dataDiskon.nouds = eAdminDiskon.getNouds();
+	            dataDiskon.keterangan = "Discount (%)";
+	            dataDiskon.nildasar = nildasar;
+	            dataDiskon.pctdisc = eAdminDiskon.getPctdisc();
+	            dataDiskon.nildisc = diskon;
+	            dataDiskon.netto = nilai;
+	            
+	            detailDiskon.add(dataDiskon);
+	            
+	            nourutDiskon = nourutDiskon + 1;
+			}
+			
+			if (eAdminDiskon.getJnsdis().equals("NILDIS")) {
+				Double nildasar = nilai;
+				totalDiskon = totalDiskon + eAdminDiskon.getNildisc();
+				nilai = nilai - eAdminDiskon.getNildisc();
+				
+				AdminRenewalDetTghSubDetDiskon dataDiskon = new AdminRenewalDetTghSubDetDiskon();
+				
+	            dataDiskon.nourut = nourutDiskon;
+	            dataDiskon.jenis = "NILDIS";
+	            dataDiskon.nouds = eAdminDiskon.getNouds();
+	            dataDiskon.keterangan = "Discount (nilai)";
+	            dataDiskon.pctdisc = 0.0;
+	            dataDiskon.nildisc = eAdminDiskon.getNildisc();
+	            dataDiskon.nildasar = nildasar;
+	            dataDiskon.netto = nilai;
+	            detailDiskon.add(dataDiskon);
+	            
+	            nourutDiskon = nourutDiskon + 1;	    				
+			}
+
+			if (eAdminDiskon.getJnsdis().equals("GRPDIS1")) {
+				Double nildasar = nilai;
+				Double diskon = (eAdminDiskon.getPctdisc() * nilai) / 100.0;
+				totalDiskon = totalDiskon + diskon;
+				nilai = nilai - diskon;
+				
+				AdminRenewalDetTghSubDetDiskon dataDiskon = new AdminRenewalDetTghSubDetDiskon();
+				
+	            dataDiskon.nourut = nourutDiskon;
+	            dataDiskon.jenis = "GRPPRODIS";
+	            dataDiskon.nouds = eAdminDiskon.getNouds();
+	            dataDiskon.keterangan = "Discount Grup (%)";
+	            dataDiskon.pctdisc = eAdminDiskon.getPctdisc();
+	            dataDiskon.nildisc = diskon;
+	            dataDiskon.nildasar = nildasar;
+	            dataDiskon.netto = nilai;
+	            detailDiskon.add(dataDiskon);
+				
+	            nourutDiskon = nourutDiskon + 1;	    				
+			}
+			
+			if (eAdminDiskon.getJnsdis().equals("GRPDIS2")) {
+				Double nildasar = nilai;
+				totalDiskon = totalDiskon + eAdminDiskon.getNildisc();
+				nilai = nilai - eAdminDiskon.getNildisc();
+				
+				AdminRenewalDetTghSubDetDiskon dataDiskon = new AdminRenewalDetTghSubDetDiskon();
+				
+	            dataDiskon.nourut = nourutDiskon;
+	            dataDiskon.jenis = "GRPNILDIS";
+	            dataDiskon.nouds = eAdminDiskon.getNouds();
+	            dataDiskon.keterangan = "Discount Grup (nilai)";
+	            dataDiskon.pctdisc = 0.0;
+	            dataDiskon.nildisc = eAdminDiskon.getNildisc();
+	            dataDiskon.nildasar = nildasar;
+	            dataDiskon.netto = nilai;
+	            detailDiskon.add(dataDiskon);
+				
+	            nourutDiskon = nourutDiskon + 1;	    				
+			}
+			
+			if (eAdminDiskon.getJnsdis().equals("SPCDIS")) {
+    			if (eAdminDiskon.getPctdisc() > 0.0) {
+    				Double nildasar = nilai;
+    				Double diskon = (eAdminDiskon.getPctdisc() * nilai) / 100.0;
+    				totalDiskon = totalDiskon + diskon;
+    				nilai = nilai - diskon;
+    				
+    				AdminRenewalDetTghSubDetDiskon dataDiskon = new AdminRenewalDetTghSubDetDiskon();
+    				
+    	            dataDiskon.nourut = nourutDiskon;
+    	            dataDiskon.jenis = "SPCPRODIS";
+    	            dataDiskon.keterangan = "Discount Khusus (%)";
+    	            dataDiskon.nouds = 0;
+    	            dataDiskon.pctdisc = eAdminDiskon.getPctdisc();
+    	            dataDiskon.nildisc = diskon;
+    	            dataDiskon.nildasar = nildasar;
+    	            dataDiskon.netto = nilai;
+    	            detailDiskon.add(dataDiskon);
+    				
+    	            nourutDiskon = nourutDiskon + 1;
+    			}
+    			
+    			if (eAdminDiskon.getNildisc() > 0.0) {
+    				Double nildasar = nilai;
+    				totalDiskon = totalDiskon + eAdminDiskon.getNildisc();
+    				nilai = nilai - eAdminDiskon.getNildisc();
+    				
+    				AdminRenewalDetTghSubDetDiskon dataDiskon = new AdminRenewalDetTghSubDetDiskon();
+    				
+    	            dataDiskon.nourut = nourutDiskon;
+    	            dataDiskon.jenis = "SPCNILDIS";
+    	            dataDiskon.keterangan = "Discount Khusus (nilai)";
+    	            dataDiskon.nouds = 0;
+    	            dataDiskon.pctdisc = 0.0;
+    	            dataDiskon.nildisc = eAdminDiskon.getNildisc();
+    	            dataDiskon.nildasar = nildasar;
+    	            dataDiskon.netto = nilai;
+    	            detailDiskon.add(dataDiskon);
+    				
+    	            nourutDiskon = nourutDiskon + 1;
+    			}				    				
+			}
+		}
+		
+		adminRenewalDetTgh.subDetailDiskon = detailDiskon;
+		adminRenewalDetTgh.nildisc = totalDiskon;
+		adminRenewalDetTgh.netto = nilai;
+		
+	}
+	
+	public AdminRenewalDetTgh hitungTarifPeriodik(String idCustomer, String idProduk, String tahun, String bulan) {
+
+		AdminRenewalDetTgh result = null;
+
+		// ambil invoice initial dengan tanggal < tanggal hitung, cari yang termuda
+		String tanggal = tahun + bulan + "01";		
+		InvoiceHeader invoiceHeader = InvoiceHeader.fromEntity(invoiceManualCompleteService.getInvoiceInitialTerakhirByTanggal(idCustomer, idProduk, tanggal));
+
+		// isi detail tagihan (AI320, AI321 dan AI322) dengan perhitungan di TI007 dan TI008		
+		// lho masak tetep pake dasar skema tarif itu terus ? kalo sudah langganan sejak 4 tahun yg lalu, gimana caranya 
+		// naik harganya ? 
+		//    JAWAB : ya bikin transaksi initial baru lagi, nanti kan hitungannya dihitung lagi di invoice tsb,
+		//            jadi ya sudah benar tinggal ambil saja data dari TI007 dan TI008
+		
+		result = new AdminRenewalDetTgh();
+		result.harga = invoiceHeader.detailInitial.get(0).harga;
+		result.pengali = invoiceHeader.detailInitial.get(0).pengali;
+		result.jumkar = invoiceHeader.detailInitial.get(0).jumkar;
+		result.bruto = invoiceHeader.detailInitial.get(0).bruto;
+		
+		List<AdminRenewalDetTghSubDetSkemaTarif> detailPerhitungan = new ArrayList<AdminRenewalDetTghSubDetSkemaTarif>();
+		//List<AdminRenewalDetTghSubDetDiskon> detailDiskon = new ArrayList<AdminRenewalDetTghSubDetDiskon>();
+
+		for (InvoiceSubDetailPerhitunganSkemaTarif skemaTarif : invoiceHeader.detailInitial.get(0).subDetailSkemaTarif) {
+			
+			AdminRenewalDetTghSubDetSkemaTarif perhitungan = new AdminRenewalDetTghSubDetSkemaTarif();
+            
+            perhitungan.nourut = skemaTarif.nourut;
+            perhitungan.jnstrf = skemaTarif.jnstrf;
+            perhitungan.keterangan = skemaTarif.keterangan;
+            perhitungan.jumlah = skemaTarif.jumlah;
+            perhitungan.harga = skemaTarif.harga;
+            perhitungan.bruto = skemaTarif.bruto;
+            perhitungan.netto = skemaTarif.netto;
+            
+            detailPerhitungan.add(perhitungan);
+			
+		}
+		
+		result.subDetailSkemaTarif = detailPerhitungan;
+		result.nouskm = invoiceHeader.detailInitial.get(0).nouskm;
+		
+		// hitung ulang diskon
+        hitungDiskon(idCustomer, idProduk, tahun, bulan, result);
+        
+        return result;
+	}
+	
+}

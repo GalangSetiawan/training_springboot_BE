@@ -1,0 +1,91 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.invoiceNotice.controllers;
+
+import java.text.ParseException;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.Base64StringEncodedPojo;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.kelola.invoice.services.KelolaInvoiceExportPdfService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.invoiceNotice.pojos.InvoiceNoticeComplete;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.invoiceNotice.services.InvoiceNoticeCompleteService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.invoiceNotice.services.InvoiceNoticeExportPdfService;
+
+@RestController
+@RequestMapping("/api/invoice-notice")
+public class InvoiceNoticeController {
+	
+	public static final Logger logger = LoggerFactory.getLogger(InvoiceNoticeController.class);
+	
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	@Autowired private InvoiceNoticeCompleteService invoiceNoticeCompleteService;
+	@Autowired private InvoiceNoticeExportPdfService invoiceNoticeExportPdfService;
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<EInvoiceHeader> searchResult = invoiceHeaderService.search(SearchParameter.generate(searchParameter, 
+				InvoiceHeader.getFieldMappings()));
+		
+		return ApiResponse.dataWithPaging("items", 
+				InvoiceHeader.fromEntities(searchResult.getResult()), 
+				searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String nomor) throws JsonProcessingException, ParseException {
+		InvoiceNoticeComplete data = invoiceNoticeCompleteService.findByBk(nomor);
+	    
+	    return ApiResponse.data("item", data);
+	}
+	
+	//@AuthEdit("TRX_PP")
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody InvoiceNoticeComplete pojo) {
+		
+		EInvoiceHeader header = invoiceNoticeCompleteService.edit(pojo);
+		
+		return ApiResponse.data("item", InvoiceNoticeComplete.setFromEntity(header));
+	}
+
+	//@AuthDelete("TRX_PP")
+	@NoAuth
+	@DeleteMapping
+	public ApiResponse delete(@RequestParam String id, @RequestParam(required = false) Long version) {
+		
+		invoiceNoticeCompleteService.delete(id, version);
+		
+		return ApiResponse.ok();
+	}
+	
+	@NoAuth
+    @GetMapping("/pdf")
+    public ApiResponse createAndSendPdf(@RequestParam String nomor) throws ParseException {
+		
+	    //Base64StringEncodedPojo result = invoiceHasilProsesExportPdfService.pdfReport(nomor);
+	    Base64StringEncodedPojo result = invoiceNoticeExportPdfService.pdfReport(nomor);
+	    
+	    return ApiResponse.data("item", result);		
+    }
+}

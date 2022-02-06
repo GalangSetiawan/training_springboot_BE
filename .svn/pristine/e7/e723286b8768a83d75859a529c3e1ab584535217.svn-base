@@ -1,0 +1,94 @@
+package co.id.sofcograha.base.master.company.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.entities.ECompanyLogo;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Repository
+public class CompanyLogoRepository extends SimpleJpaRepository<ECompanyLogo, String> {
+
+	protected final EntityManager em;
+	
+	public CompanyLogoRepository(EntityManager em) {
+		super(ECompanyLogo.class, em);
+		this.em = em;
+	}
+
+	public ECompanyLogo findByBK(ECompany company, Integer orderNumber) {
+		
+		String query = "SELECT e FROM ECompanyLogo e " + 
+	                   "WHERE e.company = :company AND orderNumber = :orderNumber";
+		
+		try {
+			return em.createQuery(query, ECompanyLogo.class)
+					.setParameter("company", company)
+					.setParameter("orderNumber", orderNumber)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+
+	public ECompanyLogo findByCompanyId(String companyId) {
+		
+		String query = "SELECT e FROM ECompanyLogo e " + 
+	                   "WHERE e.company.id = :companyId";
+		
+		try {
+			return em.createQuery(query, ECompanyLogo.class)
+					.setParameter("companyId", companyId)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+
+	public ECompanyLogo findByCompany(ECompany company, Integer orderNumber) {
+		return this.findByBK(company, orderNumber);
+	}
+
+	public SearchResult<ECompanyLogo> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ECompanyLogo> search = new HqlSimpleSearchBuilder<>(ECompanyLogo.class, em);
+
+		String companyId = (String) searchParameter.getValueFromMappedParam("company.id");
+		Integer orderNumber = (Integer) searchParameter.getValueFromMappedParam("orderNumber");
+		String fileName = (String) searchParameter.getValueFromMappedParam("fileName");
+		
+		if (companyId != null) {
+			search.addWhere("AND company.id = :companyId ");
+			search.addParameter("companyId", companyId);
+		}
+		
+		if (orderNumber != null) {
+			search.addWhere("AND orderNumber = :orderNumber ");
+			search.addParameter("orderNumber", orderNumber);
+		}
+		
+		if (!QueryUtil.isAll(fileName)) {
+			search.addWhere("AND LOWER(fileName) LIKE LOWER(:fileName) ");
+			search.addParameter("fileName", QueryUtil.formatStringForLikeFilter(fileName));
+		}
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ECompanyLogo add(ECompanyLogo entity) {
+		return save(entity);
+	}
+
+	public ECompanyLogo edit(ECompanyLogo entity) {
+		return save(entity);
+	}
+}

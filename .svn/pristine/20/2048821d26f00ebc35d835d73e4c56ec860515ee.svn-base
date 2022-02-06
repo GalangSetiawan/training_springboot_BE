@@ -1,0 +1,182 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewal;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.pojos.Produk;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+
+@JsonInclude(Include.ALWAYS)
+public class AdminRenewal {
+
+    public String id;
+	public String tahun;
+	public String bulan;
+	public boolean flproi;
+
+	public Long version;
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+    
+	public CustomerGajiId customer;
+	public Produk produk;
+	public InvoiceHeader invoice;
+    
+    public EAdminRenewal toEntity() {
+		
+  	  EAdminRenewal entity = new EAdminRenewal();
+  		
+  	    entity.setId(id);
+  		entity.setTahun(tahun);
+  		entity.setBulan(bulan);
+		entity.setFlproi(flproi ? "Y" : "T");
+  		
+        entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+
+		if (customer != null && !StringUtils.isEmpty(customer.id)) {
+			ECustomerGajiId entityRef = new ECustomerGajiId();
+		
+			entityRef.setId(customer.id);
+			entityRef.setVersion(customer.version);
+		
+			entity.setCustomer(entityRef);
+		
+		} else {
+			entity.setCustomer(null);
+		}
+        
+		if (produk != null && !StringUtils.isEmpty(produk.id)) {
+			EProduk entityRef = new EProduk();
+		
+			entityRef.setId(produk.id);
+			entityRef.setVersion(produk.version);
+		
+			entity.setProduk(entityRef);
+		
+		} else {
+			entity.setProduk(null);
+		}
+        
+		if (invoice != null && !StringUtils.isEmpty(invoice.id)) {
+			EInvoiceHeader entityRef = new EInvoiceHeader();
+		
+			entityRef.setId(invoice.id);
+			entityRef.setVersion(invoice.version);
+		
+			entity.setInvoice(entityRef);
+		
+		} else {
+			entity.setInvoice(null);
+		}
+        
+  		return entity;
+  	}
+    
+	public static AdminRenewal fromEntity (EAdminRenewal entity) {
+		return fromEntity(entity,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static AdminRenewal fromEntity(EAdminRenewal entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		
+		AdminRenewal pojo = new AdminRenewal();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.tahun = entity.getTahun();
+			pojo.bulan = entity.getBulan();
+			pojo.flproi = entity.getFlproi() == null ? false : entity.getFlproi().trim().equals("Y") ? true : false;
+			
+	        pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+	        
+			pojo.customer = CustomerGajiId.fromEntity(entity.getCustomer());
+			pojo.produk = Produk.fromEntity(entity.getProduk());
+			pojo.invoice = InvoiceHeader.fromEntity(entity.getInvoice());
+		}
+
+		return pojo;
+	}
+	
+	public static List<AdminRenewal> fromEntities(List<EAdminRenewal> entities){
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+	
+	public static List<AdminRenewal> fromEntities(List<EAdminRenewal> entities, int depthLevel){
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<AdminRenewal> pojos = new ArrayList<>();
+		
+		for (EAdminRenewal entity : entities) {
+			pojos.add(AdminRenewal.fromEntity(entity, depthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+	
+		mappings.add(new SearchFieldMapping("tahun", "tahun"));
+		mappings.add(new SearchFieldMapping("bulan", "bulan"));
+		mappings.add(new SearchFieldMapping("customer", "customer.nama"));
+		mappings.add(new SearchFieldMapping("produk", "produk.nama"));
+		mappings.add(new SearchFieldMapping("flproi", "flproi"));
+//		mappings.add(new SearchFieldMapping("urutan", "urutan", Integer.class).sortOnly());
+	
+		return mappings;
+	} 
+	
+}

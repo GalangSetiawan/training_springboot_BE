@@ -1,0 +1,83 @@
+package co.id.sofcograha.domain.invoicing.admin.renewal.entities;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+@Entity
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class ESumNilai {
+
+	@Id
+	@Column(name = "id")
+	private String id;
+
+	@Column(name = "jumkar")
+	private Integer jumkar;
+
+	@Column(name = "bruto")
+	private Double bruto;
+
+	@Column(name = "nilpctdisc")
+	private Double nilpctdisc;
+
+	@Column(name = "nildisc")
+	private Double nildisc;
+
+	@Column(name = "netto")
+	private Double netto;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Integer getJumkar() {
+		return jumkar;
+	}
+
+	public void setJumkar(Integer jumkar) {
+		this.jumkar = jumkar;
+	}
+
+	public Double getBruto() {
+		return bruto;
+	}
+
+	public void setBruto(Double bruto) {
+		this.bruto = bruto;
+	}
+
+	public Double getNilpctdisc() {
+		return nilpctdisc;
+	}
+
+	public void setNilpctdisc(Double nilpctdisc) {
+		this.nilpctdisc = nilpctdisc;
+	}
+
+	public Double getNildisc() {
+		return nildisc;
+	}
+
+	public void setNildisc(Double nildisc) {
+		this.nildisc = nildisc;
+	}
+
+	public Double getNetto() {
+		return netto;
+	}
+
+	public void setNetto(Double netto) {
+		this.netto = netto;
+	}
+
+}

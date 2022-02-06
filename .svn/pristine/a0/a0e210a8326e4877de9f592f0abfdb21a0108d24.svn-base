@@ -1,0 +1,209 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.entities;
+
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+
+import co.id.sofcograha.base.master.menu.entities.EMenu;
+import co.id.sofcograha.base.master.user.entities.EUser;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(name = "am56", uniqueConstraints = @UniqueConstraint(columnNames = { "id_user", "id_menu" }))
+public class EUserHakAksesMenu {
+
+	@Id
+	@Column(name = "id_am56")
+	private String id;
+	
+	@Column(name = "id_user")
+	private String idUser;
+
+	@Column(name = "id_menu")
+	private String idMenu;
+	
+	@Column(name = "fladd")
+    private String fladd;
+	
+	@Column(name = "fledit")
+    private String fledit;
+
+    @Column(name = "fldel")
+    private String fldel;
+    
+    @Column(name = "flview")
+    private String flview;
+
+    @Column(name = "version")
+    private Integer version;
+    
+    @Column(name = "usrcrt")
+    private String usrcrt;
+    
+    @Column(name = "tglcrt")
+    private String tglcrt;
+    
+    @Column(name = "jamcrt")
+    private String jamcrt;
+    
+    @Column(name = "usrupd")
+    private String usrupd;
+    
+    @Column(name = "tglupd")
+    private String tglupd;
+    
+    @Column(name = "jamupd")
+    private String jamupd;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_user", insertable = false, updatable = false )
+    private EUser eUser;
+    
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="id_menu", referencedColumnName="id", updatable = false, insertable = false)
+    private EMenu eMenu;
+  
+    public String getId() {
+      return id;
+    }
+
+    public void setId(String id) {
+      this.id = id;
+    }
+
+    public String getIdUser() {
+      return idUser;
+    }
+
+    public void setIdUser(String idUser) {
+      this.idUser = idUser;
+    }
+
+    public String getIdMenu() {
+      return idMenu;
+    }
+
+    public void setIdMenu(String idMenu) {
+      this.idMenu = idMenu;
+    }
+
+    public String getFladd() {
+      return fladd;
+    }
+
+    public void setFladd(String fladd) {
+      this.fladd = fladd;
+    }
+
+    public String getFledit() {
+      return fledit;
+    }
+
+    public void setFledit(String fledit) {
+      this.fledit = fledit;
+    }
+
+    public String getFldel() {
+      return fldel;
+    }
+
+    public void setFldel(String fldel) {
+      this.fldel = fldel;
+    }
+
+    public String getFlview() {
+      return flview;
+    }
+
+    public void setFlview(String flview) {
+      this.flview = flview;
+    }
+
+    public Integer getVersion() {
+      return version;
+    }
+
+    public void setVersion(Integer version) {
+      this.version = version;
+    }
+
+    public String getUsrcrt() {
+      return usrcrt;
+    }
+
+    public void setUsrcrt(String usrcrt) {
+      this.usrcrt = usrcrt;
+    }
+
+    public String getTglcrt() {
+      return tglcrt;
+    }
+
+    public void setTglcrt(String tglcrt) {
+      this.tglcrt = tglcrt;
+    }
+
+    public String getJamcrt() {
+      return jamcrt;
+    }
+
+    public void setJamcrt(String jamcrt) {
+      this.jamcrt = jamcrt;
+    }
+
+    public String getUsrupd() {
+      return usrupd;
+    }
+
+    public void setUsrupd(String usrupd) {
+      this.usrupd = usrupd;
+    }
+
+    public String getTglupd() {
+      return tglupd;
+    }
+
+    public void setTglupd(String tglupd) {
+      this.tglupd = tglupd;
+    }
+
+    public String getJamupd() {
+      return jamupd;
+    }
+
+    public void setJamupd(String jamupd) {
+      this.jamupd = jamupd;
+    }
+
+    public EUser geteUser() {
+      return eUser;
+    }
+
+    public void seteUser(EUser eUser) {
+      this.eUser = eUser;
+    }
+
+    public EMenu geteMenu() {
+      return eMenu;
+    }
+
+    public void seteMenu(EMenu eMenu) {
+      this.eMenu = eMenu;
+    }
+
+    @PrePersist
+	private void prePersist() {
+      this.id = UUID.randomUUID().toString();
+	}
+}

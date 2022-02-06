@@ -1,0 +1,112 @@
+package co.id.sofcograha.base.loginlogoutlog.repositories;
+
+import java.util.Date;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.constants.enums.AccessStatusLog;
+import co.id.sofcograha.base.constants.enums.AccessTypeLog;
+import co.id.sofcograha.base.loginlogoutlog.entities.ELoginLogoutLog;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+//import id.co.sofcograha.gajiidapi.base.constants.enums.AccessStatusLog;
+//import id.co.sofcograha.gajiidapi.base.constants.enums.AccessTypeLog;
+//import id.co.sofcograha.gajiidapi.base.extendables.BaseRepository;
+//import id.co.sofcograha.gajiidapi.base.mst.loginlogoutlog.entities.LoginLogoutLog;
+//import id.co.sofcograha.gajiidapi.base.search.HqlSimpleSearchBuilder;
+//import id.co.sofcograha.gajiidapi.base.search.SearchParameter;
+//import id.co.sofcograha.gajiidapi.base.search.SearchResult;
+//import id.co.sofcograha.gajiidapi.base.utils.QueryUtil;
+
+@Repository
+public class LoginLogoutLogRepository extends SimpleJpaRepository<ELoginLogoutLog, String> {
+
+	protected final EntityManager em;
+	
+	public LoginLogoutLogRepository(EntityManager em) {
+		super(ELoginLogoutLog.class, em);
+		this.em = em;
+	}
+
+	public ELoginLogoutLog findByBK(Date logDate) {
+		
+		String query = "SELECT e FROM ELoginLogoutLog e " + 
+	                   "WHERE e.logDate = :logDate";
+		
+		try {
+			return em.createQuery(query, ELoginLogoutLog.class)
+					.setParameter("logDate", logDate)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public SearchResult<ELoginLogoutLog> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ELoginLogoutLog> search = new HqlSimpleSearchBuilder<>(ELoginLogoutLog.class, em);
+
+		Date logDate = (Date) searchParameter.getValueFromMappedParam("logDate");
+		String username = (String) searchParameter.getValueFromMappedParam("username");
+		AccessTypeLog accessType = (AccessTypeLog) searchParameter.getValueFromMappedParam("accessType");
+		AccessStatusLog accessStatus = (AccessStatusLog) searchParameter.getValueFromMappedParam("accessStatus");
+		String fromCompanyName = (String) searchParameter.getValueFromMappedParam("fromCompanyName");
+		String toCompanyName = (String) searchParameter.getValueFromMappedParam("toCompanyName");
+		String dataOutput = (String) searchParameter.getValueFromMappedParam("dataOutput");
+
+		
+		if (logDate != null) {
+			search.addWhere("AND logDate = :logDate ");
+			search.addParameter("logDate", logDate);
+		}
+		
+		if (!QueryUtil.isAll(username)) {
+			search.addWhere("AND LOWER(username) LIKE LOWER(:username) ");
+			search.addParameter("username", QueryUtil.formatStringForLikeFilter(username));
+		}
+		
+		if (accessType != null) {
+			search.addWhere("AND accessType = :accessType ");
+			search.addParameter("accessType", accessType);
+		}
+		
+		if (accessStatus != null) {
+			search.addWhere("AND accessStatus = :accessStatus ");
+			search.addParameter("accessStatus", accessStatus);
+		}
+		
+		if (!QueryUtil.isAll(fromCompanyName)) {
+			search.addWhere("AND LOWER(fromCompanyName) LIKE LOWER(:fromCompanyName) ");
+			search.addParameter("fromCompanyName", QueryUtil.formatStringForLikeFilter(fromCompanyName));
+		}
+		
+		if (!QueryUtil.isAll(toCompanyName)) {
+			search.addWhere("AND LOWER(toCompanyName) LIKE LOWER(:toCompanyName) ");
+			search.addParameter("toCompanyName", QueryUtil.formatStringForLikeFilter(toCompanyName));
+		}
+		
+		if (!QueryUtil.isAll(dataOutput)) {
+			search.addWhere("AND LOWER(dataOutput) LIKE LOWER(:dataOutput) ");
+			search.addParameter("dataOutput", QueryUtil.formatStringForLikeFilter(dataOutput));
+		}
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ELoginLogoutLog add(ELoginLogoutLog entity) {
+		return save(entity);
+	}
+
+	public ELoginLogoutLog edit(ELoginLogoutLog entity) {
+		return save(entity);
+	}
+}

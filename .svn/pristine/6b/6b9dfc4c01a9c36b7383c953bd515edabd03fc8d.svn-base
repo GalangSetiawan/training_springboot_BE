@@ -1,0 +1,106 @@
+package co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.entities.EPenerimaanBayarHeader;
+
+@Repository
+public class EPenerimaanBayarHeaderRepository extends SimpleJpaRepository<EPenerimaanBayarHeader, String> {
+
+	protected final EntityManager em;
+
+	public EPenerimaanBayarHeaderRepository(EntityManager em) {
+		super(EPenerimaanBayarHeader.class, em);
+		this.em = em;
+	}
+	
+	public EPenerimaanBayarHeader findByBK(String nomor) {
+		
+		String query = "SELECT e FROM EPenerimaanBayarHeader e " + 
+                       "WHERE e.nomor = :nomor";
+		
+		try {
+			return em.createQuery(query, EPenerimaanBayarHeader.class)
+					 .setParameter("nomor", nomor)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EPenerimaanBayarHeader getOne(String id) {
+
+		String query = "SELECT e FROM EPenerimaanBayarHeader e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, EPenerimaanBayarHeader.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public SearchResult<EPenerimaanBayarHeader> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EPenerimaanBayarHeader> search = new HqlSimpleSearchBuilder<>(EPenerimaanBayarHeader.class, em);
+		
+		String nomor = (String) searchParameter.getValueFromMappedParam("nomor");
+		String tipe = (String) searchParameter.getValueFromMappedParam("tipe");
+		String bank = (String) searchParameter.getValueFromMappedParam("bank");
+		String tahun = (String) searchParameter.getValueFromMappedParam("tahun");
+		String bulan = (String) searchParameter.getValueFromMappedParam("bulan");
+
+		if (!QueryUtil.isAll(nomor)) {
+            search.addWhere("AND LOWER(nomor) LIKE LOWER(:nomor) ");
+            search.addParameter("nomor", QueryUtil.formatStringForLikeFilter(nomor));
+        }
+
+		if (!QueryUtil.isAll(tipe)) {
+            search.addWhere("AND LOWER(tipe) LIKE LOWER(:tipe) ");
+            search.addParameter("tipe", QueryUtil.formatStringForLikeFilter(tipe));
+        }
+
+		if (!QueryUtil.isAll(bank)) {
+            search.addWhere("AND LOWER(bank) LIKE LOWER(:bank) ");
+            search.addParameter("bank", QueryUtil.formatStringForLikeFilter(bank));
+        }
+
+	    if (tahun != null) {
+	    	String strTahunBulan = tahun;
+	    	
+	    	if (bulan != null) {
+	    		strTahunBulan = strTahunBulan + bulan;
+	    		
+	            search.addWhere("AND substring(tgtrn, 1, 6) = :tahunBulan ");
+	            search.addParameter("tahunBulan", strTahunBulan);
+	    	}
+	    }
+	    
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EPenerimaanBayarHeader add(EPenerimaanBayarHeader entity) {
+		//return save(entity);
+		return saveAndFlush(entity);
+	}
+
+	public EPenerimaanBayarHeader edit(EPenerimaanBayarHeader entity) {
+		return save(entity);
+	}
+}

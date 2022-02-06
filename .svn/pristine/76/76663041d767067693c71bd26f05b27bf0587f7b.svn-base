@@ -1,0 +1,90 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.services;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.entities.EUserHakAksesMenu;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.repositories.EUserHakAksesMenuRepository;
+
+@Service("userHakAksesMenuService")
+public class UserHakAksesMenuService extends BaseService {
+
+	@Autowired
+	private EUserHakAksesMenuRepository eUserHakAksesMenuRepository;	
+	
+	public EUserHakAksesMenu findByBk(String idUser, String idMenu) {
+		return eUserHakAksesMenuRepository.findByBK(idUser, idMenu);
+	}
+	
+	public List<EUserHakAksesMenu> findByHeader(String idUser) {
+	  return eUserHakAksesMenuRepository.findByHeader(idUser);
+	}
+	
+	public SearchResult<EUserHakAksesMenu> search(SearchParameter searchParameter) {  
+	  return eUserHakAksesMenuRepository.search(searchParameter);
+    }
+	
+	@Transactional
+    public EUserHakAksesMenu add(EUserHakAksesMenu entity) {
+        EUserHakAksesMenu EUserHakAksesMenu = eUserHakAksesMenuRepository.findByBK(
+                entity.getIdUser(), 
+                entity.getIdMenu());
+        if (EUserHakAksesMenu != null) {
+            batchError("MasterExist", "User Hak Akses Menu" , entity.getIdUser() + ", " + entity.getIdMenu());
+            throwBatchError();
+        }
+        
+        entity.setVersion(1);
+        entity.setUsrcrt(CurrentUser.getUsername());
+        entity.setTglcrt(new SimpleDateFormat("yyyyMMdd").format(new Date()));
+        entity.setJamcrt(new SimpleDateFormat("HHmmss").format(new Date()));
+        entity.setUsrupd(CurrentUser.getUsername());
+        entity.setTglupd(new SimpleDateFormat("yyyyMMdd").format(new Date()));
+        entity.setJamupd(new SimpleDateFormat("HHmmss").format(new Date()));
+        
+        return eUserHakAksesMenuRepository.save(entity);
+    }
+    
+    @Transactional
+    public EUserHakAksesMenu edit(EUserHakAksesMenu entity) {
+        EUserHakAksesMenu EUserHakAksesMenu = eUserHakAksesMenuRepository.findByBK(
+                entity.getIdUser(), 
+                entity.getIdMenu());
+        if (EUserHakAksesMenu == null) {
+            batchError("MasterNotExist", "User Hak Akses Menu" , entity.getIdUser() + ", " + entity.getIdMenu());
+            throwBatchError();
+        }
+        
+        EUserHakAksesMenu.setFladd(entity.getFladd());
+        EUserHakAksesMenu.setFledit(entity.getFledit());
+        EUserHakAksesMenu.setFldel(entity.getFldel());
+        EUserHakAksesMenu.setFlview(entity.getFlview());
+        EUserHakAksesMenu.setVersion(EUserHakAksesMenu.getVersion() + 1);
+        
+        EUserHakAksesMenu.setUsrupd(CurrentUser.getUserId());
+        EUserHakAksesMenu.setTglupd(new SimpleDateFormat("yyyyMMdd").format(new Date()));
+        EUserHakAksesMenu.setJamupd(new SimpleDateFormat("HHmmss").format(new Date()));
+  
+        return eUserHakAksesMenuRepository.save(EUserHakAksesMenu);
+    }
+
+    @Transactional
+    public void deleteByBk (String idUser, String idMenu) {
+        EUserHakAksesMenu EUserHakAksesMenu = eUserHakAksesMenuRepository.findByBK(idUser, idMenu);
+        eUserHakAksesMenuRepository.delete(EUserHakAksesMenu);
+    }
+    
+    @Transactional
+    public void deleteById (String id) {
+        eUserHakAksesMenuRepository.delete(id);
+    }
+}

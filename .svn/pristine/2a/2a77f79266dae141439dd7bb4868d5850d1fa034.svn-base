@@ -1,0 +1,244 @@
+package co.id.sofcograha.domain.invoicing.saldo.deposit.data.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.entities.ESaldoDepositDetailKurang;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.pojos.SaldoDepositDetailKurang;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.repositories.ESaldoDepositDetailKurangRepository;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+
+@Service("saldoDepositDetailKurangService")
+public class SaldoDepositDetailKurangService extends BaseService {
+	
+	@Autowired private ESaldoDepositDetailKurangRepository repo;
+	
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public SaldoDepositDetailKurang findByBk(String idSi001, String idTi001) {
+		return SaldoDepositDetailKurang.fromEntity(repo.findByBK(idSi001, idTi001));
+	}
+
+	public SearchResult<ESaldoDepositDetailKurang> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public ESaldoDepositDetailKurang add(ESaldoDepositDetailKurang entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		manageMinMaxValues(entity);
+		//throwBatchError();
+		
+		manageReferences(entity);
+		//throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		//throwBatchError();
+		
+		if (!isAnyBatchErrors()) {
+			preAdd(entity);
+			ESaldoDepositDetailKurang addedEntity = repo.add(entity);
+			postAdd(addedEntity);
+			
+			return addedEntity;	
+		}
+			
+		//throwBatchError();
+		return entity;	
+
+	}
+	
+	@Transactional
+	public ESaldoDepositDetailKurang edit(ESaldoDepositDetailKurang entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		ESaldoDepositDetailKurang toBeSaved = repo.getOne(entity.getId());
+		ESaldoDepositDetailKurang oldEntity = (ESaldoDepositDetailKurang) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, ESaldoDepositDetailKurang.class.getSimpleName());
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		ESaldoDepositDetailKurang toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		//throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		//throwBatchError();
+		
+	}
+	
+	// terkait manipulasi data
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ESaldoDepositDetailKurang dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(ESaldoDepositDetailKurang entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(ESaldoDepositDetailKurang newValues, ESaldoDepositDetailKurang toBeSaved) {
+
+		if (toBeSaved != null) {			
+			toBeSaved.setNildepused(newValues.getNildepused());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(ESaldoDepositDetailKurang entity) {
+		valRequiredDouble(entity.getNildepused(), "saldodeposit.detail.kurang.nildepused.required");
+	}
+	
+	protected void manageMinMaxValues(ESaldoDepositDetailKurang entity) {
+		valMinDouble(entity.getNildepused(), 0D, "saldodeposit.detail.kurang.nildepused.min.length");
+		valMaxDouble(entity.getNildepused(), 999999999D, "saldodeposit.detail.kurang.nildepused.max.length");
+	}
+
+	protected void manageReferences(ESaldoDepositDetailKurang entity) {
+		if (entity.getInvoice() != null) {
+			EInvoiceHeader eFromDb = invoiceHeaderService.get(entity.getInvoice().getId());
+			if (eFromDb != null) {
+				entity.setInvoice(eFromDb);
+			} else {
+				batchError("invoice.not.found");
+			}			
+		}
+	}
+
+	protected void valDelete(ESaldoDepositDetailKurang toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(ESaldoDepositDetailKurang addedEntity) {
+		ESaldoDepositDetailKurang entityFromDb = repo.findByBK(addedEntity.getHeader().getId(), addedEntity.getInvoice().getId());
+		if (entityFromDb != null) {
+			throw new BusinessException("saldodeposit.detail.kurang.bk");
+		}
+	}
+
+	protected void valUniquenessOnEdit(ESaldoDepositDetailKurang editedEntity) {
+		ESaldoDepositDetailKurang entityFromDb = repo.findByBK(editedEntity.getHeader().getId(), editedEntity.getInvoice().getId());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("saldodeposit.detail.kurang.bk");
+			}
+		}
+	}
+
+	protected void preAdd(ESaldoDepositDetailKurang entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(ESaldoDepositDetailKurang entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(ESaldoDepositDetailKurang toBeSaved, ESaldoDepositDetailKurang oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(ESaldoDepositDetailKurang toBeSaved, ESaldoDepositDetailKurang oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(ESaldoDepositDetailKurang entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(ESaldoDepositDetailKurang entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	// ----
+	
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya	
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+}

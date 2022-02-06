@@ -1,0 +1,98 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingComponent;
+
+@Repository
+public class EAutomaticNumberingComponentRepository extends SimpleJpaRepository<EAutomaticNumberingComponent, String> {
+	
+	protected final EntityManager em;
+
+	public EAutomaticNumberingComponentRepository(EntityManager em) {
+		super(EAutomaticNumberingComponent.class, em);
+		this.em = em;
+	}
+	
+	public EAutomaticNumberingComponent findByBk(String jenisTransaksiId, Integer noUrut) {
+
+		String query = "SELECT a " +
+			           "FROM EAutomaticNumberingComponent a " +
+			           "WHERE a.jenisTransaksi.id = :jenisTransaksiId And " +
+			                 "a.noUrut = :noUrut ";
+
+		try {
+			return em.createQuery(query, EAutomaticNumberingComponent.class)
+					.setParameter("jenisTransaksiId", jenisTransaksiId)
+					.setParameter("noUrut", noUrut)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+    public List<EAutomaticNumberingComponent> findByTransactionId(String jenisTransaksiId) {
+    	
+		String query = "SELECT e " + 
+		               "FROM EAutomaticNumberingComponent e " + 
+                       "WHERE e.jenisTransaksi.id = :jenisTransaksiId " +
+		               "ORDER BY e.noUrut";
+    	
+        try {
+			return em.createQuery(query, EAutomaticNumberingComponent.class)
+					 .setParameter("jenisTransaksiId", jenisTransaksiId)
+					 .getResultList();
+        	
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
+	
+    public List<EAutomaticNumberingComponent> findByTransactionCode(String kode) {
+    	
+		String query = "SELECT e " + 
+		               "FROM EAutomaticNumberingComponent e " + 
+                       "WHERE e.jenisTransaksi.kode = :kode " +
+		               "ORDER BY e.noUrut";
+    	
+        try {
+			return em.createQuery(query, EAutomaticNumberingComponent.class)
+					 .setParameter("kode", kode)
+					 .getResultList();
+        	
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
+	
+	public EAutomaticNumberingComponent getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public EAutomaticNumberingComponent add(EAutomaticNumberingComponent entity) {
+		return save(entity);
+	}
+
+	public EAutomaticNumberingComponent edit(EAutomaticNumberingComponent entity) {
+		return save(entity);
+	}
+	
+	@Transactional
+	public void deleteByTransactionId(String idAm90) {
+		
+		StringBuilder queryStringBuilder = new StringBuilder();
+		queryStringBuilder.append("delete from am59 where id_am90 = :idAm90"); 		
+		em.createNativeQuery(queryStringBuilder.toString())
+		  .setParameter("idAm90", idAm90)
+		  .executeUpdate();
+		
+	}	
+}

@@ -1,0 +1,127 @@
+package co.id.sofcograha.base.master.user.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Repository
+public class EUserRepository extends SimpleJpaRepository<EUser, String> {
+
+	protected final EntityManager em;
+
+	public EUserRepository(EntityManager em) {
+		super(EUser.class, em);
+		this.em = em;
+	}
+	
+	public EUser findByBK(String loginName) {
+		EUser entity;
+
+		try {
+			entity = em.createQuery("FROM EUser e WHERE e.loginName = :loginName", EUser.class)
+					.setParameter("loginName", loginName).getSingleResult();
+		} catch (NoResultException e) {
+			entity = null;
+		}
+
+		return entity;
+	}
+
+	public EUser findByLoginName(String loginName) {
+		return this.findByBK(loginName);
+	}
+	
+	public EUser getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EUser> search(SearchParameter searchParameter) {
+	  HqlSimpleSearchBuilder<EUser> search = new HqlSimpleSearchBuilder<>(EUser.class, em);
+	  
+	  String loginName = (String) searchParameter.getValueFromMappedParam("loginName");
+	  String userName = (String) searchParameter.getValueFromMappedParam("userName");
+
+	  if (!QueryUtil.isAll(userName)) {
+	    search.addWhere("AND LOWER(userName) LIKE LOWER(:userName) ");
+	    search.addParameter("userName", QueryUtil.formatStringForLikeFilter(userName));
+	  }
+	  
+	  if (!QueryUtil.isAll(loginName)) {
+        search.addWhere("AND LOWER(loginName) LIKE LOWER(:loginName) ");
+        search.addParameter("loginName", QueryUtil.formatStringForLikeFilter(loginName));
+      }
+
+	  search.setSort(searchParameter.getSort());
+	  search.setPaging(searchParameter.getPagination());
+
+	  return search.getSearchResult();
+	}
+	
+//	public void addAuthorization(User user, Boolean superUser) {
+//		clearSpParameter();
+//		addSpParameter(user.getId());
+//		addSpParameter(CurrentUser.getUsername());
+//		addSpParameter(superUser ? "Y" : "N");
+//		executeVoidProcedure("public.spSimpanOtorisasiUser");
+//	}
+//
+//	public SearchResult<User> search(SearchParameter searchParameter) {
+//		HqlSimpleSearchBuilder<User> search = new HqlSimpleSearchBuilder<>(User.class, em);
+//
+//		String userName = (String) searchParameter.getValueFromMappedParam("userName");
+//		String name = (String) searchParameter.getValueFromMappedParam("name");
+//		String companyId = (String) searchParameter.getValueFromMappedParam("company.id");
+//		String email = (String) searchParameter.getValueFromMappedParam("email");
+//		Integer accessLevel = (Integer) searchParameter.getValueFromMappedParam("accessLevel");
+//		Boolean locked = (Boolean) searchParameter.getValueFromMappedParam("locked");
+//		Boolean active = (Boolean) searchParameter.getValueFromMappedParam("active");
+//
+//		if (!QueryUtil.isAll(userName)) {
+//			search.addWhere("AND LOWER(userName) LIKE LOWER(:userName) ");
+//			search.addParameter("userName", QueryUtil.formatStringForLikeFilter(userName));
+//		}
+//
+//		if (!QueryUtil.isAll(name)) {
+//			search.addWhere("AND LOWER(name) LIKE LOWER(:name) ");
+//			search.addParameter("name", QueryUtil.formatStringForLikeFilter(name));
+//		}
+//
+//		if (companyId != null) {
+//			search.addWhere("AND company.id = :companyId ");
+//			search.addParameter("companyId", companyId);
+//		}
+//
+//		if (!QueryUtil.isAll(email)) {
+//			search.addWhere("AND LOWER(email) LIKE LOWER(:email) ");
+//			search.addParameter("email", QueryUtil.formatStringForLikeFilter(email));
+//		}
+//
+//		if (accessLevel != null) {
+//			search.addWhere("AND accessLevel = :accessLevel ");
+//			search.addParameter("accessLevel", accessLevel);
+//		}
+//
+//		if (locked != null) {
+//			search.addWhere("AND locked = :locked ");
+//			search.addParameter("locked", locked);
+//		}
+//
+//		if (active != null) {
+//			search.addWhere("AND active = :active ");
+//			search.addParameter("active", active);
+//		}
+//
+//		search.setSort(searchParameter.getSort());
+//		search.setPaging(searchParameter.getPagination());
+//
+//		return search.getSearchResult();
+//	}
+}

@@ -1,0 +1,404 @@
+package co.id.sofcograha.base.utils;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.StringTokenizer;
+
+import javax.persistence.EntityManager;
+
+import org.hibernate.Session;
+import org.hibernate.jdbc.ReturningWork;
+import org.hibernate.jdbc.Work;
+import org.postgresql.util.PSQLException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import co.id.sofcograha.base.exceptions.DevException;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.queue.common.QueueUtilService;
+import co.id.sofcograha.base.queue.process.services.ProcessService;
+import co.id.sofcograha.base.queue.queuenotification.services.SysNotificationService;
+import co.id.sofcograha.base.utils.pojos.PojoUtil;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+
+//TODO vint: rework for clean code and better error presentation
+@Component
+public class ProcedureExecutorUtil {
+
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+	@Autowired private QueueUtilService queueUtilService;
+	@Autowired private SysNotificationService sysNotificationService;
+	@Autowired private UserService userService;
+	@Autowired private CompanyService companyService;
+	@Autowired private ProcessService processService;
+
+	@Autowired
+	private LocalErrors errorManager;
+	
+	public List<Object[]> executeProcedure(List<Object> parameters, String storedProcedureName,
+			EntityManager em) {
+		logger.info("BEGIN : executeProcedure");
+
+		StringBuilder tempSQL = new StringBuilder();
+		List<Object> where = new ArrayList<>();
+		List<Object[]> records = null;
+		ResultSet resstResult = null;
+		Session session = null;
+
+		//try {
+			session = em.unwrap(Session.class);
+			resstResult = session.doReturningWork(new ReturningWork<ResultSet>() {
+				Statement callFunc = null;
+				@Override
+				//public ResultSet execute(Connection connection) throws SQLException {
+				public ResultSet execute(Connection connection) throws SQLException {
+					try {
+						callFunc = connection.createStatement();
+						String strngRandom = Long.toString(System.currentTimeMillis());
+						String strngRandomExecute = "'ref" + strngRandom + "'";
+						String strngRandomFetch = "ref" + strngRandom;
+
+						String callStatement = getStatement(storedProcedureName, parameters, true);
+						callStatement = callStatement.replaceAll("'ref'", strngRandomExecute);
+
+						StringTokenizer token = new StringTokenizer(callStatement, "?");
+
+						while (token.hasMoreTokens()) {
+							where.add(token.nextToken());
+						}
+
+						for (int j = 1; j < where.size(); j += 2) {
+							where.add(j, (String) parameters.get((j - 1) / 2));
+						}
+
+						for (int k = 0; k < where.size(); k++) {
+							tempSQL.append((String) where.get(k));
+						}
+						logger.debug("executing final postgres function : " + tempSQL);
+
+						callFunc.executeQuery(tempSQL.toString());
+						
+						return callFunc.executeQuery("fetch all in " + strngRandomFetch + ";");
+					} catch (final PSQLException e) {
+					//} catch (SQLException e) {
+						String error;
+						if ((e.getErrorCode() >= 20000) && (e.getErrorCode() <= 20999)) {
+							error = Integer.toString(e.getErrorCode());
+						    throw new DevException(error, e);
+						} else {
+							//error = e.getMessage();
+							error = e.getServerErrorMessage().getMessage();
+							Object[] args = getMessageParameter(error);
+							
+							error = error.substring(0, error.indexOf("-"));
+							if (args.length > 0) {
+								errorManager.addError(error, args);								
+							} else {
+								errorManager.addError(error);
+							}
+							errorManager.throwBatchError();
+						}
+						//throw new DevException(error, e);
+					} catch (final SQLException e) {
+						throw new DevException(e.getMessage(), e);
+					} finally {
+						logger.debug("postgres Work ending begins");
+						try {
+							if (callFunc != null)
+								callFunc.closeOnCompletion();
+						} catch (SQLException e) {
+							throw new DevException("Fail to closeOnCompletion Statement", e);
+						}
+						logger.debug("postgres Work ending ends");
+					}
+					return null;
+				}
+			});
+
+			records = resultSetToListObjectArray(resstResult);
+			PojoUtil.convertBigTypeToPrimitive(records);
+			/*
+		} catch (Exception e) {
+			throw new DevException(e.getMessage());
+		} finally {
+			logger.debug("postgres ending begins");
+			try {
+				if (resstResult != null)
+					resstResult.close();
+			} catch (SQLException e) {
+				throw new DevException("Fail to close Statement", e);
+			}
+			logger.debug("postgres ending ends");
+		}
+		*/
+
+		logger.info("END : executeProcedure");
+		return records;
+	}
+
+	public void executeVoidProcedure(List<Object> parameters, String storedProcedureName, EntityManager em) {
+		logger.info("BEGIN : executeVoidProcedure");
+
+		StringBuilder tempSQL = new StringBuilder();
+		List<Object> where = new ArrayList<>();
+
+		try {
+			Session session = em.unwrap(Session.class);
+			session.doWork(new Work() {
+				Statement callFunc = null;
+
+				@Override
+				public void execute(Connection connection) throws SQLException {
+					try {
+						callFunc = connection.createStatement();
+
+						String callStatement = getStatement(storedProcedureName, parameters, false);
+
+						StringTokenizer tokenx = new StringTokenizer(callStatement, "?");
+
+						while (tokenx.hasMoreTokens()) {
+							where.add(tokenx.nextToken());
+						}
+
+						for (int j = 1; j < where.size(); j += 2) {
+							where.add(j, (String) parameters.get((j - 1) / 2));
+						}
+
+						for (int k = 0; k < where.size(); k++) {
+							tempSQL.append((String) where.get(k));
+						}
+						logger.debug("executing final postgres function : " + tempSQL);
+
+						callFunc.executeQuery(tempSQL.toString());
+					} catch (SQLException e) {
+						String error;
+						if ((e.getErrorCode() >= 20000) && (e.getErrorCode() <= 20999))
+							error = Integer.toString(e.getErrorCode());
+						else {
+							error = e.getMessage();
+						}
+						throw new DevException(error, e);
+					} finally {
+						logger.debug("postgres ending begins");
+						try {
+							if (callFunc != null)
+								callFunc.close();
+						} catch (SQLException e) {
+							throw new DevException("Fail to close Statement", e);
+						}
+						logger.debug("postgres ending ends");
+					}
+				}
+			});
+		} catch (Exception e) {
+			//throw new DevException(e.getMessage());
+			throw new DevException(e.getLocalizedMessage());			
+		}
+
+		logger.info("END : executeVoidProcedure");
+	}
+
+	/*
+	// dipakai khusus untuk pemanggilan stored procedure melalui queue (karena ada pelaporan error yg ditemukan ke notifikasi)
+	public void executeQueueVoidProcedure(String processCode, String processNumber, List<Object> parameters, String storedProcedureName, EntityManager em) {
+		
+		logger.info("BEGIN : executeQueueVoidProcedure");
+
+		StringBuilder tempSQL = new StringBuilder();
+		List<Object> where = new ArrayList<>();
+
+		try {
+			Session session = em.unwrap(Session.class);
+			session.doWork(new Work() {
+				Statement callFunc = null;
+
+				@Override
+				public void execute(Connection connection) throws SQLException {
+					try {
+						callFunc = connection.createStatement();
+
+						String callStatement = getStatement(storedProcedureName, parameters, false);
+
+						StringTokenizer tokenx = new StringTokenizer(callStatement, "?");
+
+						while (tokenx.hasMoreTokens()) {
+							where.add(tokenx.nextToken());
+						}
+
+						for (int j = 1; j < where.size(); j += 2) {
+							where.add(j, (String) parameters.get((j - 1) / 2));
+						}
+
+						for (int k = 0; k < where.size(); k++) {
+							tempSQL.append((String) where.get(k));
+						}
+						logger.debug("executing final postgres function : " + tempSQL);
+
+						callFunc.executeQuery(tempSQL.toString());
+					} catch (SQLException e) {
+						String error;
+						if ((e.getErrorCode() >= 20000) && (e.getErrorCode() <= 20999))
+							error = Integer.toString(e.getErrorCode());
+						else {
+							error = e.getMessage();
+						}
+						throw new DevException(error, e);
+					} finally {
+						logger.debug("postgres ending begins");
+						try {
+							if (callFunc != null)
+								callFunc.close();
+						} catch (SQLException e) {
+							throw new DevException("Fail to close Statement", e);
+						}
+						logger.debug("postgres ending ends");
+					}
+				}
+			});
+		} catch (Exception e) {
+			throw new DevException(e.getLocalizedMessage());			
+		}
+
+		logger.info("END : executeQueueVoidProcedure");
+	}
+
+	private void sendErrorNotification(String processCode, String processNumber) {
+		
+		String processName = processService.findByBk(processCode).getProcessName();
+		
+		SysNotificationPojo sysNotificationPojo = new SysNotificationPojo();
+		sysNotificationPojo.user = UserInfo.fromEntity(userService.get(CurrentUser.getUserId()));
+		sysNotificationPojo.company = CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId()));
+		sysNotificationPojo.issueDate = TimeUtil.getSystemDateTime();
+		sysNotificationPojo.endIssueDate = TimeUtil.getMaxDate();
+		sysNotificationPojo.readFlag = false;
+		sysNotificationPojo.pinFlag = false;
+		sysNotificationPojo.notificationType = NotificationType.msg_linkDialog.toString();
+		sysNotificationPojo.notificationMsg = "Terjadi kesalahan pada proses " + processName + ". Lihat info proses untuk detail lebih lengkap.";
+		sysNotificationPojo.param1 = processCode;
+		sysNotificationPojo.param2 = processNumber;
+		sysNotificationPojo.active = true;
+		sysNotificationService.add(sysNotificationPojo.toEntity());
+	}
+	*/
+
+	public void executeVoidSQL(String sql, EntityManager em) {
+		logger.info("BEGIN : executeVoidSQL");
+
+		try {
+			Session session = em.unwrap(Session.class);
+			session.doWork(new Work() {
+				Statement callFunc = null;
+
+				@Override
+				public void execute(Connection connection) throws SQLException {
+					try {
+						callFunc = connection.createStatement();
+
+						logger.debug("executing final postgres function : " + sql);
+
+						callFunc.execute(sql);
+					} catch (SQLException e) {
+						String error;
+						if ((e.getErrorCode() >= 20000) && (e.getErrorCode() <= 20999))
+							error = Integer.toString(e.getErrorCode());
+						else {
+							error = e.getMessage();
+						}
+						throw new DevException(error, e);
+					} finally {
+						logger.debug("postgres ending begins");
+						try {
+							if (callFunc != null)
+								callFunc.close();
+						} catch (SQLException e) {
+							throw new DevException("Fail to close Statement", e);
+						}
+						logger.debug("postgres ending ends");
+					}
+				}
+			});
+		} catch (Exception e) {
+			throw new DevException(e.getMessage());
+		}
+
+		logger.info("END : executeVoidSQL");
+	}
+	
+	private String getStatement(String procedureName, List<Object> filterList, boolean withResult) {
+		StringBuilder sb = new StringBuilder("select ");
+		sb.append(procedureName).append("(");
+		if (withResult)
+			sb.append("'ref',");
+		for (int i = 0; i < filterList.size(); i++) {
+			if (filterList.get(i) == null) {
+				sb.append("?,");
+			} else {
+				if ((filterList.get(i) instanceof Number)) {
+					sb.append("?,");
+				} else {
+					sb.append("'?',");
+				}	
+			}
+		}
+		if ((withResult) || !filterList.isEmpty())
+			sb.deleteCharAt(sb.length() - 1);
+		sb.append(")");
+
+		return sb.toString();
+	}
+
+	private List<Object[]> resultSetToListObjectArray(ResultSet resultSet) {
+		List<Object[]> records = new ArrayList<>();
+
+		try {
+			while (resultSet.next()) {
+				int cols = resultSet.getMetaData().getColumnCount();
+				Object[] arr = new Object[cols];
+				for (int i = 0; i < cols; i++) {
+					arr[i] = resultSet.getObject(i + 1);
+				}
+				records.add(arr);
+			}
+		} catch (SQLException e) {
+			logger.debug("trace: ", e);
+		}
+		return records;
+	}
+	
+    private Object[] getMessageParameter(String message) {
+    	
+    	int posisi_awal = message.indexOf("-");
+    	
+    	if (posisi_awal > 0) {
+    		posisi_awal = posisi_awal + 1;
+    	}
+
+		ArrayList<String> tmp_hasil = new ArrayList<String>();
+		
+    	while (posisi_awal > 0) {
+    		
+    		int posisi_akhir = message.indexOf("-", posisi_awal);
+
+        	if (posisi_akhir > 0) {
+        		tmp_hasil.add(message.substring(posisi_awal, posisi_akhir));
+        		posisi_awal = posisi_akhir + 1;
+        	} else {
+        		if (posisi_awal < message.length()) {
+        			tmp_hasil.add(message.substring(posisi_awal, message.length()));        			
+        		}
+        		posisi_awal = -1;
+        	}
+    	}
+    	
+    	return tmp_hasil.toArray();
+    }
+}

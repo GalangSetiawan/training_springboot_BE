@@ -1,0 +1,88 @@
+package co.id.sofcograha.domain.invoicing.masters.grupAkumulasi.controllers;
+
+import java.text.ParseException;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.grupAkumulasi.entities.EGrupAkumulasi;
+import co.id.sofcograha.domain.invoicing.masters.grupAkumulasi.pojos.GrupAkumulasi;
+import co.id.sofcograha.domain.invoicing.masters.grupAkumulasi.services.GrupAkumulasiService;
+
+@RestController
+@RequestMapping("/api/grup-akumulasi")
+public class GrupAkumulasiController {
+	
+	public static final Logger logger = LoggerFactory.getLogger(GrupAkumulasiController.class);
+	
+	@Autowired private GrupAkumulasiService grupAkumulasiService;
+	
+	@NoAuth
+	@GetMapping(value = "/search")
+	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
+		
+		SearchResult<EGrupAkumulasi> searchResult = grupAkumulasiService.search(SearchParameter.generate(searchParameter, 
+				GrupAkumulasi.getFieldMappings()));
+		
+		return ApiResponse.dataWithPaging("items", 
+				GrupAkumulasi.fromEntities(searchResult.getResult(), BaseConstants.DEFAULT_QUERY_DEPTH, 1), 
+				searchResult.getPaging());
+	}
+	
+	@NoAuth
+	@GetMapping
+	public ApiResponse get(@RequestParam String nama) throws JsonProcessingException, ParseException {
+	    GrupAkumulasi data = grupAkumulasiService.findByBk(nama);
+	    
+	    return ApiResponse.data("item", data);
+	}
+	
+	//@AuthAdd("TRX_PP")
+	@NoAuth
+	@PostMapping
+	public ApiResponse add(@RequestBody GrupAkumulasi pojo) {
+
+		
+		EGrupAkumulasi header = grupAkumulasiService.add(pojo.toEntity());
+		
+		return ApiResponse.data("item", GrupAkumulasi.fromEntity(header));
+	}
+	
+	//@AuthEdit("TRX_PP")
+	@NoAuth
+	@PutMapping
+	public ApiResponse edit(@RequestBody GrupAkumulasi pojo) {
+		
+		EGrupAkumulasi header = grupAkumulasiService.edit(pojo.toEntity());
+		
+		return ApiResponse.data("item", GrupAkumulasi.fromEntity(header));
+	}
+
+	//@AuthDelete("TRX_PP")
+	@NoAuth
+	@DeleteMapping
+	public ApiResponse delete(@RequestParam String id, @RequestParam(required = false) Long version) {
+		
+		grupAkumulasiService.delete(id, version);
+		
+		return ApiResponse.ok();
+	}
+	
+}

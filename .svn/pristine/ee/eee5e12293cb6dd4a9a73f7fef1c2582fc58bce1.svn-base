@@ -1,0 +1,247 @@
+package co.id.sofcograha.domain.invoicing.masters.skemaharga.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.entities.ESkemaHargaDetail;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.pojos.SkemaHargaDetail;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.repositories.ESkemaHargaDetailRepository;
+
+@Service("skemaHargaDetailService")
+public class SkemaHargaDetailService extends BaseService {
+	
+	@Autowired private ESkemaHargaDetailRepository repo;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public SkemaHargaDetail findByBk(String idMi002, String kltrf, Integer nourut) {
+		return SkemaHargaDetail.fromEntity(repo.findByBK(idMi002, kltrf, nourut));
+	}
+
+	public List<SkemaHargaDetail> getByIdAndKelTarifSortByMax(String idMi002, String kltrf) {
+		return SkemaHargaDetail.fromEntities(repo.getByIdAndKelTarifSortByMax(idMi002, kltrf));		
+	}
+	
+	public SearchResult<ESkemaHargaDetail> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public ESkemaHargaDetail add(ESkemaHargaDetail entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		manageMinMaxValues(entity);
+		//throwBatchError();
+		
+		manageReferences(entity);
+		//throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		//throwBatchError();
+		
+		if (!isAnyBatchErrors()) {
+			preAdd(entity);
+			ESkemaHargaDetail addedEntity = repo.add(entity);
+			postAdd(addedEntity);
+			
+			return addedEntity;	
+		}
+			
+		//throwBatchError();
+		return entity;	
+
+	}
+	
+	@Transactional
+	public ESkemaHargaDetail edit(ESkemaHargaDetail entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		ESkemaHargaDetail toBeSaved = repo.getOne(entity.getId());
+		ESkemaHargaDetail oldEntity = (ESkemaHargaDetail) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, ESkemaHargaDetail.class.getSimpleName());
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		ESkemaHargaDetail toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		//throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		//throwBatchError();
+		
+	}
+	
+	// terkait manipulasi data
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		ESkemaHargaDetail dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(ESkemaHargaDetail entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(ESkemaHargaDetail newValues, ESkemaHargaDetail toBeSaved) {
+
+		if (toBeSaved != null) {
+			toBeSaved.setNourut(newValues.getNourut());
+			toBeSaved.setMin(newValues.getMin());
+			toBeSaved.setMax(newValues.getMax());
+			toBeSaved.setHarga(newValues.getHarga());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(ESkemaHargaDetail entity) {
+	}
+	
+	protected void manageMinMaxValues(ESkemaHargaDetail entity) {
+		valMinInteger(entity.getNourut(), 1, "skemaharga.detail.nourut.min.length");
+		valMaxInteger(entity.getNourut(), 999, "skemaharga.detail.nourut.max.length");
+		valMinInteger(entity.getMin(), 1, "skemaharga.detail.min.min.length");
+		valMaxInteger(entity.getMin(), 999999, "skemaharga.detail.min.max.length");
+		valMinInteger(entity.getMax(), 1, "skemaharga.detail.max.min.length");
+		valMaxInteger(entity.getMax(), 999999, "skemaharga.detail.max.max.length");
+		valMinDouble(entity.getHarga(), 0D, "skemaharga.detail.harga.min.length");
+		valMaxDouble(entity.getHarga(), 999999999D, "skemaharga.detail.harga.max.length");
+	}
+
+	protected void manageReferences(ESkemaHargaDetail entity) {
+	}
+
+	protected void valDelete(ESkemaHargaDetail toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(ESkemaHargaDetail addedEntity) {
+		ESkemaHargaDetail entityFromDb = repo.findByBK(addedEntity.getHeader().getId(), addedEntity.getKltrf(), addedEntity.getNourut());
+		if (entityFromDb != null) {
+			throw new BusinessException("skemaharga.detail.bk", addedEntity.getNourut());
+		}
+	}
+
+	protected void valUniquenessOnEdit(ESkemaHargaDetail editedEntity) {
+		ESkemaHargaDetail entityFromDb = repo.findByBK(editedEntity.getHeader().getId(), editedEntity.getKltrf(), editedEntity.getNourut());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("detiltransaksijurnal.bk", editedEntity.getNourut());
+			}
+		}
+	}
+
+	protected void preAdd(ESkemaHargaDetail entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(ESkemaHargaDetail entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(ESkemaHargaDetail toBeSaved, ESkemaHargaDetail oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(ESkemaHargaDetail toBeSaved, ESkemaHargaDetail oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(ESkemaHargaDetail entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(ESkemaHargaDetail entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	// ----
+	
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya	
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+}

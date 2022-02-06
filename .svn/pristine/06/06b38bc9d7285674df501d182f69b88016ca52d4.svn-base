@@ -1,0 +1,114 @@
+package co.id.sofcograha.base.queue.processstatus.pojos;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.queue.common.QueueConstants;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatusDetail;
+import co.id.sofcograha.base.utils.pojos.PojoUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class ProcessStatusDetailPojo {
+	
+	private static final long serialVersionUID = -517716890018661298L;
+	
+	public String id;
+	public Long version;
+	public ProcessStatusPojo processStatus;
+	public Integer nomorItem;
+	public String processStatusType;
+	public String msgKey;
+	public String msgParam;
+	
+	public EProcessStatusDetail toEntity() {
+		EProcessStatusDetail entity = new EProcessStatusDetail();
+		
+		entity.setId(id);
+		entity.setVersion(version);		
+		entity.setNomorItem(nomorItem);
+		entity.setProcessStatusType(PojoUtil.string2Enum(processStatusType, QueueConstants.ProcessStatusType.class));
+		entity.setMsgKey(msgKey);
+		entity.setMsgParam(msgParam);
+		
+		if (processStatus != null && !StringUtils.isEmpty(processStatus.id)) {
+			EProcessStatus eProcessStatus = new EProcessStatus();
+			
+			eProcessStatus.setId(processStatus.id);
+			eProcessStatus.setVersion(processStatus.version);
+			
+			entity.setProcessStatus(eProcessStatus);
+			
+		} else {
+			entity.setProcessStatus(null);
+		}
+		
+		return entity;
+	}
+	
+	public static ProcessStatusDetailPojo fromEntity(EProcessStatusDetail entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static ProcessStatusDetailPojo fromEntity (EProcessStatusDetail entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+		
+	public static ProcessStatusDetailPojo fromEntity(EProcessStatusDetail entity, int depthLevel, int detailDepthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		ProcessStatusDetailPojo pojo = new ProcessStatusDetailPojo();
+
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+			
+			pojo.version = entity.getVersion();
+			pojo.processStatus = ProcessStatusPojo.fromEntity(entity.getProcessStatus(), depthLevel);
+			pojo.nomorItem = entity.getNomorItem();
+			pojo.processStatusType = entity.getProcessStatusType().name();
+			pojo.msgKey = entity.getMsgKey();
+			pojo.msgParam = entity.getMsgParam();
+		}
+		return pojo;
+	}
+	
+	public static List<ProcessStatusDetailPojo> fromEntities(List<EProcessStatusDetail> entities) {
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<ProcessStatusDetailPojo> fromEntities(List<EProcessStatusDetail> entities, int depthLevel, int detailDepthLevel) {
+		if (entities == null) return new ArrayList<ProcessStatusDetailPojo>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<ProcessStatusDetailPojo> pojos = new ArrayList<ProcessStatusDetailPojo>();
+		for(EProcessStatusDetail entity: entities) {
+			pojos.add(ProcessStatusDetailPojo.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("processStatusId", "processStatus.id").searchOnly());
+		mappings.add(new SearchFieldMapping("nomorItem", "nomorItem", Integer.class));
+		mappings.add(new SearchFieldMapping("processStatusType", "processStatusType", QueueConstants.ProcessStatusType.class));
+		mappings.add(new SearchFieldMapping("msgKey", "msgKey"));
+		mappings.add(new SearchFieldMapping("msgParam", "msgParam"));
+		
+		return mappings;
+	}
+}

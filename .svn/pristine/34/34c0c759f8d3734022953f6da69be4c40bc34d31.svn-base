@@ -1,0 +1,63 @@
+package co.id.sofcograha.domain.invoicing.masters.skemaharga.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.entities.ESkemaHargaDetail;
+
+@Repository
+public class ESkemaHargaDetailRepository extends SimpleJpaRepository<ESkemaHargaDetail, String> {
+
+	protected final EntityManager em;
+
+	public ESkemaHargaDetailRepository(EntityManager em) {
+		super(ESkemaHargaDetail.class, em);
+		this.em = em;
+	}
+	
+	public ESkemaHargaDetail findByBK(String idMi002, String kltrf, Integer nourut) {
+		
+		String query = "SELECT e FROM ESkemaHargaDetail e " + 
+                       "WHERE e.header.id = :idMi002 And " +
+  	                         "e.kltrf = :kltrf And " +
+		                     "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, ESkemaHargaDetail.class)
+					 .setParameter("idMi002", idMi002)
+					 .setParameter("kltrf", kltrf)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ESkemaHargaDetail getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<ESkemaHargaDetail> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ESkemaHargaDetail> search = new HqlSimpleSearchBuilder<>(ESkemaHargaDetail.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ESkemaHargaDetail add(ESkemaHargaDetail entity) {
+		return save(entity);
+	}
+
+	public ESkemaHargaDetail edit(ESkemaHargaDetail entity) {
+		return save(entity);
+	}
+}

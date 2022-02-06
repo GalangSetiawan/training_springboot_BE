@@ -1,0 +1,237 @@
+package co.id.sofcograha.domain.invoicing.admin.upload.entities;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.exceptions.DevException;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(name = "ai002", uniqueConstraints = @UniqueConstraint(columnNames = { "id_ai001" }))
+public class EAdminUploadDetail implements Cloneable {
+	
+	@Id
+	@Column(name = "id_ai002")
+	private String id;
+	
+	@Column(name = "fversi")
+    private String fversi;
+	
+	@Column(name = "jkbulini")
+	private Integer jkbulini;
+  
+	@Column(name = "revjkbullalu")
+	private Integer revjkbullalu;
+  
+	@Column(name = "seljkbullalu")
+	private Integer seljkbullalu;
+  
+	@Column(name = "jnkbulini")
+	private Integer jnkbulini;
+  
+	@Column(name = "revjnkbullalu")
+	private Integer revjnkbullalu;
+  
+	@Column(name = "seljnkbullalu")
+	private Integer seljnkbullalu;
+  
+	@Version
+	@Column(name = "version")
+	private Long version;
+  
+	@Column(name = "usrcrt")
+	private String usrcrt;
+  
+	@Column(name = "tglcrt")
+	private String tglcrt;
+
+	@Column(name = "jamcrt")
+	private String jamcrt;
+  
+	@Column(name = "usrupd")
+	private String usrupd;
+  
+	@Column(name = "tglupd")
+	private String tglupd;
+
+	@Column(name = "jamupd")
+	private String jamupd;
+  
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "id_ai001")
+	private EAdminUploadHeader header;
+  
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getFversi() {
+		return fversi;
+	}
+
+	public void setFversi(String fversi) {
+		this.fversi = fversi;
+	}
+
+	public Integer getJkbulini() {
+		return jkbulini;
+	}
+
+	public void setJkbulini(Integer jkbulini) {
+		this.jkbulini = jkbulini;
+	}
+
+	public Integer getRevjkbullalu() {
+		return revjkbullalu;
+	}
+
+	public void setRevjkbullalu(Integer revjkbullalu) {
+		this.revjkbullalu = revjkbullalu;
+	}
+
+	public Integer getSeljkbullalu() {
+		return seljkbullalu;
+	}
+
+	public void setSeljkbullalu(Integer seljkbullalu) {
+		this.seljkbullalu = seljkbullalu;
+	}
+
+	public Integer getJnkbulini() {
+		return jnkbulini;
+	}
+
+	public void setJnkbulini(Integer jnkbulini) {
+		this.jnkbulini = jnkbulini;
+	}
+
+	public Integer getRevjnkbullalu() {
+		return revjnkbullalu;
+	}
+
+	public void setRevjnkbullalu(Integer revjnkbullalu) {
+		this.revjnkbullalu = revjnkbullalu;
+	}
+
+	public Integer getSeljnkbullalu() {
+		return seljnkbullalu;
+	}
+
+	public void setSeljnkbullalu(Integer seljnkbullalu) {
+		this.seljnkbullalu = seljnkbullalu;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public String getUsrcrt() {
+		return usrcrt;
+	}
+
+	public void setUsrcrt(String usrcrt) {
+		this.usrcrt = usrcrt;
+	}
+
+	public String getTglcrt() {
+		return tglcrt;
+	}
+
+	public void setTglcrt(String tglcrt) {
+		this.tglcrt = tglcrt;
+	}
+
+	public String getJamcrt() {
+		return jamcrt;
+	}
+
+	public void setJamcrt(String jamcrt) {
+		this.jamcrt = jamcrt;
+	}
+
+	public String getUsrupd() {
+		return usrupd;
+	}
+
+	public void setUsrupd(String usrupd) {
+		this.usrupd = usrupd;
+	}
+
+	public String getTglupd() {
+		return tglupd;
+	}
+
+	public void setTglupd(String tglupd) {
+		this.tglupd = tglupd;
+	}
+
+	public String getJamupd() {
+		return jamupd;
+	}
+
+	public void setJamupd(String jamupd) {
+		this.jamupd = jamupd;
+	}
+
+	public EAdminUploadHeader getHeader() {
+		return header;
+	}
+
+	public void setHeader(EAdminUploadHeader header) {
+		this.header = header;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+
+	@PrePersist
+	private void prePersist() {
+
+		Date currentDate = new Date();
+	  
+		this.id = UUID.randomUUID().toString();
+    
+		this.usrcrt = CurrentUser.getUsername();
+		this.tglcrt = new SimpleDateFormat("yyyyMMdd").format(currentDate);
+		this.jamcrt = new SimpleDateFormat("HHmmss").format(currentDate);
+	
+	}
+
+	@PreUpdate
+	private void preUpdate() {
+		Date currentDate = new Date();
+		
+		this.usrupd = CurrentUser.getUsername();
+		this.tglupd = new SimpleDateFormat("yyyyMMdd").format(currentDate);
+		this.jamupd = new SimpleDateFormat("HHmmss").format(currentDate);
+	}
+}

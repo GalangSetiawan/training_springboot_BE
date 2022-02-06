@@ -1,0 +1,149 @@
+package co.id.sofcograha.base.master.widget.pojos;
+
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+
+import org.apache.commons.lang3.ArrayUtils;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.widget.entities.EWidget;
+import co.id.sofcograha.base.utils.ImageUtil;
+import co.id.sofcograha.base.utils.pojos.PojoUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+
+//import id.co.sofcograha.gajiidapi.base.constants.BaseConstants;
+//import id.co.sofcograha.gajiidapi.base.extendables.BasePojo;
+//import id.co.sofcograha.gajiidapi.base.mst.functionaccess.entities.FunctionAccess;
+//import id.co.sofcograha.gajiidapi.base.mst.functionaccess.pojos.FunctionAccessPojo;
+//import id.co.sofcograha.gajiidapi.base.mst.widget.entities.Widget;
+//import id.co.sofcograha.gajiidapi.base.search.SearchFieldMapping;
+//import id.co.sofcograha.gajiidapi.base.utils.ImageUtil;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.ALWAYS)
+public class WidgetPojo {
+	
+	private static final long serialVersionUID = 8151949546977332288L;
+	public static final String SINGLE = "widget";
+	public static final String MULTI = "widgets";
+	
+	public String id;
+	public Long version;
+//	public String widgetId;
+	public String widgetName;
+	public Integer cols;
+	public Integer rows;
+	public Integer x;
+	public Integer y;
+	//public FunctionAccessPojo functionAccess;
+	public String imageExtension;
+	public String image;
+	public Boolean active;
+	
+	public EWidget toEntity() {
+		
+		EWidget entity = new EWidget();
+		
+		entity.setId(id);
+		entity.setVersion(version);
+//		entity.setWidgetId(widgetId);
+		entity.setWidgetName(widgetName);
+		entity.setCols(cols);
+		entity.setRows(rows);
+		entity.setX(x);
+		entity.setY(y);
+		//entity.setFunctionAccess(super.toReferenceEntity(functionAccess, FunctionAccess.class));
+		entity.setImageExtension(imageExtension);
+		entity.setImage(toEntityByteArray(ImageUtil.getBase64RawData(image)));
+		entity.setActive(active);
+		
+		return entity;
+	}
+	
+	public static WidgetPojo fromEntity(EWidget entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static WidgetPojo fromEntity(EWidget entity, int depthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		WidgetPojo pojo = new WidgetPojo();
+
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+			
+			pojo.version = entity.getVersion();
+//			pojo.widgetId = entity.getWidgetId();
+			pojo.widgetName = entity.getWidgetName();
+			pojo.cols = entity.getCols();
+			pojo.rows = entity.getRows();
+			pojo.x = entity.getX();
+			pojo.y = entity.getY();
+			//pojo.functionAccess = FunctionAccessPojo.fromEntity(entity.getFunctionAccess(), depthLevel);
+			pojo.imageExtension = entity.getImageExtension();
+			pojo.image = ImageUtil.getBase64FormatImage(entity.getImageExtension(), fromEntityByteArray(entity.getImage()));
+			pojo.active = entity.getActive();
+		}
+		return pojo;
+	}
+	
+	public static List<WidgetPojo> fromEntities(List<EWidget> entities) {
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH);
+	}
+
+	public static List<WidgetPojo> fromEntities(List<EWidget> entities, int depthLevel) {
+		if (entities == null) return new ArrayList<WidgetPojo>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		
+		List<WidgetPojo> pojos = new ArrayList<WidgetPojo>();
+		for(EWidget entity: entities) {
+			pojos.add(WidgetPojo.fromEntity(entity));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("widgetId", "widgetId"));
+		mappings.add(new SearchFieldMapping("widgetName", "widgetName"));
+		mappings.add(new SearchFieldMapping("cols", "cols", Integer.class));
+		mappings.add(new SearchFieldMapping("rows", "rows", Integer.class));
+		mappings.add(new SearchFieldMapping("x", "y", Integer.class));
+		mappings.add(new SearchFieldMapping("x", "y", Integer.class));
+		mappings.add(new SearchFieldMapping("functionAccessId", "functionAccess.id").searchOnly());
+		mappings.add(new SearchFieldMapping("active", "active", Boolean.class));
+		
+		return mappings;
+	}
+	
+	public static List<SearchFieldMapping> getAllowedUserWidgetFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("userId", "userId").searchOnly());
+		mappings.add(new SearchFieldMapping("widgetId", "widgetId"));
+		mappings.add(new SearchFieldMapping("widgetName", "widgetName"));
+		
+		return mappings;
+	}
+	
+	protected Byte[] toEntityByteArray(String val) {
+		return val == null ? null : PojoUtil.string2Base64ByteArray(val);
+	}
+	
+	protected static String fromEntityByteArray(Byte[] val) {
+		String result = null;
+		if (val != null) {
+			result = Base64.getEncoder().encodeToString(ArrayUtils.toPrimitive(val));
+		}
+		
+		return result;
+	}
+}

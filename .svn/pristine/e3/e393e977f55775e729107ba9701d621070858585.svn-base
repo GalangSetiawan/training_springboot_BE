@@ -1,0 +1,223 @@
+package co.id.sofcograha.base.master.widget.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.usercompany.services.UserCompanyLoginService;
+import co.id.sofcograha.base.master.widget.entities.EWidget;
+import co.id.sofcograha.base.master.widget.repositories.WidgetRepository;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+//import id.co.sofcograha.gajiidapi.base.exceptions.BusinessException;
+//import id.co.sofcograha.gajiidapi.base.extendables.BaseService;
+//import id.co.sofcograha.gajiidapi.base.mst.company.entities.Company;
+//import id.co.sofcograha.gajiidapi.base.mst.functionaccess.services.FunctionAccessService;
+//import id.co.sofcograha.gajiidapi.base.mst.usercompany.services.UserCompanyLoginService;
+//import id.co.sofcograha.gajiidapi.base.mst.widget.entities.Widget;
+//import id.co.sofcograha.gajiidapi.base.mst.widget.repositories.WidgetRepository;
+//import id.co.sofcograha.gajiidapi.base.search.SearchParameter;
+//import id.co.sofcograha.gajiidapi.base.search.SearchResult;
+//import id.co.sofcograha.gajiidapi.base.utils.OptionalConsumerUtil;
+
+@Service
+public class WidgetService extends BaseService {
+
+	//@Autowired private FunctionAccessService functionAccessService;
+	@Autowired private UserCompanyLoginService userCompanyLoginService;
+
+	@Autowired WidgetRepository widgetRepository;
+
+	@Transactional
+	public EWidget add(EWidget entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EWidget addedEntity = widgetRepository.add(entity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+
+	@Transactional
+	public EWidget edit(EWidget entity) {
+		
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EWidget toBeSaved = widgetRepository.getOne(entity.getId());
+		EWidget oldEntity = (EWidget) toBeSaved.clone();
+		
+		//TODO: this may cause org.hibernate.TransientPropertyValueException
+		// (set reference to non existing data, then before reaching manageReferences, another thread trigger hibernate flush)
+		defineEditableValues(entity, toBeSaved);
+		
+		toBeSaved = widgetRepository.edit(toBeSaved);
+
+		throwBatchError();
+		return toBeSaved;	
+	}
+	
+	@Transactional
+	public void delete(String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EWidget.class.getSimpleName());
+		throwBatchError();
+		
+		EWidget toBeDeleted = widgetRepository.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		widgetRepository.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+	
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EWidget dbEntity = widgetRepository.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (widgetRepository.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EWidget entity) {
+		if (entity.getActive() == null) entity.setActive(true);
+	}
+
+	protected void defineEditableValues(EWidget newValues, EWidget toBeSaved) {
+//		toBeSaved.setWidgetId(newValues.getWidgetId());
+		toBeSaved.setWidgetName(newValues.getWidgetName());
+		toBeSaved.setCols(newValues.getCols());
+		toBeSaved.setRows(newValues.getRows());
+		//toBeSaved.setFunctionAccess(newValues.getFunctionAccess());
+		toBeSaved.setImageExtension(newValues.getImageExtension());
+		toBeSaved.setImage(newValues.getImage());
+		toBeSaved.setActive(newValues.getActive());
+	}
+
+	protected void valRequiredValues(EWidget entity) {
+//		valRequiredString(entity.getWidgetId(), "widget.widgetId.required");
+		valRequiredString(entity.getWidgetName(), "widget.widgetName.required");
+		valRequiredInteger(entity.getCols(), "widget.cols.required");
+		valRequiredInteger(entity.getRows(), "widget.rows.required");
+		valRequiredBoolean(entity.getActive(), "widget.active.required");
+	}
+
+	protected void manageMinMaxValues(EWidget entity) {
+//		valMaxString(entity.getWidgetId(), 100, "widget.widgetId.max.length");
+		valMaxString(entity.getWidgetName(), 100, "widget.widgetName.max.length");
+		valMaxInteger(entity.getCols(), 999, "widget.cols.max.length");
+		valMaxInteger(entity.getRows(), 999, "widget.rows.max.length");
+		valMaxString(entity.getImageExtension(), 20, "widget.imageExtension.max.length");
+	}
+
+	protected void manageReferences(EWidget entity) {
+//		if (entity.getFunctionAccess() != null) {
+//			OptionalConsumerUtil.of(functionAccessService.find(entity.getFunctionAccess().getId()))
+//			.ifPresent(functionAccess -> {
+//				if (functionAccess.getActive()) {
+//					entity.setFunctionAccess(functionAccess);
+//				} else {
+//					batchError("widget.functionAccess.not.active");
+//				}
+//			})
+//			.ifNotPresent(() -> {
+//				batchError("widget.functionAccess.not.found");
+//			});
+//		}
+	}
+/*
+	@Override
+	protected void valValid(Widget entity) { }
+
+	@Override
+	protected void valAdd(Widget entity) {	}
+
+	@Override
+	protected void valEdit(Widget entity, Widget fromDb) { }
+*/
+
+	protected void valDelete(EWidget toBeDeleted) {	}
+
+	protected void valUniquenessOnAdd(EWidget addedEntity) {
+//		OptionalConsumerUtil.of(findByBk(addedEntity.getWidgetId()))
+//		.ifPresent(fromDb -> {
+//			throw new BusinessException("widget.bk", addedEntity.getWidgetId());
+//		});
+		EWidget eWidgetFromDb = widgetRepository.findByBK(addedEntity.getId());
+		if (eWidgetFromDb != null) {
+			throw new BusinessException("companyLogo.bk", addedEntity.getWidgetName());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EWidget editedEntity) {
+//		OptionalConsumerUtil.of(findByBk(editedEntity.getWidgetId()))
+//		.ifPresent(fromDb -> {
+//			if (!editedEntity.getId().equals(fromDb.getId())) {
+//				throw new BusinessException("widget.bk", editedEntity.getWidgetId());
+//			}
+//		});
+		EWidget eWidgetFromDb = widgetRepository.findByBK(editedEntity.getId());
+		if (eWidgetFromDb != null) {
+			if (!editedEntity.getId().equals(eWidgetFromDb.getId())) {
+				throw new BusinessException("widget.bk", editedEntity.getId());
+			}
+		}
+	}
+
+	public EWidget findByBk(String widgetId) {
+		return widgetRepository.findByBK(widgetId);
+	}
+
+	public EWidget get(String id) {
+		return widgetRepository.getOne(id);
+	}
+	
+	public SearchResult<EWidget>search(SearchParameter searchParameter) {
+		return widgetRepository.search(searchParameter);
+	}
+	
+	//public SearchResult<EWidget>searchAllowedUserWidgets(SearchParameter searchParameter) {
+	//	ECompany company = userCompanyLoginService.getCurrentUserCompany().getCompany();
+	//	return widgetRepository.searchAllowedUserWidgets(company, searchParameter);
+	//}
+}

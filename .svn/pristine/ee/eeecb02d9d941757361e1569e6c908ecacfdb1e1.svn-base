@@ -1,0 +1,83 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities;
+
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import co.id.sofcograha.base.exceptions.DevException;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(name = "am60", uniqueConstraints = @UniqueConstraint(columnNames = { "id_am60", "key" }))
+public class EAutomaticNumberingCounter implements Cloneable {
+
+	@Id
+	@Column(name = "id_am60")
+	private String id;
+	
+	@Column(name = "key")
+	private String key;
+	
+	@Column(name = "last_count")
+	private Integer lastCount;
+	
+	@Version
+	@Column(name = "version")
+	private Long version;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public String getKey() {
+		return key;
+	}
+
+	public void setKey(String key) {
+		this.key = key;
+	}
+
+	public Integer getLastCount() {
+		return lastCount;
+	}
+
+	public void setLastCount(Integer lastCount) {
+		this.lastCount = lastCount;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+	
+	@PrePersist
+	private void prePersist() {
+		
+		this.id = UUID.randomUUID().toString();
+		
+	}
+	
+}

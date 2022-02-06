@@ -1,0 +1,152 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.controllers;
+
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import co.id.sofcograha.base.authorization.annotation.NoAuth;
+import co.id.sofcograha.base.master.menu.services.MenuService;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.screencontrol.DisplayControl;
+import co.id.sofcograha.base.utils.ApiResponse;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.entities.EUserHakAksesMenu;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.pojos.UserHakAksesMenu;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.pojos.UserHakAksesMenuComplete;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.services.UserHakAksesMenuCompleteService;
+
+@RestController
+@RequestMapping("/api/user-hak-akses-menu")
+public class UserHakAksesMenuController {
+
+	public static final Logger logger = LoggerFactory.getLogger(UserHakAksesMenuController.class);
+	
+	@Autowired
+	private UserHakAksesMenuCompleteService userHakAksesMenuCompleteService;
+	@Autowired
+	private MenuService menuService;
+	
+	@NoAuth
+    @GetMapping(value = "/user-hak-akses-menu-detail")
+    public ApiResponse getUserHakAksesMenu(@RequestParam String idUser) {
+        return ApiResponse.data("items", UserHakAksesMenu.fromEntities(userHakAksesMenuCompleteService.findByHeader(idUser)));
+    }
+    
+	@NoAuth
+	@GetMapping(value = "/search-user")
+    public ApiResponse searchUser(@RequestParam Map<String, String> searchParameter) {
+        List<SearchFieldMapping> mappings = new ArrayList<>();
+        mappings.add(new SearchFieldMapping("loginName", "loginName", String.class));
+        mappings.add(new SearchFieldMapping("userName", "userName", String.class));
+        mappings.add(new SearchFieldMapping("idUser", "loginName", String.class));
+        
+        SearchResult<EUser> searchResult = userHakAksesMenuCompleteService.searchUser(SearchParameter.generate(searchParameter, 
+                mappings));
+        ApiResponse a = ApiResponse.dataWithPaging("items", 
+            UserHakAksesMenuComplete.fromEntities(searchResult.getResult()), 
+            searchResult.getPaging());
+        return ApiResponse.dataWithPaging("items", 
+                UserHakAksesMenuComplete.fromEntities(searchResult.getResult()), 
+                searchResult.getPaging());
+    }
+    
+	@NoAuth
+    @GetMapping(value = "/search-menu")
+    public ApiResponse searchMenu(@RequestParam Map<String, String> searchParameter) {
+        List<SearchFieldMapping> mappings = new ArrayList<>();
+        mappings.add(new SearchFieldMapping("idUser", "idUser", String.class));
+        mappings.add(new SearchFieldMapping("idMenu", "id_menu", String.class));
+        
+        SearchResult<EUserHakAksesMenu> searchResult = userHakAksesMenuCompleteService.searchMenu(SearchParameter.generate(searchParameter, 
+                mappings));
+        
+        List<UserHakAksesMenu> pojoList = UserHakAksesMenu.fromEntities(searchResult.getResult());
+        for (UserHakAksesMenu pojo : pojoList) {
+          pojo.setMenu(menuService.findById(pojo.idMenu));
+        }
+        
+        return ApiResponse.dataWithPaging("items", 
+            pojoList, 
+            searchResult.getPaging());
+    }
+
+	@NoAuth
+    @PostMapping(value = "/add-complete")
+    public ApiResponse addEditUserHakAksesMenu(@RequestBody UserHakAksesMenuComplete pojo) throws ParseException {
+        EUser added = userHakAksesMenuCompleteService.addEditUserHakAksesMenu(pojo);
+
+        ArrayList<DisplayControl> dispCtlList = new ArrayList<DisplayControl>();
+        dispCtlList.add(new DisplayControl("idUser", "disable"));
+        dispCtlList.add(new DisplayControl("idMenu", "disable"));
+        
+        return ApiResponse.data("item", UserHakAksesMenuComplete.setFromEntity(added),
+                                dispCtlList);
+    }
+    
+	@NoAuth
+    @PostMapping(value = "/add-user")
+    public ApiResponse addUser(@RequestBody UserHakAksesMenuComplete pojo) throws ParseException {
+        EUser added = userHakAksesMenuCompleteService.addUser(pojo);
+
+        ArrayList<DisplayControl> dispCtlList = new ArrayList<DisplayControl>();
+        dispCtlList.add(new DisplayControl("idUser", "disable"));
+        dispCtlList.add(new DisplayControl("idMenu", "disable"));
+        
+        return ApiResponse.data("item", UserHakAksesMenuComplete.setFromEntity(added),
+                                dispCtlList);
+    }
+    
+	@NoAuth
+    @PostMapping(value = "/copy")
+    public ApiResponse copyUserHakAksesMenu(@RequestBody UserHakAksesMenuComplete pojo) throws ParseException {
+        EUser added = userHakAksesMenuCompleteService.copyUserHakAksesMenu(pojo);
+
+        ArrayList<DisplayControl> dispCtlList = new ArrayList<DisplayControl>();
+        dispCtlList.add(new DisplayControl("idUser", "disable"));
+        dispCtlList.add(new DisplayControl("idMenu", "disable"));
+        
+        return ApiResponse.data("item", UserHakAksesMenuComplete.setFromEntity(added),
+                                dispCtlList);
+    }
+    
+	@NoAuth
+    @DeleteMapping
+    public ApiResponse deleteUserHakAksesMenu(@RequestParam String idUser, @RequestParam(required = false) Long version) {
+        userHakAksesMenuCompleteService.deleteUserHakAksesMenu(idUser);
+        return ApiResponse.ok();
+    }
+
+	@NoAuth
+    @PutMapping
+    public ApiResponse editHakMenuUser(@RequestBody UserHakAksesMenu pojo) {
+        EUserHakAksesMenu edited = userHakAksesMenuCompleteService.editHakMenuUser(pojo.toEntity());
+        
+        ArrayList<DisplayControl> dispCtlList = new ArrayList<DisplayControl>();
+        dispCtlList.add(new DisplayControl("idUser", "disable"));
+        dispCtlList.add(new DisplayControl("idMenu", "disable"));
+        
+        return ApiResponse.data("item", UserHakAksesMenu.fromEntity(edited));
+    }
+
+	@NoAuth
+	@GetMapping(value = "/menu-tree")
+	public ApiResponse getMenuTreeByUser(@RequestParam String idUser) {
+		return ApiResponse.data("items", userHakAksesMenuCompleteService.getMenuTreeByUser(idUser));
+	}
+
+}

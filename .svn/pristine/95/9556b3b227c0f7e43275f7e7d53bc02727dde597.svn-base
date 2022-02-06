@@ -1,0 +1,227 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.repositories;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.Query;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.utils.searchData.NativeSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.commonMasters.userHakAksesMenu.entities.EUserHakAksesMenu;
+
+@Repository
+public class EUserHakAksesMenuRepository extends SimpleJpaRepository<EUserHakAksesMenu, String> {
+
+	protected final EntityManager em;
+
+	public EUserHakAksesMenuRepository(EntityManager em) {
+		super(EUserHakAksesMenu.class, em);
+		this.em = em;
+	}
+	
+	public List<EUserHakAksesMenu> findByHeader(String idUser) {
+	  List<EUserHakAksesMenu> entities;    
+	  try {
+	    entities = em.createQuery("FROM EUserHakAksesMenu e WHERE e.idUser = :idUser", EUserHakAksesMenu.class)
+	        .setParameter("idUser", idUser).getResultList();
+	  } catch (NoResultException e) {
+	    entities = null;
+	  }
+	  
+	  return entities;
+	}
+	
+	public EUserHakAksesMenu findByBK(String idUser, String idMenu) {
+	  String id = idUser;
+	  EUserHakAksesMenu entity;
+
+		try {
+			entity = em.createQuery("FROM EUserHakAksesMenu e WHERE e.idUser = :idUser AND e.idMenu = :idMenu ", EUserHakAksesMenu.class)
+					.setParameter("idUser", idUser)
+					.setParameter("idMenu", idMenu).getSingleResult();
+		} catch (NoResultException e) {
+			entity = null;
+		}
+
+		return entity;
+	}
+
+	public EUserHakAksesMenu getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EUserHakAksesMenu> search(final SearchParameter searchParameter) {
+      String idUser = (String) searchParameter.getValueFromMappedParam("idUser");
+
+      StringBuilder queryStringBuilder = new StringBuilder();
+      queryStringBuilder.append("SELECT id_am56, id_user, id_menu, fladd, fledit, fldel, flview, version, usrcrt, tglcrt, jamcrt, usrupd, tglupd, jamupd " + 
+          "FROM AM56 " + 
+          "WHERE id_user = :idUser " + 
+          "UNION " + 
+          "SELECT CAST('' as varchar), CAST(:idUser as varchar), CAST(id as varchar), CAST('N' as char), CAST('N' as char), CAST('N' as char), CAST('N' as char), CAST(1 as numeric), CAST('' as varchar), CAST('' as char), CAST('' as char), CAST('' as varchar), CAST('' as char), CAST('' as char) " +
+//          "SELECT '', :idUser, id, 'N', 'N', 'N', 'N', 1, '', '', '', '', '', '', '' " +
+          "FROM public.std_menu  " + 
+          "WHERE id NOT IN( " + 
+          "    SELECT id_menu  " + 
+          "    FROM AM56 " + 
+          "    WHERE id_user = :idUser " + 
+          ") AND :idUser != ''");
+      
+      NativeSearchBuilder<EUserHakAksesMenu> entities = new NativeSearchBuilder<>(EUserHakAksesMenu.class, em);
+      if (idUser != null) {
+        entities.addParameter("idUser", idUser);
+      } else {
+        entities.addParameter("idUser", "");
+      }
+      
+      entities.setQueryString(queryStringBuilder);
+      entities.setPagination(searchParameter.getPagination());
+      entities.setSort(searchParameter.getSort());
+      
+      List<Object[]> result = entities.getEntities();
+      List<EUserHakAksesMenu> finalResult = new ArrayList<EUserHakAksesMenu>();
+      
+      for (Object[] item : result) {
+        EUserHakAksesMenu entity = new EUserHakAksesMenu();
+        entity.setId(item[1].toString());
+        entity.setIdUser(item[2].toString());
+        entity.setIdMenu(item[3].toString());
+        entity.setFladd(item[4].toString());
+        entity.setFledit(item[5].toString());
+        entity.setFldel(item[6].toString());
+        entity.setFlview(item[7].toString());
+        entity.setVersion(Integer.parseInt(item[8].toString()));
+        entity.setUsrcrt(item[9].toString());
+        entity.setTglcrt(item[10].toString());
+        entity.setJamcrt(item[11].toString());
+        entity.setUsrupd(item[12].toString());
+        entity.setTglupd(item[13].toString());
+        entity.setJamupd(item[14].toString());
+        finalResult.add(entity);
+      }
+      SearchResult<EUserHakAksesMenu> searchResults = new SearchResult<EUserHakAksesMenu>(finalResult, entities.getPagination());
+      
+      return searchResults;
+    }
+	
+	// mengambil menu dari am56 dan std_menu untuk level dan kode menu tertentu
+	// TIDAK BISA MENGGUNAKAN CARA DI BAWAH (langsung ke EUserHakAksesMenuTree.class), HASIL JADI KACAU
+	@SuppressWarnings("unchecked")
+    @Transactional
+	public List<EUserHakAksesMenu> getCertainMenuList(int menuCodeLength, String menuCode, String idUser) {
+		
+		List<EUserHakAksesMenu> entities;
+
+        Query query;
+        
+		// untuk mengambil menu ini harus di union antara am56 (barangkali sudah ada menu yang
+        // definisikan bagi user ybs) dengan public.std_menu, yaitu menu yang belum didefinisikan
+        // bagi user ybs
+		
+		StringBuilder queryStringBuilder = new StringBuilder();
+		queryStringBuilder.append("SELECT a.id_am56, a.id_user, a.id_menu, a.fladd,  a.fledit, ");
+		queryStringBuilder.append("       a.fldel,   a.flview,  a.version, a.usrcrt, a.tglcrt, ");
+		queryStringBuilder.append("       a.jamcrt,  a.usrupd,  a.tglupd,  a.jamupd, b.menu_code "); 
+		queryStringBuilder.append("FROM AM56 a "); 
+		queryStringBuilder.append("Left Join public.std_menu b on b.id = a.id_menu "); 
+		queryStringBuilder.append("WHERE a.id_user = :idUser And ");
+		queryStringBuilder.append("      length(b.menu_code) = :menuCodeLength And ");
+		queryStringBuilder.append("      substring(b.menu_code, 1, :subMenuCodeLength) like :menuCode ");
+		queryStringBuilder.append("UNION "); 
+		queryStringBuilder.append("SELECT public.sys_guid(), CAST(:idUser as varchar), CAST(id as varchar), CAST('N' as char), CAST('N' as char), ");
+		queryStringBuilder.append("       CAST('N' as char), CAST('N' as char), CAST(1 as numeric), CAST('' as varchar), CAST('' as char), ");
+		queryStringBuilder.append("       CAST('' as char), CAST('' as varchar), CAST('' as char), CAST('' as char), menu_code ");
+		queryStringBuilder.append("FROM public.std_menu  "); 
+		queryStringBuilder.append("WHERE id NOT IN( SELECT x.id_menu "); 
+		queryStringBuilder.append("                 FROM AM56 x ");
+		queryStringBuilder.append("                 Left Join public.std_menu y on y.id = x.id_menu ");
+		queryStringBuilder.append("                 WHERE x.id_user = :idUser And ");
+		queryStringBuilder.append("                       length(y.menu_code) = :menuCodeLength And ");
+		queryStringBuilder.append("                       substring(y.menu_code, 1, :subMenuCodeLength) like :menuCode) And ");
+		queryStringBuilder.append("      :idUser != '' And ");
+		queryStringBuilder.append("      length(menu_code) = :menuCodeLength And");
+		queryStringBuilder.append("      substring(menu_code, 1, :subMenuCodeLength) like :menuCode ");
+		queryStringBuilder.append("ORDER BY menu_code "); 
+		
+        query = em.createNativeQuery(queryStringBuilder.toString(), EUserHakAksesMenu.class);
+		
+        query.setParameter("idUser", idUser);
+        query.setParameter("menuCodeLength", menuCodeLength);
+        query.setParameter("subMenuCodeLength", menuCodeLength - 3);
+        query.setParameter("menuCode", menuCode);
+		
+		try {
+			entities = (List<EUserHakAksesMenu>) query.getResultList();
+		} catch (NoResultException e) {
+			entities = null;
+		}
+
+		return entities;
+        
+	}
+
+	/*
+	// mengambil menu dari am56 dan std_menu untuk level dan kode menu tertentu
+	public List<Object[]> getCertainMenuList(int menuCodeLength, String menuCode, String idUser) {
+		
+		List<Object[]> entities;
+
+        Query query;
+        
+		// untuk mengambil menu ini harus di union antara am56 (barangkali sudah ada menu yang
+        // definisikan bagi user ybs) dengan public.std_menu, yaitu menu yang belum didefinisikan
+        // bagi user ybs
+		
+		StringBuilder queryStringBuilder = new StringBuilder();
+		queryStringBuilder.append("SELECT a.id_am56, a.id_user, a.id_menu, a.fladd,  a.fledit, ");
+		queryStringBuilder.append("       a.fldel,   a.flview,  a.version, a.usrcrt, a.tglcrt, ");
+		queryStringBuilder.append("       a.jamcrt,  a.usrupd,  a.tglupd,  a.jamupd, b.menu_code, "); 
+		queryStringBuilder.append("       b.label "); 
+		queryStringBuilder.append("FROM AM56 a "); 
+		queryStringBuilder.append("Left Join public.std_menu b on b.id = a.id_menu "); 
+		queryStringBuilder.append("WHERE a.id_user = :idUser And ");
+		queryStringBuilder.append("      length(b.menu_code) = :menuCodeLength And ");
+		queryStringBuilder.append("      substring(b.menu_code, 1, :subMenuCodeLength) like :menuCode ");
+		queryStringBuilder.append("UNION "); 
+		queryStringBuilder.append("SELECT CAST('' as varchar), CAST(:idUser as varchar), CAST(id as varchar), CAST('N' as char), CAST('N' as char), ");
+		queryStringBuilder.append("       CAST('N' as char), CAST('N' as char), CAST(1 as numeric), CAST('' as varchar), CAST('' as char), ");
+		queryStringBuilder.append("       CAST('' as char), CAST('' as varchar), CAST('' as char), CAST('' as char), menu_code, ");
+		queryStringBuilder.append("       label "); 
+		queryStringBuilder.append("FROM public.std_menu  "); 
+		queryStringBuilder.append("WHERE id NOT IN( SELECT x.id_menu "); 
+		queryStringBuilder.append("                 FROM AM56 x ");
+		queryStringBuilder.append("                 Left Join public.std_menu y on y.id = x.id_menu ");
+		queryStringBuilder.append("                 WHERE x.id_user = :idUser And ");
+		queryStringBuilder.append("                       length(y.menu_code) = :menuCodeLength And ");
+		queryStringBuilder.append("                       substring(y.menu_code, 1, :subMenuCodeLength) like :menuCode) And ");
+		queryStringBuilder.append("      :idUser != '' And ");
+		queryStringBuilder.append("      length(menu_code) = :menuCodeLength And");
+		queryStringBuilder.append("      substring(menu_code, 1, :subMenuCodeLength) like :menuCode ");
+		queryStringBuilder.append("ORDER BY menu_code "); 
+		
+//        query = em.createNativeQuery(queryStringBuilder.toString(), EUserHakAksesMenuTree.class);
+        query = em.createNativeQuery(queryStringBuilder.toString());
+		
+        query.setParameter("idUser", idUser);
+        query.setParameter("menuCodeLength", menuCodeLength);
+        query.setParameter("subMenuCodeLength", menuCodeLength - 3);
+        query.setParameter("menuCode", menuCode);
+		
+		try {
+			entities = (List<Object[]>) query.getResultList();
+		} catch (NoResultException e) {
+			entities = null;
+		}
+
+		return entities;
+        
+	}
+	*/
+}

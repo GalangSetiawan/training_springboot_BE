@@ -1,0 +1,9 @@
+package co.id.sofcograha.base.multitenancy;
+
+import co.id.sofcograha.base.master.company.entities.ECompany;
+
+public interface MultitenancyExecutor {
+	
+	public void execute(ECompany company);
+
+}

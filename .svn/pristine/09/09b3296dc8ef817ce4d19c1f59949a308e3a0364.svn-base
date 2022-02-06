@@ -1,0 +1,175 @@
+package co.id.sofcograha.base.queue.process.services;
+
+import javax.transaction.Transactional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.queue.process.entities.EProcess;
+import co.id.sofcograha.base.queue.process.repositories.ProcessRepository;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Service
+public class ProcessService extends BaseService {
+
+	@Autowired ProcessRepository processRepository;
+	
+	@Transactional
+	public EProcess add(EProcess entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		EProcess addedEntity = processRepository.add(entity);
+			
+		throwBatchError();
+		return addedEntity;			
+	}
+
+	@Transactional
+	public EProcess edit(EProcess entity) {
+		
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+		
+		EProcess toBeSaved = processRepository.getOne(entity.getId());
+		//EProcess oldEntity = (EProcess) toBeSaved.clone();
+		
+		//TODO: this may cause org.hibernate.TransientPropertyValueException
+		// (set reference to non existing data, then before reaching manageReferences, another thread trigger hibernate flush)
+		defineEditableValues(entity, toBeSaved);
+		
+		toBeSaved = processRepository.edit(toBeSaved);
+
+		throwBatchError();
+		return toBeSaved;	
+	}
+	
+	@Transactional
+	public void delete(String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EProcess.class.getSimpleName());
+		throwBatchError();
+		
+		EProcess toBeDeleted = processRepository.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		processRepository.delete(toBeDeleted.getId());
+		
+		throwBatchError();
+	}
+
+	protected void defineDefaultValuesOnAdd(EProcess entity) {
+		if (entity.getActive() == null) entity.setActive(true);
+	}
+
+	protected void defineEditableValues(EProcess newValues, EProcess toBeSaved) {
+		toBeSaved.setProcessCode(newValues.getProcessCode());
+		toBeSaved.setProcessName(newValues.getProcessName());
+		toBeSaved.setDescription(newValues.getDescription());
+		toBeSaved.setProcessClass(newValues.getProcessClass());
+		toBeSaved.setActive(newValues.getActive());
+	}
+
+	protected void valRequiredValues(EProcess entity) {
+		valRequiredString(entity.getProcessCode(), "process.processCode.required");
+		valRequiredString(entity.getProcessName(), "process.processName.required");
+		valRequiredString(entity.getDescription(), "process.description.required");
+		valRequiredString(entity.getProcessClass(), "process.processClass.required");
+		valRequiredBoolean(entity.getActive(), "process.active.required");
+	}
+
+	protected void manageMinMaxValues(EProcess entity) {
+		valMaxString(entity.getProcessCode(), 20, "process.processCode.max.length");
+		valMaxString(entity.getProcessName(), 50, "process.processName.max.length");
+		valMaxString(entity.getProcessClass(), 200, "process.processClass.max.length");
+	}
+
+	protected void manageReferences(EProcess entity) {	}
+
+	protected void valAdd(EProcess entity) {  }
+
+	protected void valEdit(EProcess entity, EProcess fromDb) {  }
+
+	protected void valDelete(EProcess toBeDeleted) {  }
+	
+	protected void valValid(EProcess entity) {	}
+
+	protected void valUniquenessOnAdd(EProcess addedEntity) {
+		EProcess eProcessFromDb = processRepository.findByBK(addedEntity.getProcessCode());
+		if (eProcessFromDb != null) {
+			throw new BusinessException("process.bk", addedEntity.getProcessCode());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EProcess editedEntity) {
+		EProcess eProcessFromDb = processRepository.findByBK(editedEntity.getProcessClass());
+		if (eProcessFromDb != null) {
+			if (!editedEntity.getId().equals(eProcessFromDb.getId())) {
+				throw new BusinessException("process.bk", editedEntity.getProcessCode());
+			}
+		}
+	}
+
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EProcess dbEntity = processRepository.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (processRepository.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	public EProcess get(String id) {
+		return processRepository.getOne(id);
+	}
+	
+	public EProcess find(String id) {
+		return processRepository.getOne(id);
+	}
+	
+	public EProcess findByBk(String procesCode) {
+		return processRepository.findByBK(procesCode);
+	}
+
+	public SearchResult<EProcess>search(SearchParameter searchParameter) {
+		return processRepository.search(searchParameter);
+	}
+}

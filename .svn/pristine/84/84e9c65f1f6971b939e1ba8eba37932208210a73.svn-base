@@ -1,0 +1,226 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailAdj;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubDetailAdjPerincian;
+
+@JsonInclude(Include.ALWAYS)
+public class InvoiceSubDetailAdjPerincian {
+	
+	public String id;
+	public Integer nourut;
+	public String tahun;  
+	public String bulan;
+	public String keterangan;
+	public Integer jkbulini;
+	public Integer revjkbullalu;
+	public Integer seljkbullalu;
+	public Integer jnkbulini;
+	public Integer revjnkbullalu;
+	public Integer seljnkbullalu;
+    public Double harga;
+    public Double bruto;
+    public Double nildisc;
+    public Double netto;
+	public Integer nouskm;
+	public String idAi310;
+    
+	public Long version;  
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+	
+	// untuk keperluan matching error message di front end (bila input di grid)
+	public String keyIn;
+
+	// untuk penanda apakah detail ini tertandai delete (dari front end)
+	public boolean isSelect;
+	
+	public InvoiceDetailAdj detailAdj;
+	public List<InvoiceSubSubDetailAdjSkemaTarif> subSubDetailSkemaTarif;
+	public List<InvoiceSubSubDetailAdjDiskon> subSubDetailDiskon;
+
+	// Untuk menampung message error di grid
+	public ArrayList<Message> errorMsg;
+	
+	public EInvoiceSubDetailAdjPerincian toEntity() {
+		
+		EInvoiceSubDetailAdjPerincian entity = new EInvoiceSubDetailAdjPerincian();
+		
+	    entity.setId(id);
+	    entity.setNourut(nourut);
+		entity.setTahun(tahun);
+		entity.setBulan(bulan);
+		entity.setJkbulini(jkbulini);
+		entity.setRevjkbullalu(revjkbullalu);
+		entity.setSeljkbullalu(seljkbullalu);
+		entity.setJnkbulini(jnkbulini);
+		entity.setRevjnkbullalu(revjnkbullalu);
+		entity.setSeljnkbullalu(seljnkbullalu);
+		entity.setHarga(harga);
+		entity.setBruto(bruto);
+		entity.setNildisc(nildisc);
+		entity.setNetto(netto);
+		entity.setKeterangan(keterangan);
+		entity.setNouskm(nouskm);
+		entity.setIdAi310(idAi310);
+
+		entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+		
+		if (detailAdj != null && !StringUtils.isEmpty(detailAdj.id)) {
+			EInvoiceDetailAdj entityRef = new EInvoiceDetailAdj();
+		
+			entityRef.setId(detailAdj.id);
+			entityRef.setVersion(detailAdj.version);
+		
+			entity.setDetailAdj(entityRef);
+		
+		} else {
+			entity.setDetailAdj(null);
+		}
+
+		return entity;
+	}
+		
+	public static List<EInvoiceSubDetailAdjPerincian> toEntities(final List<InvoiceSubDetailAdjPerincian> pojos) {
+		List<EInvoiceSubDetailAdjPerincian> entities = new ArrayList<EInvoiceSubDetailAdjPerincian>();
+		for (InvoiceSubDetailAdjPerincian pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static InvoiceSubDetailAdjPerincian fromEntity(EInvoiceSubDetailAdjPerincian entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static InvoiceSubDetailAdjPerincian fromEntity(EInvoiceSubDetailAdjPerincian entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static InvoiceSubDetailAdjPerincian fromEntity(EInvoiceSubDetailAdjPerincian entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		InvoiceSubDetailAdjPerincian pojo = new InvoiceSubDetailAdjPerincian();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.nourut = entity.getNourut();
+			pojo.tahun = entity.getTahun();
+			pojo.bulan = entity.getBulan();
+			pojo.jkbulini = entity.getJkbulini();
+			pojo.revjkbullalu = entity.getRevjkbullalu();
+			pojo.seljkbullalu = entity.getSeljkbullalu();
+			pojo.jnkbulini = entity.getJnkbulini();
+			pojo.revjnkbullalu = entity.getRevjnkbullalu();
+			pojo.seljnkbullalu = entity.getSeljnkbullalu();
+			pojo.harga = entity.getHarga();
+			pojo.bruto = entity.getBruto();
+			pojo.nildisc = entity.getNildisc();
+			pojo.netto = entity.getNetto();
+			pojo.keterangan = entity.getKeterangan();
+			pojo.nouskm = entity.getNouskm();
+			pojo.idAi310 = entity.getIdAi310();
+
+			pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+			
+			pojo.detailAdj = InvoiceDetailAdj.fromEntity(entity.getDetailAdj(), depthLevel);
+	        
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+				pojo.subSubDetailSkemaTarif = InvoiceSubSubDetailAdjSkemaTarif.fromEntities(entity.getSubSubDetailSkemaTarif(), depthLevel + 1, detailDepthLevel);
+				pojo.subSubDetailDiskon = InvoiceSubSubDetailAdjDiskon.fromEntities(entity.getSubSubDetailDiskon(), depthLevel + 1, detailDepthLevel);
+			}
+			
+			pojo.isSelect = false;
+		}
+				
+		return pojo;
+	}
+	
+	public static List<InvoiceSubDetailAdjPerincian> fromEntities(List<EInvoiceSubDetailAdjPerincian> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<InvoiceSubDetailAdjPerincian> fromEntities(final List<EInvoiceSubDetailAdjPerincian> entities, int depthLevel) {
+		return fromEntities(entities, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+
+	public static List<InvoiceSubDetailAdjPerincian> fromEntities(List<EInvoiceSubDetailAdjPerincian> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<InvoiceSubDetailAdjPerincian> pojos = new ArrayList<>();
+		
+		for (EInvoiceSubDetailAdjPerincian entity : entities) {
+			pojos.add(InvoiceSubDetailAdjPerincian.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+	
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}

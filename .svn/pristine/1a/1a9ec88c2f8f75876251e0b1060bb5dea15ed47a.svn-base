@@ -1,0 +1,234 @@
+package co.id.sofcograha.domain.invoicing.masters.grupAkumulasi.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.grupAkumulasi.entities.EGrupAkumulasi;
+import co.id.sofcograha.domain.invoicing.masters.grupAkumulasi.pojos.GrupAkumulasi;
+import co.id.sofcograha.domain.invoicing.masters.grupAkumulasi.repositories.EGrupAkumulasiRepository;
+
+@Service("grupAkumulasiService")
+public class GrupAkumulasiService extends BaseService {
+	
+	@Autowired private EGrupAkumulasiRepository repo;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public GrupAkumulasi findByBk(String nama) {
+		return GrupAkumulasi.fromEntity(repo.findByBK(nama));
+	}
+	
+	public SearchResult<EGrupAkumulasi> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public EGrupAkumulasi add(EGrupAkumulasi entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		EGrupAkumulasi addedEntity = repo.add(entity);
+		postAdd(addedEntity);
+			
+		throwBatchError();
+		return addedEntity;			
+		
+	}
+	
+	@Transactional
+	public EGrupAkumulasi edit(EGrupAkumulasi entity) {
+				
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		EGrupAkumulasi toBeSaved = repo.getOne(entity.getId());
+		EGrupAkumulasi oldEntity = (EGrupAkumulasi) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EGrupAkumulasi.class.getSimpleName());
+		throwBatchError();
+		
+		EGrupAkumulasi toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		throwBatchError();
+		
+	}
+	
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EGrupAkumulasi dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EGrupAkumulasi entity) {
+		if (entity.getFlakt() == null) entity.setFlakt(BaseConstants.YA);
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(EGrupAkumulasi newValues, EGrupAkumulasi toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setNama(newValues.getNama());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+			toBeSaved.setFlakt(newValues.getFlakt());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(EGrupAkumulasi entity) {
+		valRequiredString(entity.getNama(), "grup.akumulasi.nama.required");
+		valRequiredString(entity.getKeterangan(), "grup.akumulasi.keterangan.required");
+	}
+	
+	protected void manageMinMaxValues(EGrupAkumulasi entity) {
+		valMaxString(entity.getNama(), 200, "grup.akumulasi.nama.max.length");
+		valMaxString(entity.getKeterangan(), 400, "grup.akumulasi.keterangan.max.length");
+	}
+
+	protected void manageReferences(EGrupAkumulasi entity) {
+		
+	}
+
+	protected void valDelete(EGrupAkumulasi toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(EGrupAkumulasi addedEntity) {
+		EGrupAkumulasi entityFromDb = repo.findByBK(addedEntity.getNama());
+		if (entityFromDb != null) {
+			throw new BusinessException("grup.akumulasi.bk", addedEntity.getNama());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EGrupAkumulasi editedEntity) {
+		EGrupAkumulasi entityFromDb = repo.findByBK(editedEntity.getNama());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("grup.akumulasi.bk", editedEntity.getNama());
+			}
+		}
+	}
+	
+	protected void preAdd(EGrupAkumulasi entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(EGrupAkumulasi entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(EGrupAkumulasi toBeSaved, EGrupAkumulasi oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(EGrupAkumulasi toBeSaved, EGrupAkumulasi oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(EGrupAkumulasi entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(EGrupAkumulasi entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+	
+	public EGrupAkumulasi get(String id) {
+		return repo.getOne(id);
+	}
+	
+}

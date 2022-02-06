@@ -1,0 +1,146 @@
+package co.id.sofcograha.domain.invoicing.commonMasters.setting.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.util.StringUtils;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.pojos.CompanyPojo;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.domain.invoicing.commonMasters.setting.entities.ESetting;
+
+@JsonInclude(Include.ALWAYS)
+public class Setting {
+
+    public String id;
+    public String floto;
+    public String rstoto;
+    public Long version;
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+    public String bahasa;
+    
+    public CompanyPojo company;
+	
+	public ESetting toEntity() {
+		
+	  ESetting entity = new ESetting();
+		
+	    entity.setId(id);
+	    entity.setFloto(floto);
+	    entity.setRstoto(rstoto);
+	    
+	    entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+        
+        entity.setBahasa(bahasa);
+
+		if (company != null && !StringUtils.isEmpty(company.id)) {
+			ECompany eCompany = new ECompany();
+			
+			eCompany.setId(company.id);
+			eCompany.setVersion(company.version);
+			
+			entity.seteCompany(eCompany);
+			
+		} else {
+			entity.seteCompany(null);
+		}        
+        
+		return entity;
+	}
+	
+	public static Setting fromEntity (ESetting entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static Setting fromEntity (ESetting entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static Setting fromEntity(ESetting entity, int depthLevel, int detailDepthLevel) {
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		Setting pojo = new Setting();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+			
+			pojo.floto = entity.getFloto();
+			pojo.rstoto = entity.getRstoto();
+			
+	        pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+	        
+	        pojo.bahasa = entity.getBahasa();
+	        
+			pojo.company = CompanyPojo.fromEntity(entity.geteCompany());
+			
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+			}
+		}
+		
+		return pojo;
+	}
+	
+	public static List<Setting> fromEntities(List<ESetting> entities){
+		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static List<Setting> fromEntities(List<ESetting> entities, int depthLevel, int detailDepthLevel){
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<Setting> pojos = new ArrayList<>();
+		
+		for (ESetting entity : entities) {
+			pojos.add(Setting.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+}

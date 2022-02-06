@@ -1,0 +1,243 @@
+package co.id.sofcograha.domain.invoicing.implementasi.programKecil.services;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.constants.enums.NotificationType;
+import co.id.sofcograha.base.exceptions.BatchBusinessException;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.pojos.CompanyPojo;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+import co.id.sofcograha.base.master.jenisTransaksi.services.JenisTransaksiService;
+import co.id.sofcograha.base.master.user.pojos.UserInfo;
+import co.id.sofcograha.base.master.user.services.UserService;
+import co.id.sofcograha.base.multitenancy.MultitenancyExecutor;
+import co.id.sofcograha.base.multitenancy.MultitenancyService;
+import co.id.sofcograha.base.queue.common.QueueConstants.ProcessStatusType;
+import co.id.sofcograha.base.queue.common.QueueConstants.Status;
+import co.id.sofcograha.base.queue.common.QueueUtilService;
+import co.id.sofcograha.base.queue.notification.NotificationMainService;
+import co.id.sofcograha.base.queue.process.entities.EProcess;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatusDetail;
+import co.id.sofcograha.base.queue.processstatus.services.ProcessStatusDetailService;
+import co.id.sofcograha.base.queue.processstatus.services.ProcessStatusService;
+import co.id.sofcograha.base.queue.queuenotification.entities.ESysNotification;
+import co.id.sofcograha.base.queue.queuenotification.pojos.SysNotificationPojo;
+import co.id.sofcograha.base.queue.queuenotification.services.SysNotificationService;
+import co.id.sofcograha.base.utils.Message;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+import co.id.sofcograha.domain.invoicing.admin.bulanan.entities.EAdminBulanan;
+import co.id.sofcograha.domain.invoicing.admin.bulanan.services.AdminBulananService;
+import co.id.sofcograha.domain.invoicing.admin.diskon.entities.EAdminDiskon;
+import co.id.sofcograha.domain.invoicing.admin.diskon.services.AdminDiskonService;
+import co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.entities.EPenggunaanMaster;
+import co.id.sofcograha.domain.invoicing.admin.penggunaanMaster.services.PenggunaanMasterService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewal;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetAdj;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetAdjSubDetDiskon;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetAdjSubDetSkemaTarif;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTgh;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTghSubDetDiskon;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewalDetTghSubDetSkemaTarif;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.ESumNilai;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewal;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetAdj;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetAdjSubDetDiskon;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetAdjSubDetSkemaTarif;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetTgh;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetTghSubDetDiskon;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.AdminRenewalDetTghSubDetSkemaTarif;
+import co.id.sofcograha.domain.invoicing.admin.renewal.pojos.SumNilai;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalCompleteService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetAdjService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetAdjSubDetDiskonService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetAdjSubDetSkemaTarifService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetTghService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetTghSubDetDiskonService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalDetTghSubDetSkemaTarifService;
+import co.id.sofcograha.domain.invoicing.admin.renewal.services.AdminRenewalService;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.EAdminUploadDetail;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.EAdminUploadHeader;
+import co.id.sofcograha.domain.invoicing.admin.upload.entities.ESumDetailUpload;
+import co.id.sofcograha.domain.invoicing.admin.upload.services.AdminUploadDetailService;
+import co.id.sofcograha.domain.invoicing.admin.upload.services.AdminUploadHeaderService;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.entities.EAutomaticNumberingComponent;
+import co.id.sofcograha.domain.invoicing.commonMasters.automaticnumbering.services.AutomaticNumberingService;
+import co.id.sofcograha.domain.invoicing.constants.ProcessConstants;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifDetail;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.pojos.CustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifDetailService;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.services.CustomerProdukTarifHeaderService;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.masters.produk.pojos.Produk;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.pojos.SkemaHargaDetail;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.services.SkemaHargaDetailService;
+import co.id.sofcograha.domain.invoicing.proses.invoiceOtomatis.entities.EProsesInvoiceDataRpt;
+import co.id.sofcograha.domain.invoicing.proses.invoiceOtomatis.repositories.ProsesInvoiceDataRptRepository;
+import co.id.sofcograha.domain.invoicing.proses.upload.entities.EUploadDataRpt;
+import co.id.sofcograha.domain.invoicing.proses.upload.services.UploadDataService;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.pojos.SaldoDepositHeader;
+import co.id.sofcograha.domain.invoicing.saldo.deposit.data.services.SaldoDepositCompleteService;
+import co.id.sofcograha.domain.invoicing.saldo.live.pojos.SaldoLive;
+import co.id.sofcograha.domain.invoicing.saldo.live.services.SaldoLiveCompleteService;
+import co.id.sofcograha.domain.invoicing.saldo.live.services.SaldoLiveService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailAdj;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailHslPro;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceDetailInitial;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubDetailAdjPerincian;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubDetailHslProDiskon;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubDetailHslProSkemaTarif;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubSubDetailAdjDiskon;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubSubDetailAdjSkemaTarif;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceHeader;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceSubDetailPerhitunganSkemaTarif;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceDetailAdjService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceDetailHslProService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceHeaderService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceSubDetailAdjPerincianService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceSubDetailHslProDiskonService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceSubDetailHslProSkemaTarifService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceSubSubDetailAdjDiskonService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services.InvoiceSubSubDetailAdjSkemaTarifService;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.invoiceManual.services.InvoiceManualCompleteService;
+import co.id.sofcograha.domain.invoicing.transaksi.live.pojos.TrxLive;
+import co.id.sofcograha.domain.invoicing.transaksi.live.services.TrxLiveCompleteService;
+
+@Service
+public class ProgramKecilService extends BaseService {
+  
+	@Autowired PlatformTransactionManager platformTransactionManager;
+	@Autowired private CompanyService companyService;
+	@Autowired private MultitenancyService multitenancyService;
+	
+	@Autowired private NotificationMainService notificationMainService;
+	
+	@Autowired private CustomerProdukTarifDetailService customerProdukTarifDetailService;
+	@Autowired private SkemaHargaDetailService skemaHargaDetailService;
+	
+	@Autowired private SaldoLiveCompleteService saldoLiveCompleteService;
+	@Autowired private AdminDiskonService adminDiskonService;
+	@Autowired private InvoiceManualCompleteService invoiceManualCompleteService;
+	
+	@Autowired private AdminRenewalService adminRenewalService;
+	@Autowired private AdminUploadDetailService adminUploadDetailService;
+	@Autowired private CustomerProdukTarifHeaderService customerProdukTarifHeaderService;
+	@Autowired private AdminRenewalCompleteService adminRenewalCompleteService;
+	
+	@Autowired private AdminRenewalDetAdjService adminRenewalDetAdjService;
+	@Autowired private AdminRenewalDetTghService adminRenewalDetTghService;
+		
+	@Autowired private JenisTransaksiService jenisTransaksiService;
+	@Autowired private AutomaticNumberingService automaticNumberingService;	
+	@Autowired private InvoiceHeaderService invoiceHeaderService;
+	@Autowired private PenggunaanMasterService penggunaanMasterService;
+	@Autowired private InvoiceDetailHslProService invoiceDetailHslProService;
+	@Autowired private InvoiceSubDetailHslProSkemaTarifService invoiceSubDetailHslProSkemaTarifService;
+	@Autowired private InvoiceSubDetailHslProDiskonService invoiceSubDetailHslProDiskonService;
+	@Autowired private InvoiceDetailAdjService invoiceDetailAdjService;
+	@Autowired private InvoiceSubDetailAdjPerincianService invoiceSubDetailAdjPerincianService;
+	@Autowired private AdminRenewalDetTghSubDetSkemaTarifService adminRenewalDetTghSubDetSkemaTarifService;
+	@Autowired private AdminRenewalDetTghSubDetDiskonService adminRenewalDetTghSubDetDiskonService;
+	@Autowired private AdminRenewalDetAdjSubDetDiskonService adminRenewalDetAdjSubDetDiskonService;
+	@Autowired private AdminRenewalDetAdjSubDetSkemaTarifService adminRenewalDetAdjSubDetSkemaTarifService;
+	@Autowired private InvoiceSubSubDetailAdjSkemaTarifService invoiceSubSubDetailAdjSkemaTarifService;
+	@Autowired private InvoiceSubSubDetailAdjDiskonService invoiceSubSubDetailAdjDiskonService;
+	
+	@Autowired private SaldoDepositCompleteService saldoDepositCompleteService;
+	@Autowired private AdminUploadHeaderService adminUploadHeaderService;
+	@Autowired private SaldoLiveService saldoLiveService;
+	
+	@Autowired private QueueUtilService queueUtilService;
+	@Autowired private UserService userService;
+	@Autowired private SysNotificationService sysNotificationService;
+	@Autowired private ProcessStatusService processStatusService;
+	@Autowired private ProcessStatusDetailService processStatusDetailService;
+	
+	@Autowired private AdminBulananService adminBulananService;
+	
+	@Autowired private ProsesInvoiceDataRptRepository prosesInvoiceDataRptRepository;
+	
+	@Autowired private UploadDataService uploadDataService;
+	@Autowired private TrxLiveCompleteService trxLiveCompleteService;
+	
+	private String processName = "Proses Invoice Otomatis";
+	private String processNumber = "";
+	private EProcessStatus processStatus;
+	private boolean isErrorFound = false;
+	private List<Map<String, String>> errorList = null;
+	private int lastErrorItem;
+	
+	public SearchResult<EProsesInvoiceDataRpt> search(SearchParameter searchParameter) {
+		return prosesInvoiceDataRptRepository.search(searchParameter);
+	}
+
+	@Transactional
+	public void createSaldoLiveSiklusBulanan(String tahun, String bulan) {
+		List<EAdminUploadHeader> adminUploadHeaderList = adminUploadHeaderService.findByTahunBulan(tahun, bulan);
+
+		int count = 1;
+		for (EAdminUploadHeader eAdminUploadHeader : adminUploadHeaderList) {
+			ECustomerProdukTarifHeader eCustomerProdukTarifHeader = eAdminUploadHeader.getMappingCustomerProduk().getHeader();
+			
+			int jumsiklus = eCustomerProdukTarifHeader.getJumsiklus();
+			String satsiklus = eCustomerProdukTarifHeader.getSatsiklus();
+			
+			if (jumsiklus == 1 && satsiklus.equals("BULAN")) {
+				
+				// periksa apakah customer-produk ini sudah punya saldo live
+				// saldo live ditambahkan hanya bila belum pernah ada saldo llive
+				SaldoLive saldoLive = saldoLiveCompleteService.findLiveCustomerProduk(eCustomerProdukTarifHeader.getCustomer().getId(), eCustomerProdukTarifHeader.getProduk().getId());
+				
+				if (saldoLive == null) {
+					// ciptakan transaksi live
+					// nb: tabel terkait : ti010, periode di mi011 dkk, ai003, ai004
+					TrxLive trxLive = new TrxLive();
+					trxLive.customer = CustomerGajiId.fromEntity(eCustomerProdukTarifHeader.getCustomer());
+					trxLive.produk = Produk.fromEntity(eCustomerProdukTarifHeader.getProduk());
+					trxLive.tgtrn = TimeUtil.getDate("20210701");
+					trxLive.tglive = TimeUtil.getDate("20210601");
+					
+					trxLiveCompleteService.add(trxLive, BaseConstants.JENIS_TRX_LIVE);					
+				}				
+			}
+			
+			int prosen = (count * 100)/ adminUploadHeaderList.size();
+			
+			notificationMainService.sendCounterNotification(CompanyPojo.fromEntity(companyService.get(CurrentUser.getCompanyId())).code,
+					UserInfo.fromEntity(userService.get(CurrentUser.getUserId())).loginName, prosen);
+			
+			count = count + 1;
+			
+		}
+	}
+	
+}

@@ -1,0 +1,61 @@
+package co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.penerimaanBayar.entities.EPenerimaanBayarDetailCustomer;
+
+@Repository
+public class EPenerimaanBayarDetailCustomerRepository extends SimpleJpaRepository<EPenerimaanBayarDetailCustomer, String> {
+
+	protected final EntityManager em;
+
+	public EPenerimaanBayarDetailCustomerRepository(EntityManager em) {
+		super(EPenerimaanBayarDetailCustomer.class, em);
+		this.em = em;
+	}
+	
+	public EPenerimaanBayarDetailCustomer findByBK(String idTi600, Integer nourut) {
+		
+		String query = "SELECT e FROM EPenerimaanBayarDetailCustomer e " + 
+                       "WHERE e.header.id = :idTi600 And " +
+  	                         "e.nourut = :nourut";
+		
+		try {
+			return em.createQuery(query, EPenerimaanBayarDetailCustomer.class)
+					 .setParameter("idTi600", idTi600)
+					 .setParameter("nourut", nourut)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EPenerimaanBayarDetailCustomer getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EPenerimaanBayarDetailCustomer> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EPenerimaanBayarDetailCustomer> search = new HqlSimpleSearchBuilder<>(EPenerimaanBayarDetailCustomer.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EPenerimaanBayarDetailCustomer add(EPenerimaanBayarDetailCustomer entity) {
+		return save(entity);
+	}
+
+	public EPenerimaanBayarDetailCustomer edit(EPenerimaanBayarDetailCustomer entity) {
+		return save(entity);
+	}
+}

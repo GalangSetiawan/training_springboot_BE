@@ -1,0 +1,159 @@
+package co.id.sofcograha.base.multitenancy;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.exceptions.BatchBusinessException;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.master.company.entities.ECompany;
+import co.id.sofcograha.base.master.company.repositories.CompanyRepository;
+import co.id.sofcograha.base.queue.common.QueueConstants.ProcessStatusType;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatusDetail;
+import co.id.sofcograha.base.queue.processstatus.services.ProcessStatusDetailService;
+import co.id.sofcograha.base.utils.ProcedureExecutorUtil;
+
+@Service
+public class MultitenancyService {
+
+//	@Autowired private LocalErrors errorManager;
+//	@Autowired private LocalWarnings warningManager;
+//	@Autowired private LocalNotices noticeManager;
+
+	@Autowired 
+	private ProcedureExecutorUtil procedureExecutorUtil;
+	
+	@Autowired
+	private CompanyRepository companyRepository;
+	
+	private void setToCurrent() {
+		setCurrentTenancy(TenantContext.getCurrentTenant());
+	}
+	
+	private void setCurrentTenancy(String tenantIdentifier) {
+		EntityManager em = companyRepository.getLocalEm();
+		procedureExecutorUtil.executeVoidSQL("SET search_path TO " + tenantIdentifier, em);
+		em.flush();
+	}
+
+	// method ini khusus untuk proses (misal proses bulanan) dalam java,
+	// mengapa dibuat method khusus tersendiri, sebab dibutuhkan pengelolaan error yang ditangkap
+	// sebab bila error yang ditangkap di method ini di rethrow, entah kenapa transaction jadi 
+	// tidak rollback (jadi tersimpan0
+	public void runServiceForTenantForProcess(String tenantIdentifier, MultitenancyExecutor multitenancyExecutor) {
+		try {
+			ECompany company = companyRepository.findByBK(tenantIdentifier);
+			if (company != null) {
+				setCurrentTenancy(tenantIdentifier);
+				
+				multitenancyExecutor.execute(company);
+				
+				companyRepository.getLocalEm().flush();
+			} else {
+				// TODO error tenantIdentifier not found or not active
+				error("multitenancyService.runServiceForTenant.tenantIdentifier.not.found");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.out.println(e.getClass());
+			if (e.getClass().equals(BatchBusinessException.class)) {
+				BatchBusinessException bbe = (BatchBusinessException) e;
+				System.out.println("dari multitenan service " + bbe.getMessage());
+				throw bbe;
+				/*
+				Integer lastNumber = processStatusDetailService.getMaxNomorStatus(, ProcessStatusType.Error);
+				lastNumber = lastNumber + 1;
+				
+				for (BusinessException be : bbe.getBusinessExceptions()) {
+					
+					System.out.println(be.getMessage());
+					System.out.println(be.getMessageCode());
+					
+					// generate args
+					String params = "";
+					for (Object param : be.getMessageParameters()) {
+						if (params.equals("")) {
+							params = param + (String) param + "|String";							
+						} else {
+							params = param + ";" + (String) param + "|String";							
+						}
+					}
+
+					EProcessStatusDetail eProcessStatusDetail = new EProcessStatusDetail();
+					eProcessStatusDetail.setProcessStatus(processStatus);
+					eProcessStatusDetail.setNomorItem(lastNumber);
+					eProcessStatusDetail.setProcessStatusType(ProcessStatusType.Error);
+					eProcessStatusDetail.setMsgKey(be.getMessageCode());
+					eProcessStatusDetail.setMsgParam(params);
+					processStatusDetailService.add(eProcessStatusDetail);
+
+				}
+				*/
+				//error("proses.invoice.otomatis.error");								
+			} else {
+				error("multitenancyService.runServiceForTenant.error");								
+			}
+		} finally {
+			setToCurrent();
+		}
+	}
+	
+	public void runServiceForTenant(String tenantIdentifier, MultitenancyExecutor multitenancyExecutor) {
+		try {
+			ECompany company = companyRepository.findByBK(tenantIdentifier);
+			if (company != null) {
+				setCurrentTenancy(tenantIdentifier);
+				
+				multitenancyExecutor.execute(company);
+				
+				companyRepository.getLocalEm().flush();
+			} else {
+				// TODO error tenantIdentifier not found or not active
+				error("multitenancyService.runServiceForTenant.tenantIdentifier.not.found");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			error("multitenancyService.runServiceForTenant.error");								
+		} finally {
+			setToCurrent();
+		}
+	}
+	
+	public void runServiceForEveryTenancy(MultitenancyExecutor multitenancyExecutor) {
+		try {
+			List<ECompany> listActiveCompany = companyRepository.getActiveListCompany();
+			if (listActiveCompany != null) {
+				for (ECompany company : listActiveCompany) {
+					if (!MultiTenancyConstants.DEFAULT_TENANTID.equals(company.getCode()))
+					{
+						try {
+							setCurrentTenancy(company.getCode());
+							
+							multitenancyExecutor.execute(company);
+							
+							companyRepository.getLocalEm().flush();
+						} catch (Exception e) {
+							error("multitenancyService.runServiceForEveryTenancy.error");
+							e.printStackTrace();
+						}						
+					}
+				}
+			}
+		} finally {
+			setToCurrent();
+		}
+	}
+	
+	protected void error(String code, Object... args) {
+		throw getError(code, args);
+	}
+	
+	protected BusinessException getError(String code, Object... args) {
+		return new BusinessException(code, args);
+	}
+
+}

@@ -1,0 +1,32 @@
+package co.id.sofcograha.base.queue.common;
+
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public abstract class ProcessExecutors {
+	
+	@Autowired
+	private QueueUtilService queueUtilService;
+	
+	public abstract void run(String processCode, String processNumber, String processStatusId);
+	
+	void mainRun(String processCode, String processNumber) {
+		run(processCode, processNumber, queueUtilService.getProcessStatusId(processCode, processNumber));
+	}
+	
+	public String getParamSingleValue(String processCode, String processNumber, String key) {
+		return queueUtilService.getParamSingleValue(processCode, processNumber, key);
+	}
+	
+	public List<String> getParamMultiValue(String processCode, String processNumber, String key) {
+		return queueUtilService.getParamMultiValue(processCode, processNumber, key);
+	}
+	
+	public List<Map<String, String>> getParamTableValue(String processCode, String processNumber, String key) {
+		return queueUtilService.getParamTableValue(processCode, processNumber, key);
+	}	
+}

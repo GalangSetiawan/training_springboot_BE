@@ -1,0 +1,212 @@
+package co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.NativeSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customerProdukTarif.entities.ECustomerProdukTarifHeader;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.proses.upload.entities.EUploadDataNotExistsRpt;
+
+@Repository
+public class ECustomerProdukTarifHeaderRepository extends SimpleJpaRepository<ECustomerProdukTarifHeader, String> {
+
+	protected final EntityManager em;
+
+	public ECustomerProdukTarifHeaderRepository(EntityManager em) {
+		super(ECustomerProdukTarifHeader.class, em);
+		this.em = em;
+	}
+	
+	public ECustomerProdukTarifHeader findByBK(String idMi010, String idMi001) {
+		
+		String query = "SELECT e FROM ECustomerProdukTarifHeader e " + 
+                       "WHERE e.customer.id = :idMi010 And " +
+				             "e.produk.id = :idMi001";
+		
+		try {
+			return em.createQuery(query, ECustomerProdukTarifHeader.class)
+					 .setParameter("idMi010", idMi010)
+					 .setParameter("idMi001", idMi001)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ECustomerProdukTarifHeader getOne(String id) {
+
+		String query = "SELECT e FROM ECustomerProdukTarifHeader e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, ECustomerProdukTarifHeader.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public List<EProduk> getProdukByCustomer(String idMi010, String nama) {
+
+		String query = "SELECT e.produk FROM ECustomerProdukTarifHeader e " + 
+                       "WHERE e.customer.id = :idMi010 And " +
+				             "LOWER(e.produk.nama) LIKE LOWER(:nama) And " +
+                             "e.produk.flakt = :flakt " +
+				       "ORDER BY e.produk.nama";
+	
+		try {
+			return em.createQuery(query, EProduk.class)
+					.setParameter("idMi010", idMi010)
+					.setParameter("nama", QueryUtil.formatStringForLikeFilter(nama))
+					.setParameter("flakt", BaseConstants.YA)
+					.getResultList();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	// Customer tidak live ini bisa :
+	// - customer tarif ada tetapi saldo live belum ada
+	// - customer tarif ada saldo live sudah terminasi
+	/*
+	public List<EProduk> getCustomerTarifByNotLive(String idMi010, String nama) {
+
+		String query = "SELECT e.produk FROM ECustomerProdukTarifHeader e " + 
+                       "WHERE e.customer.id = :idMi010 And " +
+				             "LOWER(e.produk.nama) LIKE LOWER(:nama) And " +
+                             "e.produk.flakt = :flakt " +
+				       "ORDER BY e.produk.nama";
+	
+		try {
+			return em.createQuery(query, EProduk.class)
+					.setParameter("idMi010", idMi010)
+					.setParameter("nama", QueryUtil.formatStringForLikeFilter(nama))
+					.setParameter("flakt", BaseConstants.YA)
+					.getResultList();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	*/
+	
+	public SearchResult<ECustomerProdukTarifHeader> searchTdkAdaDiLive(SearchParameter searchParameter) {
+		
+		StringBuilder queryStringBuilder = new StringBuilder();
+		
+		// data bulan renewal di tahun bulan dipilih
+		queryStringBuilder.append("select a.* "); 
+		queryStringBuilder.append("from mi011 a "); 
+		queryStringBuilder.append("left join si004 b on b.id_mi010 = a.id_mi010 and b.id_mi001 = a.id_mi001 "); 
+		queryStringBuilder.append("left join mi010 c on c.id_mi010 = a.id_mi010 "); 
+		queryStringBuilder.append("left join mi001 d on d.id_mi001 = a.id_mi001 "); 
+		queryStringBuilder.append("where b.id_si004 is null "); 
+
+		String customer = (String) searchParameter.getValueFromMappedParam("customer");
+		String produk = (String) searchParameter.getValueFromMappedParam("produk");
+		String tipe = (String) searchParameter.getValueFromMappedParam("tipe");
+		String jnstgh = (String) searchParameter.getValueFromMappedParam("jnstgh");
+
+		if (!QueryUtil.isAll(customer)) {
+	    	queryStringBuilder.append("and lower(c.nama) like lower(:customer) ");
+        }
+
+		if (!QueryUtil.isAll(produk)) {
+	    	queryStringBuilder.append("and lower(d.nama) like lower(:produk) ");
+        }
+
+		if (!QueryUtil.isAll(tipe)) {
+	    	queryStringBuilder.append("and lower(a.tipe) like lower(:tipe) ");
+        }
+		
+		if (!QueryUtil.isAll(jnstgh)) {
+	    	queryStringBuilder.append("and lower(a.jnstgh) like lower(:jnstgh) ");
+        }
+		
+		queryStringBuilder.append("order by c.nama");
+				
+		NativeSearchBuilder<ECustomerProdukTarifHeader> search = new NativeSearchBuilder<>(ECustomerProdukTarifHeader.class, em);
+
+		if (!QueryUtil.isAll(customer)) {
+			search.addParameter("customer", QueryUtil.formatStringForLikeFilter(customer));
+        }
+
+		if (!QueryUtil.isAll(produk)) {
+	        search.addParameter("produk", QueryUtil.formatStringForLikeFilter(produk));
+        }
+
+		if (!QueryUtil.isAll(tipe)) {
+			search.addParameter("tipe", QueryUtil.formatStringForLikeFilter(tipe));
+        }
+
+		if (!QueryUtil.isAll(jnstgh)) {
+			search.addParameter("jnstgh", QueryUtil.formatStringForLikeFilter(jnstgh));
+        }
+		
+		search.setQueryString(queryStringBuilder);
+		search.setPagination(searchParameter.getPagination());
+		search.setSort(searchParameter.getSort());
+
+		return search.getSearchResult();
+	}
+	
+	public SearchResult<ECustomerProdukTarifHeader> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ECustomerProdukTarifHeader> search = new HqlSimpleSearchBuilder<>(ECustomerProdukTarifHeader.class, em);
+		
+		String customer = (String) searchParameter.getValueFromMappedParam("customer");
+		String produk = (String) searchParameter.getValueFromMappedParam("produk");
+		String tipe = (String) searchParameter.getValueFromMappedParam("tipe");
+		String jnstgh = (String) searchParameter.getValueFromMappedParam("jnstgh");
+
+		if (!QueryUtil.isAll(customer)) {
+            search.addWhere("AND LOWER(customer.nama) LIKE LOWER(:customer) ");
+            search.addParameter("customer", QueryUtil.formatStringForLikeFilter(customer));
+        }
+
+		if (!QueryUtil.isAll(produk)) {
+            search.addWhere("AND LOWER(produk.nama) LIKE LOWER(:produk) ");
+            search.addParameter("produk", QueryUtil.formatStringForLikeFilter(produk));
+        }
+
+	    if (!QueryUtil.isAll(tipe)) {
+	      search.addWhere("AND LOWER(tipe) LIKE LOWER(:tipe) ");
+	      search.addParameter("tipe", QueryUtil.formatStringForLikeFilter(tipe));
+	    }
+		
+	    if (!QueryUtil.isAll(jnstgh)) {
+	    	search.addWhere("AND LOWER(jnstgh) LIKE LOWER(:jnstgh) ");
+	    	search.addParameter("jnstgh", QueryUtil.formatStringForLikeFilter(jnstgh));
+	    }
+			
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ECustomerProdukTarifHeader add(ECustomerProdukTarifHeader entity) {
+		return save(entity);
+	}
+
+	public ECustomerProdukTarifHeader edit(ECustomerProdukTarifHeader entity) {
+		return save(entity);
+	}
+}

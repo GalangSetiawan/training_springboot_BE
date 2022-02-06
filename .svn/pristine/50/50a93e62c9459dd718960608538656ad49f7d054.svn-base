@@ -1,0 +1,248 @@
+package co.id.sofcograha.base.authorization;
+
+import org.springframework.stereotype.Service;
+
+import co.id.sofcograha.base.constants.enums.AuthType;
+import co.id.sofcograha.base.extendables.BaseService;
+
+@Service
+public class AuthorizationService extends BaseService {
+
+	/* service-service ini disesuaikan dengan bagaimana mekanisme otorisasi di project
+	   yang dikembangkan
+	
+	@Autowired
+	private UserRepository userRepository;
+
+	@Autowired
+	private CompanyRepository companyRepository;
+
+	@Autowired
+	private FunctionAccessRepository functionAccessRepository;
+
+	@Autowired
+	private CompanyFunctionAccessRepository companyFunctionAccessRepository;
+
+	@Autowired
+	private UserGroupUserRepository userGroupUserRepository;
+
+	@Autowired
+	private GroupUserFunctionAccessRepository groupUserFunctionAccessRepository;
+
+	@Autowired
+	private UserFunctionAccessRepository userFunctionAccessRepository;
+	*/
+
+	public boolean isAllowedToAddEditDelete(String functionCode) {
+		boolean result = false;
+
+		/* ini disesuaikan dengan bagaimana mekanisme di project ybs
+		FunctionAccess functionAccess = getFunctionAccess(functionCode);
+		User user = userRepository.getOne(CurrentUser.getUserId());
+
+		if (isCurrentUserCompanyCanAccessFunction(functionAccess)) {
+			result = true;
+		} else {
+			return false;
+		}
+
+		UserFunctionAccess userFunctionAccess = userFunctionAccessRepository.getActiveUserFunctionAccess(user, functionAccess).orElse(null);
+
+		if (userFunctionAccess != null) {
+			if (userFunctionAccess.getAllowAdd() && userFunctionAccess.getAllowEdit() && userFunctionAccess.getAllowDelete()) {
+				result = true;
+			}
+			else {
+				return false;
+			}
+		}
+		
+		List<GroupUserFunctionAccess> listGroupUserFunctionAccess = groupUserFunctionAccessRepository
+				.getActiveListGroupUserFunctionAccessByFunctionAccessAndEditable(functionAccess).orElse(null);
+		
+		result = isGroupUserCanAccessFunction(user, listGroupUserFunctionAccess);
+		*/
+
+		return result;
+	}
+
+	public void validate(String functionCode, AuthType authType) {
+		
+		/* ini disesuaikan dengan bagaimana mekanisme di project ybs
+		FunctionAccess functionAccess = getFunctionAccess(functionCode);
+		User user = userRepository.getOne(CurrentUser.getUserId());
+		String authorizationExceptionMsg = "";
+
+		validateCurrentUserCompanyCanAccessFunction(functionAccess);
+
+		UserFunctionAccess userFunctionAccess = userFunctionAccessRepository.getActiveUserFunctionAccess(user, functionAccess).orElse(null);
+		List<GroupUserFunctionAccess> listGroupUserFunctionAccess = null;
+		*/
+
+		String authorizationExceptionMsg = "";
+		switch (authType) {
+		case Read:
+			/* ini disesuaikan dengan bagaimana mekanisme di project ybs
+			authorizationExceptionMsg = "user.read.authorization.not.found";
+			if (userFunctionAccess != null) {
+				if (userFunctionAccess.getAllowRead()) {
+					return;
+				}
+				throw getError(authorizationExceptionMsg);
+			}
+			listGroupUserFunctionAccess = groupUserFunctionAccessRepository
+					.getActiveListGroupUserFunctionAccessByFunctionAccessAndReadable(functionAccess).orElse(null);
+			*/
+			break;
+
+		case Add:
+			/* ini disesuaikan dengan bagaimana mekanisme di project ybs
+			authorizationExceptionMsg = "user.add.authorization.not.found";
+			if (userFunctionAccess != null) {
+				if (userFunctionAccess.getAllowAdd()) {
+					return;
+				}
+				throw getError(authorizationExceptionMsg);
+			}
+			listGroupUserFunctionAccess = groupUserFunctionAccessRepository
+					.getActiveListGroupUserFunctionAccessByFunctionAccessAndAddable(functionAccess).orElse(null);
+			*/
+			break;
+
+		case Edit:
+			/* ini disesuaikan dengan bagaimana mekanisme di project ybs
+			authorizationExceptionMsg = "user.edit.authorization.not.found";
+			if (userFunctionAccess != null) {
+				if (userFunctionAccess.getAllowEdit()) {
+					return;
+				}
+				throw getError(authorizationExceptionMsg);
+			}
+			listGroupUserFunctionAccess = groupUserFunctionAccessRepository
+					.getActiveListGroupUserFunctionAccessByFunctionAccessAndEditable(functionAccess).orElse(null);
+			*/
+			/* Dummy for testing */
+			authorizationExceptionMsg = "user.edit.authorization.not.found." + functionCode;
+			throw getError(authorizationExceptionMsg);
+			
+//			break;
+
+		case Delete:
+			/* ini disesuaikan dengan bagaimana mekanisme di project ybs
+			authorizationExceptionMsg = "user.delete.authorization.not.found";
+			if (userFunctionAccess != null) {
+				if (userFunctionAccess.getAllowDelete()) {
+					return;
+				}
+				throw getError(authorizationExceptionMsg);
+			}
+			listGroupUserFunctionAccess = groupUserFunctionAccessRepository
+					.getActiveListGroupUserFunctionAccessByFunctionAccessAndDeleteable(functionAccess).orElse(null);
+			*/
+			break;
+
+		case Confirm:
+			/* ini disesuaikan dengan bagaimana mekanisme di project ybs
+			authorizationExceptionMsg = "user.confirm.authorization.not.found";
+			if (userFunctionAccess != null) {
+				if (userFunctionAccess.getAllowConfirm()) {
+					return;
+				}
+				throw getError(authorizationExceptionMsg);
+			}
+			listGroupUserFunctionAccess = groupUserFunctionAccessRepository
+					.getActiveListGroupUserFunctionAccessByFunctionAccessAndConfirmable(functionAccess).orElse(null);
+			*/
+			break;
+
+		case CancelConfirm:
+			/* ini disesuaikan dengan bagaimana mekanisme di project ybs
+			authorizationExceptionMsg = "user.cancelConfirm.authorization.not.found";
+			if (userFunctionAccess != null) {
+				if (userFunctionAccess.getAllowCancelConfirm()) {
+					return;
+				}
+				throw getError(authorizationExceptionMsg);
+			}
+			listGroupUserFunctionAccess = groupUserFunctionAccessRepository
+					.getActiveListGroupUserFunctionAccessByFunctionAccessAndCancelConfirmable(functionAccess).orElse(null);
+			*/
+			break;
+
+		case NoAuth:
+			break;
+		}
+
+		/* ini disesuaikan dengan bagaimana mekanisme di project ybs
+		validateGroupUserCanAccessFunction(user, listGroupUserFunctionAccess, authorizationExceptionMsg);
+		*/
+	}
+
+	/* ini disesuaikan dengan bagaimana mekanisme di project ybs
+	private FunctionAccess getFunctionAccess(String functionCode) {
+		FunctionAccess functionAccess = functionAccessRepository.getActiveFunctionAccessByCode(functionCode).orElse(null);
+		if (functionAccess == null)
+			throw new AuthorizationException("FunctionAccess is not recognized!");
+
+		return functionAccess;
+	}
+
+	private void validateCurrentUserCompanyCanAccessFunction(FunctionAccess functionAccess) {
+		Company currentCompany = companyRepository.getOne(CurrentUser.getCompanyId());
+
+		CompanyFunctionAccess companyFunctionAccess = companyFunctionAccessRepository
+				.getCompanyFunctionAccessAllowedByCompanyAndFunctionAccess(currentCompany, functionAccess).orElse(null);
+		if (companyFunctionAccess == null)
+			throw getError("company.authorization.not.found");
+	}
+
+	private boolean isCurrentUserCompanyCanAccessFunction(FunctionAccess functionAccess) {
+		Company currentCompany = companyRepository.getOne(CurrentUser.getCompanyId());
+
+		CompanyFunctionAccess companyFunctionAccess = companyFunctionAccessRepository
+				.getCompanyFunctionAccessAllowedByCompanyAndFunctionAccess(currentCompany, functionAccess).orElse(null);
+		if (companyFunctionAccess == null)
+			return false;
+		else
+			return true;
+	}
+
+	private void validateGroupUserCanAccessFunction(User user, List<GroupUserFunctionAccess> listGroupUserFunctionAccess,
+			String authorizationExceptionMsg) {
+
+		if (listGroupUserFunctionAccess == null)
+			throw getError(authorizationExceptionMsg);
+
+		List<UserGroupUser> listUserGroupUserByUser = userGroupUserRepository.getActiveListUserGroupUserByUser(user).orElse(null);
+		if (listUserGroupUserByUser != null) {
+			for (GroupUserFunctionAccess groupUserFunctionAccess : listGroupUserFunctionAccess) {
+				for (UserGroupUser userGroupUser : listUserGroupUserByUser) {
+					if (groupUserFunctionAccess.getGroupUser().getName().equals(userGroupUser.getGroupUser().getName()))
+						return;
+				}
+			}
+		}
+
+		throw getError(authorizationExceptionMsg);
+	}
+
+	private boolean isGroupUserCanAccessFunction(User user, List<GroupUserFunctionAccess> listGroupUserFunctionAccess) {
+		boolean result = false;
+
+		if (listGroupUserFunctionAccess != null) {
+			List<UserGroupUser> listUserGroupUserByUser = userGroupUserRepository.getActiveListUserGroupUserByUser(user).orElse(null);
+			if (listUserGroupUserByUser != null) {
+				for (GroupUserFunctionAccess groupUserFunctionAccess : listGroupUserFunctionAccess) {
+					for (UserGroupUser userGroupUser : listUserGroupUserByUser) {
+						if (groupUserFunctionAccess.getGroupUser().getName().equals(userGroupUser.getGroupUser().getName())) {
+							result = true;
+						}
+					}
+				}
+			}
+		}
+
+		return result;
+	}
+	*/
+}

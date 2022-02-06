@@ -1,0 +1,138 @@
+package co.id.sofcograha.domain.invoicing.saldo.live.repositories;
+
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.Query;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.admin.renewal.entities.EAdminRenewal;
+import co.id.sofcograha.domain.invoicing.saldo.live.entities.ESaldoLive;
+
+@Repository
+public class ESaldoLiveRepository extends SimpleJpaRepository<ESaldoLive, String> {
+
+	protected final EntityManager em;
+
+	public ESaldoLiveRepository(EntityManager em) {
+		super(ESaldoLive.class, em);
+		this.em = em;
+	}
+	
+	public ESaldoLive findByBK(String idMi010, String idMi001) {
+		
+		String query = "SELECT e FROM ESaldoLive e " + 
+                       "WHERE e.customer.id = :idMi010 And " +
+				             "e.produk.id = :idMi001";
+		
+		try {
+			return em.createQuery(query, ESaldoLive.class)
+					 .setParameter("idMi010", idMi010)
+					 .setParameter("idMi001", idMi001)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ESaldoLive getOne(String id) {
+
+		String query = "SELECT e FROM ESaldoLive e " + 
+                       "WHERE e.id = :id";
+	
+		try {
+			return em.createQuery(query, ESaldoLive.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+	public List<ESaldoLive> getLiveCustomer() {
+
+		String query = "SELECT e FROM ESaldoLive e " + 
+                       "WHERE e.tgstop is null " +
+				       "ORDER BY e.customer.nama";
+	
+		try {
+			return em.createQuery(query, ESaldoLive.class)
+					.getResultList();
+		
+		} catch (NoResultException e) {
+			return null;
+		}
+		
+	}
+	
+    @SuppressWarnings("unchecked")
+	public List<ESaldoLive> getCustomerLiveDataBelumUpload(String tahun, String bulan) {
+    	
+        Query query;
+      
+        StringBuilder queryStringBuilder = new StringBuilder();
+        queryStringBuilder.append("select a.* from si004 a "); 
+        queryStringBuilder.append("left join ti010 b on b.id_ti010 = a.id_ti010 "); 
+        queryStringBuilder.append("left join mi011 c on c.id_mi010 = a.id_mi010 and c.id_mi001 = a.id_mi001 "); 
+        queryStringBuilder.append("left join mi013 d on d.id_mi011 = c.id_mi011 "); 
+        queryStringBuilder.append("left join (select x.id_mi013 as id_mi013, x.fluplo from ai001 x ");
+        queryStringBuilder.append("           where x.tahun = :tahun and x.bulan = :bulan) e on e.id_mi013 = d.id_mi013 "); 
+        queryStringBuilder.append("where (e.id_mi013 is null) or "); 
+        queryStringBuilder.append("      (e.id_mi013 is not null and e.fluplo = :tidak)"); 
+        
+        query = em.createNativeQuery(queryStringBuilder.toString(), ESaldoLive.class);
+        
+        query.setParameter("tahun", tahun);
+        query.setParameter("bulan", bulan);
+        query.setParameter("tidak", BaseConstants.TIDAK);
+        
+        List<ESaldoLive> list = query.getResultList();
+
+        if (!list.isEmpty()) {
+        	return list;
+        } else {
+        	return null;
+        }
+    }	
+	
+	public SearchResult<ESaldoLive> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ESaldoLive> search = new HqlSimpleSearchBuilder<>(ESaldoLive.class, em);
+		
+		String customer = (String) searchParameter.getValueFromMappedParam("customer");
+		String produk = (String) searchParameter.getValueFromMappedParam("produk");
+
+		if (!QueryUtil.isAll(customer)) {
+            search.addWhere("AND LOWER(customer.nama) LIKE LOWER(:customer) ");
+            search.addParameter("customer", QueryUtil.formatStringForLikeFilter(customer));
+        }
+
+		if (!QueryUtil.isAll(produk)) {
+            search.addWhere("AND LOWER(produk.nama) LIKE LOWER(:produk) ");
+            search.addParameter("produk", QueryUtil.formatStringForLikeFilter(produk));
+        }
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public ESaldoLive add(ESaldoLive entity) {
+		return save(entity);
+	}
+
+	public ESaldoLive edit(ESaldoLive entity) {
+		return save(entity);
+	}
+}

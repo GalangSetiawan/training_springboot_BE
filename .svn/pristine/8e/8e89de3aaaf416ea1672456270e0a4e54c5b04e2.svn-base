@@ -1,0 +1,79 @@
+package co.id.sofcograha.base.loginlogoutlog;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.constants.enums.AccessStatusLog;
+import co.id.sofcograha.base.constants.enums.AccessTypeLog;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.loginlogoutlog.entities.ELoginLogoutLog;
+import co.id.sofcograha.base.loginlogoutlog.services.LoginLogoutLogService;
+import co.id.sofcograha.base.master.company.services.CompanyService;
+import co.id.sofcograha.base.utils.TimeUtil;
+
+//import id.co.sofcograha.gajiidapi.base.authentication.CurrentUser;
+//import id.co.sofcograha.gajiidapi.base.constants.enums.AccessStatusLog;
+//import id.co.sofcograha.gajiidapi.base.constants.enums.AccessTypeLog;
+//import id.co.sofcograha.gajiidapi.base.extendables.FreeFormService;
+//import id.co.sofcograha.gajiidapi.base.mst.company.services.CompanyService;
+//import id.co.sofcograha.gajiidapi.base.mst.loginlogoutlog.entities.LoginLogoutLog;
+//import id.co.sofcograha.gajiidapi.base.mst.loginlogoutlog.services.LoginLogoutLogService;
+//import id.co.sofcograha.gajiidapi.base.utils.TimeUtil;
+
+@Service
+public class LoginLogoutMainLogService extends BaseService {
+
+	@Autowired
+	private LoginLogoutLogService loginLogoutLogService;
+	
+	@Autowired
+	private CompanyService companyService;
+	
+	@Transactional
+	public void writeCreateHeaderLoginLog(String userName, AccessStatusLog accessStatus, String companyName) {
+		writeCreateLoginLogoutLog(userName, AccessTypeLog.Login, accessStatus, null, companyName);
+	}
+	
+	@Transactional
+	public void writeCreateHeaderSwitchLog(AccessStatusLog accessStatus, String fromCompanyName, String toCompanyName) {
+		writeCreateLoginLogoutLog(CurrentUser.getUsername(), AccessTypeLog.Switch, accessStatus, fromCompanyName, toCompanyName);
+	}
+	
+	@Transactional
+	public void writeCreateHeaderLogoutLog() {
+		String companyName = companyService.get(CurrentUser.getCompanyId()).getName();
+		writeCreateLoginLogoutLog(CurrentUser.getUsername(), AccessTypeLog.Logout, AccessStatusLog.Success, companyName, null);
+	}
+	
+	private void writeCreateLoginLogoutLog(String username, AccessTypeLog accessType, AccessStatusLog accessStatus, 
+			String fromCompanyName, String toCompanyName) {
+		ELoginLogoutLog loginLogoutLog = new ELoginLogoutLog();
+		loginLogoutLog.setLogDate(TimeUtil.getSystemDateTime());
+		loginLogoutLog.setUsername(username);
+		loginLogoutLog.setAccessType(accessType);
+		loginLogoutLog.setAccessStatus(accessStatus);
+		loginLogoutLog.setFromCompanyName(fromCompanyName);
+		loginLogoutLog.setToCompanyName(toCompanyName);
+		
+		loginLogoutLog = loginLogoutLogService.add(loginLogoutLog);
+		LoginLogoutLogContext.setLoginLogoutLogId(loginLogoutLog.getId());
+	}
+	
+	@Transactional
+	public void writeDataOutputHeaderLoginLogoutLog(String dataOutput) {
+		if (LoginLogoutLogContext.getLoginLogoutLogId() != null) {
+//			ELoginLogoutLog loginLogoutLog = loginLogoutLogService.find(LoginLogoutLogContext.getLoginLogoutLogId()).orElse(null);
+			ELoginLogoutLog loginLogoutLog = loginLogoutLogService.find(LoginLogoutLogContext.getLoginLogoutLogId());
+			if (loginLogoutLog != null) {
+				loginLogoutLog.setDataOutput(dataOutput);
+			
+				loginLogoutLogService.edit(loginLogoutLog);
+			}
+			
+			LoginLogoutLogContext.setLoginLogoutLogId(null);
+		}
+	}
+	
+}

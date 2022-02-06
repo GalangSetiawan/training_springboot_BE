@@ -1,0 +1,283 @@
+package co.id.sofcograha.domain.invoicing.transaksi.invoice.data.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceSubDetailHslProSkemaTarif;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceSubDetailHslProSkemaTarif;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.repositories.EInvoiceSubDetailHslProSkemaTarifRepository;
+
+@Service("invoiceSubDetailHslProSkemaTarifService")
+public class InvoiceSubDetailHslProSkemaTarifService extends BaseService {
+	
+	@Autowired private EInvoiceSubDetailHslProSkemaTarifRepository repo;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public InvoiceSubDetailHslProSkemaTarif findByBk(String idTi001, Integer nourut) {
+		return InvoiceSubDetailHslProSkemaTarif.fromEntity(repo.findByBK(idTi001, nourut));
+	}
+
+	public SearchResult<EInvoiceSubDetailHslProSkemaTarif> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public EInvoiceSubDetailHslProSkemaTarif addFromProses(EInvoiceSubDetailHslProSkemaTarif entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		EInvoiceSubDetailHslProSkemaTarif addedEntity = repo.add(entity);
+		throwBatchError();
+		postAdd(addedEntity);
+			
+		return addedEntity;	
+
+	}
+	
+	@Transactional
+	public EInvoiceSubDetailHslProSkemaTarif add(EInvoiceSubDetailHslProSkemaTarif entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		manageMinMaxValues(entity);
+		//throwBatchError();
+		
+		manageReferences(entity);
+		//throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		//throwBatchError();
+		
+		if (!isAnyBatchErrors()) {
+			preAdd(entity);
+			EInvoiceSubDetailHslProSkemaTarif addedEntity = repo.add(entity);
+			postAdd(addedEntity);
+			
+			return addedEntity;	
+		}
+			
+		//throwBatchError();
+		return entity;	
+
+	}
+	
+	@Transactional
+	public EInvoiceSubDetailHslProSkemaTarif edit(EInvoiceSubDetailHslProSkemaTarif entity) {
+		
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		EInvoiceSubDetailHslProSkemaTarif toBeSaved = repo.getOne(entity.getId());
+		EInvoiceSubDetailHslProSkemaTarif oldEntity = (EInvoiceSubDetailHslProSkemaTarif) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EInvoiceSubDetailHslProSkemaTarif.class.getSimpleName());
+		// tidak memanggil throwBatchError(), karena simpan transaksi jurnal menganut simpan keseluruhan dan menampilkan error
+		// di grid tidak error yang muncul satu per satu.
+		//throwBatchError();
+		
+		EInvoiceSubDetailHslProSkemaTarif toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		//throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		//throwBatchError();
+		
+	}
+	
+	// terkait manipulasi data
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EInvoiceSubDetailHslProSkemaTarif dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EInvoiceSubDetailHslProSkemaTarif entity) {
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(EInvoiceSubDetailHslProSkemaTarif newValues, EInvoiceSubDetailHslProSkemaTarif toBeSaved) {
+
+		if (toBeSaved != null) {
+			toBeSaved.setNourut(newValues.getNourut());
+			toBeSaved.setJnstrf(newValues.getJnstrf());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+			toBeSaved.setJumlah(newValues.getJumlah());
+			toBeSaved.setHarga(newValues.getHarga());
+			toBeSaved.setBruto(newValues.getBruto());
+			toBeSaved.setNetto(newValues.getNetto());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(EInvoiceSubDetailHslProSkemaTarif entity) {
+		valRequiredInteger(entity.getNourut(), "invoice.otomatis.sub.detail.skema.tarif.nourut.required");
+		valRequiredString(entity.getJnstrf(), "invoice.otomatis.sub.detail.skema.tarif.jnstrf.required");		
+		valRequiredString(entity.getKeterangan(), "invoice.otomatis.sub.detail.skema.tarif.keterangan.required");		
+		valRequiredInteger(entity.getJumlah(), "invoice.otomatis.sub.detail.skema.tarif.jumlah.required");
+		valRequiredDouble(entity.getHarga(), "invoice.otomatis.sub.detail.skema.tarif.harga.required");
+		valRequiredDouble(entity.getBruto(), "invoice.otomatis.sub.detail.skema.tarif.bruto.required");
+		valRequiredDouble(entity.getNetto(), "invoice.otomatis.sub.detail.skema.tarif.netto.required");
+	}
+	
+	protected void manageMinMaxValues(EInvoiceSubDetailHslProSkemaTarif entity) {
+		valMinInteger(entity.getNourut(), 0, "invoice.otomatis.sub.detail.skema.tarif.nourut.min.length");
+		valMaxInteger(entity.getNourut(), 999, "invoice.otomatis.sub.detail.skema.tarif.nourut.max.length");
+		valMaxString(entity.getJnstrf(), 15, "invoice.otomatis.sub.detail.skema.tarif.jnstrf.max.length");
+		valMaxString(entity.getKeterangan(), 200, "invoice.otomatis.sub.detail.skema.tarif.keterangan.max.length");
+		valMinInteger(entity.getJumlah(), 0, "invoice.otomatis.sub.detail.skema.tarif.jumlah.min.length");
+		valMaxInteger(entity.getJumlah(), 999999, "invoice.otomatis.sub.detail.skema.tarif.jumlah.max.length");
+		valMinDouble(entity.getHarga(), 0D, "invoice.otomatis.sub.detail.skema.tarif.harga.min.length");
+		valMaxDouble(entity.getHarga(), 999999999D, "invoice.otomatis.sub.detail.skema.tarif.harga.max.length");
+		valMinDouble(entity.getBruto(), 0D, "invoice.otomatis.sub.detail.skema.tarif.bruto.min.length");
+		valMaxDouble(entity.getBruto(), 999999999D, "invoice.otomatis.sub.detail.skema.tarif.bruto.max.length");
+		valMinDouble(entity.getNetto(), 0D, "invoice.otomatis.sub.detail.skema.tarif.netto.min.length");
+		valMaxDouble(entity.getNetto(), 999999999D, "invoice.otomatis.sub.detail.skema.tarif.netto.max.length");
+	}
+
+	protected void manageReferences(EInvoiceSubDetailHslProSkemaTarif entity) {
+	}
+
+	protected void valDelete(EInvoiceSubDetailHslProSkemaTarif toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(EInvoiceSubDetailHslProSkemaTarif addedEntity) {
+		EInvoiceSubDetailHslProSkemaTarif entityFromDb = repo.findByBK(addedEntity.getDetailHasilProses().getId(), addedEntity.getNourut());
+		if (entityFromDb != null) {
+			throw new BusinessException("invoice.otomatis.sub.detail.skema.tarif.bk", addedEntity.getNourut());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EInvoiceSubDetailHslProSkemaTarif editedEntity) {
+		EInvoiceSubDetailHslProSkemaTarif entityFromDb = repo.findByBK(editedEntity.getDetailHasilProses().getId(), editedEntity.getNourut());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("invoice.otomatis.sub.detail.skema.tarif.bk", editedEntity.getNourut());
+			}
+		}
+	}
+
+	protected void preAdd(EInvoiceSubDetailHslProSkemaTarif entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(EInvoiceSubDetailHslProSkemaTarif entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(EInvoiceSubDetailHslProSkemaTarif toBeSaved, EInvoiceSubDetailHslProSkemaTarif oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(EInvoiceSubDetailHslProSkemaTarif toBeSaved, EInvoiceSubDetailHslProSkemaTarif oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(EInvoiceSubDetailHslProSkemaTarif entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(EInvoiceSubDetailHslProSkemaTarif entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	// ----
+	
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya	
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+}

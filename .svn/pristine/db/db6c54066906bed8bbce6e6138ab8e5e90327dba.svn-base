@@ -1,0 +1,146 @@
+package co.id.sofcograha.base.email;
+
+import java.util.Properties;
+import java.util.Random;
+
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.master.user.entities.EUser;
+import co.id.sofcograha.base.master.user.pojos.UserInfo;
+import co.id.sofcograha.base.master.user.repositories.EUserRepository;
+import co.id.sofcograha.base.utils.ImageUtil;
+import co.id.sofcograha.base.utils.PasswordUtil;
+import co.id.sofcograha.base.utils.pojos.PojoUtil;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+
+@Service
+public class EmailService extends BaseService {
+	
+    @Autowired
+    private Environment env;
+    
+	@Autowired
+	private LocalErrors errorManager;
+	
+	@Autowired
+	private EUserRepository eUserRepository;	
+	
+	public void sendEmail(String loginName) {
+		
+		//EUser eUser = eUserRepository.getOne(CurrentUser.getUserId());
+		EUser eUser = eUserRepository.findByLoginName(loginName);
+		
+		// ambil alamat email user login
+		String alamatEmail = eUser.getEmail();
+		
+		// generate password baru
+		String newPassword = getRandomNumberString();
+		String hashedPassword = PasswordUtil.hashPassword(newPassword);
+		
+		// kirim email berisi password ke alamat email user
+    	JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+      	 
+        mailSender.setHost(env.getProperty("spring.mail.host"));
+        mailSender.setPort(Integer.valueOf(env.getProperty("spring.mail.port")));
+        mailSender.setUsername(env.getProperty("spring.mail.username"));
+        mailSender.setPassword(env.getProperty("spring.mail.password"));
+ 
+        Properties javaMailProperties = new Properties();
+        javaMailProperties.put("mail.smtp.starttls.enable", "true");
+        javaMailProperties.put("mail.smtp.auth", "true");
+        javaMailProperties.put("mail.transport.protocol", "smtp");
+        javaMailProperties.put("mail.debug", "true");
+ 
+        mailSender.setJavaMailProperties(javaMailProperties);    	
+    	
+    	MimeMessage mimeMessage = mailSender.createMimeMessage();
+    	
+        MimeMessageHelper mimeMessageHelper;
+		try {
+			mimeMessageHelper = new MimeMessageHelper(mimeMessage, true);
+			
+	        mimeMessageHelper.setSubject("Password Reset for Sofco Cloud App ...");
+	        mimeMessageHelper.setFrom(new InternetAddress(env.getProperty("spring.mail.username")));
+	        mimeMessageHelper.setTo(alamatEmail);
+	        mimeMessageHelper.setText("New Password : " + newPassword);
+	    	
+	        mailSender.send(mimeMessageHelper.getMimeMessage());
+	        
+			// simpan password baru ke data user 
+			eUser.setPassword(hashedPassword);
+			eUserRepository.save(eUser);
+
+//		} catch (MessagingException e) {
+		} catch (Exception e) {
+			batchError("error.could.not.send.email");
+			throwBatchError();
+		}
+		
+	}
+	
+	public static String getRandomNumberString() {
+	    // It will generate 6 digit random Number.
+	    // from 0 to 999999
+	    Random rnd = new Random();
+	    int number = rnd.nextInt(999999);
+
+	    // this will convert any number sequence into 6 character.
+	    return String.format("%06d", number);
+	}
+	
+	@Transactional
+	public EUser saveUserProfile(UserInfo pojo) {
+		
+		// ambil entity untuk user init
+		EUser eUser = eUserRepository.getOne(CurrentUser.getUserId());
+		
+		// bila newPassword1 dan newPassword2 ada isinya dan isinya sama dan tidak sama
+		// dengan oldPassword maka, ini artinya password diganti
+		if (!PasswordUtil.isValidPassword(pojo.oldPassword, eUser.getPassword())) {
+			errorManager.addError("Password salah");
+			errorManager.throwBatchError();
+		}
+		
+		if (!pojo.newPassword1.equals("") || !pojo.newPassword2.equals("")) {
+
+			if (pojo.newPassword1.equals(pojo.newPassword2)) {
+				
+				String password = PasswordUtil.hashPassword(pojo.newPassword1);
+				eUser.setPassword(password);
+				
+			} else {
+				errorManager.addError("Password baru satu sama lain tidak sama");
+				errorManager.throwBatchError();
+			}
+		}
+		
+		eUser.setLoginName(pojo.loginName);
+		eUser.setUserName(pojo.userName);
+		
+		eUser.setFotoExt(pojo.fotoExt);
+		eUser.setFoto(toEntityByteArray(ImageUtil.getBase64RawData(pojo.foto)));
+		
+		eUser.setEmail(pojo.email);
+		
+		// simpan
+		return eUserRepository.save(eUser);
+	}
+
+	protected Byte[] toEntityByteArray(String val) {
+		return val == null ? null : PojoUtil.string2Base64ByteArray(val);
+	}
+
+	public EUser get(String id) {
+		return eUserRepository.getOne(id);
+	}
+}

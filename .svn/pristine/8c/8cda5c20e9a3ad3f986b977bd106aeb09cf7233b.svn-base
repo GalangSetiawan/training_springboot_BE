@@ -1,0 +1,258 @@
+package co.id.sofcograha.domain.invoicing.masters.diskonkhusus.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.exceptions.BusinessException;
+import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.VersionUtil;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.entities.EDiskonKhususHeader;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.pojos.DiskonKhususHeader;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.repositories.EDiskonKhususHeaderRepository;
+
+@Service("diskonKhususHeaderService")
+public class DiskonKhususHeaderService extends BaseService {
+	
+	@Autowired private EDiskonKhususHeaderRepository repo;
+	
+	// sementara belum dipakai
+	//@Autowired private ActionAuthorizationService actionAuthorizationService; 
+	
+	public DiskonKhususHeader findByBk(String nama) {
+		return DiskonKhususHeader.fromEntity(repo.findByBK(nama));
+	}
+	
+	public DiskonKhususHeader getFindByCustomerAndTanggal(String idMi010, String tanggal) {
+		return DiskonKhususHeader.fromEntity(repo.getFindByCustomerAndTanggal(idMi010, tanggal));
+	}
+	
+	public SearchResult<EDiskonKhususHeader> search(SearchParameter searchParameter) {
+		return repo.search(searchParameter);
+	}
+	
+	@Transactional
+	public EDiskonKhususHeader add(EDiskonKhususHeader entity) {
+		
+		entity.setId(null);
+		
+		defineDefaultValuesOnAdd(entity);
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+
+		valUniquenessOnAdd(entity);
+		throwBatchError();
+		
+		preAdd(entity);
+		EDiskonKhususHeader addedEntity = repo.add(entity);
+		postAdd(addedEntity);
+			
+		throwBatchError();
+		return addedEntity;			
+		
+	}
+	
+	@Transactional
+	public EDiskonKhususHeader edit(EDiskonKhususHeader entity) {
+				
+		valIdVersionRequired(entity.getId(), entity.getVersion());
+		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
+		throwBatchError();
+		
+		valRequiredValues(entity);
+		throwBatchError();
+		
+		manageMinMaxValues(entity);
+		throwBatchError();
+		
+		manageReferences(entity);
+		throwBatchError();
+		
+		valUniquenessOnEdit(entity);
+		throwBatchError();
+				
+		EDiskonKhususHeader toBeSaved = repo.getOne(entity.getId());
+		EDiskonKhususHeader oldEntity = (EDiskonKhususHeader) toBeSaved.clone();
+		
+		defineEditableValues(entity, toBeSaved);
+    
+		preEdit(toBeSaved, oldEntity);
+		toBeSaved = repo.edit(toBeSaved);
+		postEdit(toBeSaved, oldEntity);
+
+		throwBatchError();
+		return toBeSaved;	
+		
+	}
+
+	@Transactional
+	public void delete (String id, Long version) {
+		
+		valIdVersionRequired(id, version);
+		valVersion(id, version, EDiskonKhususHeader.class.getSimpleName());
+		throwBatchError();
+		
+		EDiskonKhususHeader toBeDeleted = repo.getOne(id);
+		
+		valDelete(toBeDeleted);
+		throwBatchError();
+		
+		preDelete(toBeDeleted);
+		repo.delete(toBeDeleted.getId());
+		postDelete(toBeDeleted);
+		
+		throwBatchError();
+		
+	}
+	
+	private void valVersion(String id, Long version, String entityClassName) {
+		valEntityExists(id, entityClassName);
+		EDiskonKhususHeader dbEntity = repo.getOne(id);
+		VersionUtil.check(version, dbEntity.getVersion());
+	}
+	
+	private void valEntityExists(String id, String entityClassName) {
+		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+	}
+	
+	protected void defineDefaultValuesOnAdd(EDiskonKhususHeader entity) {
+		if (entity.getFlakt() == null) entity.setFlakt(BaseConstants.YA);
+		if (entity.getVersion() == null) entity.setVersion((long) 1);
+	}
+	
+	protected void defineEditableValues(EDiskonKhususHeader newValues, EDiskonKhususHeader toBeSaved) {
+		
+		if (toBeSaved != null) {
+			toBeSaved.setNama(newValues.getNama());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+			toBeSaved.setPctdisc(newValues.getPctdisc());
+			toBeSaved.setNildisc(newValues.getNildisc());
+			toBeSaved.setTglstart(newValues.getTglstart());
+			toBeSaved.setTglstop(newValues.getTglstop());
+			toBeSaved.setJumdur(newValues.getJumdur());
+			toBeSaved.setSatdur(newValues.getSatdur());
+			toBeSaved.setFlakt(newValues.getFlakt());
+		}
+		else if (toBeSaved == null) {
+			defineDefaultValuesOnAdd(newValues);
+		}
+		
+	}
+	
+	protected void valRequiredValues(EDiskonKhususHeader entity) {
+		valRequiredString(entity.getNama(), "diskonkhusus.header.nama.required");
+		valRequiredString(entity.getKeterangan(), "diskonkhusus.header.keterangan.required");
+
+		if (entity.getPctdisc() <= 0.0 && entity.getNildisc() <= 0.0) {
+			batchError("diskonkhusus.header.nilai.requiered");			
+		}
+		
+		valRequiredInteger(entity.getJumdur(), "diskonkhusus.header.jumdur.required");
+		valRequiredString(entity.getSatdur(), "diskonkhusus.header.satdur.required");
+	}
+	
+	protected void manageMinMaxValues(EDiskonKhususHeader entity) {
+		valMaxString(entity.getNama(), 200, "diskonkhusus.header.nama.max.length");
+		valMaxString(entity.getKeterangan(), 400, "diskonkhusus.header.keterangan.max.length");
+		valMinDouble(entity.getPctdisc(), 0D, "diskonkhusus.header.pctdisc.min.length");
+		valMaxDouble(entity.getPctdisc(), 999D, "diskonkhusus.header.pctdisc.max.length");
+		valMinDouble(entity.getNildisc(), 0D, "diskonkhusus.header.nilai.min.length");
+		valMaxDouble(entity.getNildisc(), 999999999D, "diskonkhusus.header.nilai.max.length");
+		valMinInteger(entity.getJumdur(), 0, "diskonkhusus.header.jumdur.min.length");
+		valMaxInteger(entity.getJumdur(), 99999, "diskonkhusus.header.jumdur.max.length");
+		valMaxString(entity.getSatdur(), 50, "diskonkhusus.header.satdur.max.length");
+	}
+
+	protected void manageReferences(EDiskonKhususHeader entity) {
+		
+	}
+
+	protected void valDelete(EDiskonKhususHeader toBeDeleted) {	}
+	
+	protected void valUniquenessOnAdd(EDiskonKhususHeader addedEntity) {
+		EDiskonKhususHeader entityFromDb = repo.findByBK(addedEntity.getNama());
+		if (entityFromDb != null) {
+			throw new BusinessException("diskonkhusus.header.bk", addedEntity.getNama());
+		}
+	}
+
+	protected void valUniquenessOnEdit(EDiskonKhususHeader editedEntity) {
+		EDiskonKhususHeader entityFromDb = repo.findByBK(editedEntity.getNama());
+		if (entityFromDb != null) {
+			if (!editedEntity.getId().equals(entityFromDb.getId())) {
+				throw new BusinessException("diskonkhusus.header.bk", editedEntity.getNama());
+			}
+		}
+	}
+	
+	protected void preAdd(EDiskonKhususHeader entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - set nomor urut item berdasar total data + 1 (TrxInputKaryawanAttachFileService,
+		//   TrxInputKaryawanDetailPelatihanService)
+		// - menambahkan thumbnail bagi foto di TrxInputKaryawanPhotoService, EmployeePhotoService
+		// NB: terus terang bingung membedakan method ini dengan method defineDefaultValuesOnAdd
+	}
+	
+	protected void postAdd(EDiskonKhususHeader entity) {
+		// salah satu contoh penggunaannya (di gaji.id) :
+		// - menandai transaksi ini sebagai transaksi yang terkonfirmasi
+		// - mengeksekusi notifikasi (pada SysNotificationService)
+		// - edit file admin untuk menandai slip gaji di release
+		// - manambah saldo surat ketidakhadiran yang belum konfirmasi
+		// - update absensi, edit jadwal kerja, jalankan sp utk proses verfikasi absensi (TrxOverrideJadwalKerjaDetailService)
+		// boleh dibilang ini bisa digunakan untuk update saldo-saldo/sejarah/admin/konfirmasi
+	}
+	
+	protected void preEdit(EDiskonKhususHeader toBeSaved, EDiskonKhususHeader oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan preAdd
+	}
+	
+	protected void postEdit(EDiskonKhususHeader toBeSaved, EDiskonKhususHeader oldEntity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+	
+	protected void preDelete(EDiskonKhususHeader entity) {
+		// penjelasan untuk penggunaan mirip dengan preEdit
+	}
+	
+	protected void postDelete(EDiskonKhususHeader entity) {
+		// penjelasan untuk penggunaan mirip dengan postAdd
+	}
+
+	/* mungkin berguna nanti waktu sudah diputuskan bagaimana mekanisme teknis otorisasinya
+	private void valAuthAdd() {
+		if(!actionAuthorizationService.valHakAdd()) {
+			error("NoRightToAdd");
+		}
+	}
+   
+	private void valAuthEdit() {
+		if(!actionAuthorizationService.valHakEdit()) {
+			error("NoRightToChange");
+		}
+	}
+   
+	private void valAuthDelete() {
+		if(!actionAuthorizationService.valHakDelete()) {
+			error("NoRightToDelete");
+		}
+	}
+	*/
+	
+	public EDiskonKhususHeader get(String id) {
+		return repo.getOne(id);
+	}
+	
+}

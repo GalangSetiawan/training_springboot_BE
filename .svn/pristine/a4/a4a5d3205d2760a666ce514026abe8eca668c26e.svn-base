@@ -1,0 +1,231 @@
+package co.id.sofcograha.domain.invoicing.transaksi.live.entities;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import co.id.sofcograha.base.authentication.CurrentUser;
+import co.id.sofcograha.base.exceptions.DevException;
+import co.id.sofcograha.base.master.jenisTransaksi.entities.EJenisTransaksi;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
+import co.id.sofcograha.domain.invoicing.masters.produk.entities.EProduk;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(name = "ti010", uniqueConstraints = @UniqueConstraint(columnNames = { "nomor" }))
+public class ETrxLive implements Cloneable {
+
+	@Id
+	@Column(name = "id_ti010")
+	private String id;
+
+	@Column(name = "nomor")
+	private String nomor;
+
+	@Column(name = "tgtrn")
+	private String tgtrn;
+
+	@Column(name = "fldata")
+	private String fldata;
+
+	@Column(name = "tglive")
+	private String tglive;
+
+	@Version
+	@Column(name = "version")
+	private Long version;
+
+	@Column(name = "usrcrt")
+	private String usrcrt;
+
+	@Column(name = "tglcrt")
+	private String tglcrt;
+
+	@Column(name = "jamcrt")
+	private String jamcrt;
+
+	@Column(name = "usrupd")
+	private String usrupd;
+
+	@Column(name = "tglupd")
+	private String tglupd;
+
+	@Column(name = "jamupd")
+	private String jamupd;
+
+	@OneToOne
+	@JoinColumn(name = "id_am90")
+	private EJenisTransaksi jenisTransaksi;
+
+	@OneToOne
+	@JoinColumn(name = "id_mi001")
+	private EProduk produk;
+
+	@OneToOne
+	@JoinColumn(name = "id_mi010")
+	private ECustomerGajiId customer;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getNomor() {
+		return nomor;
+	}
+
+	public void setNomor(String nomor) {
+		this.nomor = nomor;
+	}
+
+	public String getTgtrn() {
+		return tgtrn;
+	}
+
+	public void setTgtrn(String tgtrn) {
+		this.tgtrn = tgtrn;
+	}
+
+	public String getFldata() {
+		return fldata;
+	}
+
+	public void setFldata(String fldata) {
+		this.fldata = fldata;
+	}
+
+	public String getTglive() {
+		return tglive;
+	}
+
+	public void setTglive(String tglive) {
+		this.tglive = tglive;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public String getUsrcrt() {
+		return usrcrt;
+	}
+
+	public void setUsrcrt(String usrcrt) {
+		this.usrcrt = usrcrt;
+	}
+
+	public String getTglcrt() {
+		return tglcrt;
+	}
+
+	public void setTglcrt(String tglcrt) {
+		this.tglcrt = tglcrt;
+	}
+
+	public String getJamcrt() {
+		return jamcrt;
+	}
+
+	public void setJamcrt(String jamcrt) {
+		this.jamcrt = jamcrt;
+	}
+
+	public String getUsrupd() {
+		return usrupd;
+	}
+
+	public void setUsrupd(String usrupd) {
+		this.usrupd = usrupd;
+	}
+
+	public String getTglupd() {
+		return tglupd;
+	}
+
+	public void setTglupd(String tglupd) {
+		this.tglupd = tglupd;
+	}
+
+	public String getJamupd() {
+		return jamupd;
+	}
+
+	public void setJamupd(String jamupd) {
+		this.jamupd = jamupd;
+	}
+
+	public EJenisTransaksi getJenisTransaksi() {
+		return jenisTransaksi;
+	}
+
+	public void setJenisTransaksi(EJenisTransaksi jenisTransaksi) {
+		this.jenisTransaksi = jenisTransaksi;
+	}
+
+	public EProduk getProduk() {
+		return produk;
+	}
+
+	public void setProduk(EProduk produk) {
+		this.produk = produk;
+	}
+
+	public ECustomerGajiId getCustomer() {
+		return customer;
+	}
+
+	public void setCustomer(ECustomerGajiId customer) {
+		this.customer = customer;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+
+	@PrePersist
+	private void prePersist() {
+
+		Date currentDate = new Date();
+
+		this.id = UUID.randomUUID().toString();
+
+		this.usrcrt = CurrentUser.getUsername();
+		this.tglcrt = new SimpleDateFormat("yyyyMMdd").format(currentDate);
+		this.jamcrt = new SimpleDateFormat("HHmmss").format(currentDate);
+
+	}
+
+	@PreUpdate
+	private void preUpdate() {
+		Date currentDate = new Date();
+
+		this.usrupd = CurrentUser.getUsername();
+		this.tglupd = new SimpleDateFormat("yyyyMMdd").format(currentDate);
+		this.jamupd = new SimpleDateFormat("HHmmss").format(currentDate);
+	}
+}

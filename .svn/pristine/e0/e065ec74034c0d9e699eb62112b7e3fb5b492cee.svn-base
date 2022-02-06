@@ -1,0 +1,64 @@
+package co.id.sofcograha.base.master.customer.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.master.customer.entities.ECustomer;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Repository
+public class CustomerRepository extends SimpleJpaRepository<ECustomer, String> {
+
+	protected final EntityManager em;
+	
+	public CustomerRepository(EntityManager em) {
+		super(ECustomer.class, em);
+		this.em = em;
+	}
+
+	public ECustomer findByBK(String name) {
+		
+		String query = "SELECT e FROM ECustomer e " + 
+	                   "WHERE e.name = :name";
+		
+		try {
+			return em.createQuery(query, ECustomer.class)
+					.setParameter("name", name)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public ECustomer findByName(String name) {
+		return this.findByBK(name);
+	}
+
+	public SearchResult<ECustomer> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<ECustomer> search = new HqlSimpleSearchBuilder<>(ECustomer.class, em);
+
+		String name = (String) searchParameter.getValueFromMappedParam("name");
+		Boolean active = (Boolean) searchParameter.getValueFromMappedParam("active");
+
+		if (!QueryUtil.isAll(name)) {
+			search.addWhere("AND LOWER(name) LIKE LOWER(:name) ");
+			search.addParameter("name", QueryUtil.formatStringForLikeFilter(name));
+		}
+
+		if (active != null) {
+			search.addWhere("AND active = :active ");
+			search.addParameter("active", active);
+		}
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+}

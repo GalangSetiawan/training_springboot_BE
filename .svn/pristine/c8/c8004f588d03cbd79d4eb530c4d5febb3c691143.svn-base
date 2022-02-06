@@ -1,0 +1,128 @@
+package co.id.sofcograha.base.queue.processstatus.repositories;
+
+import java.util.Date;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.queue.common.QueueConstants;
+import co.id.sofcograha.base.queue.process.entities.EProcess;
+import co.id.sofcograha.base.queue.processstatus.entities.EProcessStatus;
+import co.id.sofcograha.base.utils.QueryUtil;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.pojos.PojoUtil;
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+
+@Repository
+public class ProcessStatusRepository extends SimpleJpaRepository<EProcessStatus, String> {
+
+	protected final EntityManager em;
+	
+	public ProcessStatusRepository(EntityManager em) {
+		super(EProcessStatus.class, em);
+		this.em = em;
+	}
+
+	public EProcessStatus findByBK(String processNumber, EProcess process) {
+		
+		String query = "SELECT e FROM EProcessStatus e " + 
+                       "WHERE e.processNumber = :processNumber And " +
+		       	             "e.process = :process";
+		
+		try {
+			return em.createQuery(query, EProcessStatus.class)
+					 .setParameter("processNumber", processNumber)
+					 .setParameter("process", process)
+					 .getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}		
+		
+	}
+
+	public EProcessStatus findByProces_id(String processId, EProcess process) {
+		return this.findByBK(processId, process);
+	}
+
+	public SearchResult<EProcessStatus> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EProcessStatus> search = new HqlSimpleSearchBuilder<>(EProcessStatus.class, em);
+
+		String processNumber = (String) searchParameter.getValueFromMappedParam("processNumber");
+		//String processId = (String) searchParameter.getValueFromMappedParam("process.id");
+		String processId = (String) searchParameter.getValueFromMappedParam("processId");
+		String processCode = (String) searchParameter.getValueFromMappedParam("process.processCode");
+//		Date startDate = (Date) searchParameter.getValueFromMappedParam("startDate");
+		String startDate = TimeUtil.convertDateToString((Date) searchParameter.getValueFromMappedParam("startDate"));
+		Date processDate = (Date) searchParameter.getValueFromMappedParam("processDate");
+//		Date endDate = (Date) searchParameter.getValueFromMappedParam("endDate");
+		String endDate = TimeUtil.convertDateToString((Date) searchParameter.getValueFromMappedParam("endDate"));		
+		String userId = (String) searchParameter.getValueFromMappedParam("user.id");
+		//QueueConstants.Status status = (QueueConstants.Status) searchParameter.getValueFromMappedParam("status");
+		QueueConstants.Status status = PojoUtil.string2Enum((String)searchParameter.getValueFromMappedParam("status"), QueueConstants.Status.class);
+		
+		String description = (String) searchParameter.getValueFromMappedParam("description");
+
+		if (!QueryUtil.isAll(processNumber)) {
+			search.addWhere("AND LOWER(processNumber) LIKE LOWER(:processNumber) ");
+			search.addParameter("processNumber", QueryUtil.formatStringForLikeFilter(processNumber));
+		}
+		
+		if (!QueryUtil.isAll(processId)) {
+			search.addWhere("AND process.id = :processId ");
+			search.addParameter("processId", processId);
+		}
+		
+		if (!QueryUtil.isAll(processCode)) {
+			search.addWhere("AND process.processCode = :processCode ");
+			search.addParameter("processCode", processCode);
+		}
+		
+		if (startDate != null) {
+			search.addWhere("AND to_char(startDate,'yyyy-mm-dd') >= :startDate ");
+			search.addParameter("startDate", startDate);
+		}
+		
+		if (processDate != null) {
+			search.addWhere("AND processDate = :processDate ");
+			search.addParameter("processDate", processDate);
+		}
+		
+		if (endDate != null) {
+			search.addWhere("AND to_char(startDate,'yyyy-mm-dd') <= :endDate ");
+			search.addParameter("endDate", endDate);
+		}
+		
+		if (!QueryUtil.isAll(userId)) {
+			search.addWhere("AND user.id = :userId ");
+			search.addParameter("userId", userId);
+		}
+		
+		if (status != null) {
+			search.addWhere("AND status = :status ");
+			search.addParameter("status", status);
+		}
+		
+		if (!QueryUtil.isAll(description)) {
+			search.addWhere("AND LOWER(description) LIKE LOWER(:description) ");
+			search.addParameter("description", QueryUtil.formatStringForLikeFilter(description));
+		}
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EProcessStatus add(EProcessStatus entity) {
+		return save(entity);
+	}
+
+	public EProcessStatus edit(EProcessStatus entity) {
+		return save(entity);
+	}
+}

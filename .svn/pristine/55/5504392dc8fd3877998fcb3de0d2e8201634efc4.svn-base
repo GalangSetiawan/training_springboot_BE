@@ -1,0 +1,118 @@
+package co.id.sofcograha.base.master.helpInfo.entities;
+
+import java.util.List;
+import java.util.UUID;
+
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.Id;
+import javax.persistence.OneToMany;
+import javax.persistence.OrderBy;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import co.id.sofcograha.base.exceptions.DevException;
+
+@Entity
+@Access(AccessType.FIELD)
+@Table(schema="public", name="std_scr_info_header", uniqueConstraints = @UniqueConstraint(columnNames = { "url_layar", "nourut" }))
+@JsonIgnoreProperties(ignoreUnknown=true)
+public class EStdInfoHeader implements Cloneable {
+
+	@Id
+	@Column(name = "id_scr_info_header")
+	private String id;
+
+	@Column(name = "url_layar")
+	private String urlLayar;
+
+	@Column(name = "nourut")
+	private Integer nourut;
+
+	@Column(name = "keterangan")
+	private String keterangan;
+
+	@Version
+	@Column(name = "version")
+	private Long version;
+
+	@OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.REMOVE, mappedBy = "header")
+	@OrderBy("nourut ASC")
+	private List<EStdInfoDetail> detailInfo;
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getUrlLayar() {
+		return urlLayar;
+	}
+
+	public void setUrlLayar(String urlLayar) {
+		this.urlLayar = urlLayar;
+	}
+
+	public Integer getNourut() {
+		return nourut;
+	}
+
+	public void setNourut(Integer nourut) {
+		this.nourut = nourut;
+	}
+
+	public String getKeterangan() {
+		return keterangan;
+	}
+
+	public void setKeterangan(String keterangan) {
+		this.keterangan = keterangan;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public List<EStdInfoDetail> getDetailInfo() {
+		return detailInfo;
+	}
+
+	public void setDetailInfo(List<EStdInfoDetail> detailInfo) {
+		this.detailInfo = detailInfo;
+	}
+
+	public Object clone() {
+		try {
+			return super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new DevException("Clone not supported", e);
+		}
+	}
+
+	@PrePersist
+	private void prePersist() {
+
+		this.id = UUID.randomUUID().toString();
+
+	}
+
+	@PreUpdate
+	private void preUpdate() {
+	}
+}

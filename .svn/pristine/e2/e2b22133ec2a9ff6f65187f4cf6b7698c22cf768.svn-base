@@ -1,0 +1,62 @@
+package co.id.sofcograha.domain.invoicing.masters.diskonkhusus.repositories;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.stereotype.Repository;
+
+import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
+import co.id.sofcograha.base.utils.searchData.SearchParameter;
+import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.entities.EDiskonKhususDetail;
+import co.id.sofcograha.domain.invoicing.masters.diskonkhusus.entities.EDiskonKhususHeader;
+
+@Repository
+public class EDiskonKhususDetailRepository extends SimpleJpaRepository<EDiskonKhususDetail, String> {
+
+	protected final EntityManager em;
+
+	public EDiskonKhususDetailRepository(EntityManager em) {
+		super(EDiskonKhususDetail.class, em);
+		this.em = em;
+	}
+	
+	public EDiskonKhususDetail findByBK(String idMi008, String idMi010) {
+		
+		String query = "SELECT e FROM EDiskonKhususDetail e " + 
+                       "WHERE e.header.id = :idMi008 And " +
+  	                         "e.customer.id = :idMi010";
+		
+		try {
+			return em.createQuery(query, EDiskonKhususDetail.class)
+					 .setParameter("idMi008", idMi008)
+					 .setParameter("idMi010", idMi010)
+					 .getSingleResult();
+			
+		} catch (NoResultException e) {
+			return null;
+		}
+	}
+	
+	public EDiskonKhususDetail getOne(String id) {
+		return super.findOne(id);
+	}
+	
+	public SearchResult<EDiskonKhususDetail> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<EDiskonKhususDetail> search = new HqlSimpleSearchBuilder<>(EDiskonKhususDetail.class, em);
+
+		search.setSort(searchParameter.getSort());
+		search.setPaging(searchParameter.getPagination());
+
+		return search.getSearchResult();
+	}
+	
+	public EDiskonKhususDetail add(EDiskonKhususDetail entity) {
+		return save(entity);
+	}
+
+	public EDiskonKhususDetail edit(EDiskonKhususDetail entity) {
+		return save(entity);
+	}
+}

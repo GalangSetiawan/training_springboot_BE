@@ -1,0 +1,169 @@
+package co.id.sofcograha.domain.invoicing.masters.skemaharga.pojos;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.TimeUtil;
+import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
+import co.id.sofcograha.domain.invoicing.masters.skemaharga.entities.ESkemaHargaHeader;
+
+@JsonInclude(Include.ALWAYS)
+public class SkemaHargaHeader {
+	
+	public String id;
+	public String nama;
+	public String keterangan;
+	public String tipe;
+	public Boolean flakt;
+	public Long version;  
+    public String usrcrt;
+    public Date tglcrt;
+    public String jamcrt;
+    public String usrupd;
+    public Date tglupd;
+    public String jamupd;
+	
+	public List<SkemaHargaDetail> detail;
+
+	public ESkemaHargaHeader toEntity() {
+		
+		ESkemaHargaHeader entity = new ESkemaHargaHeader();
+		
+		entity.setId(id);
+		entity.setNama(nama);
+		entity.setKeterangan(keterangan);
+		entity.setTipe(tipe);
+		
+  		if (flakt == true) {
+  			entity.setFlakt("Y");
+  		} else {
+  			entity.setFlakt("T");
+  		}
+		
+		entity.setVersion(version);
+        entity.setUsrcrt(usrcrt);
+        
+		if (tglcrt != null) {
+			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt)); 
+		}
+        
+        entity.setJamcrt(jamcrt);
+        entity.setUsrupd(usrupd);
+        
+		if (tglupd != null) {
+			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd)); 
+		}
+        
+        entity.setJamupd(jamupd);
+		
+		return entity;
+	}
+	
+	public static List<ESkemaHargaHeader> toEntities(List<SkemaHargaHeader> pojos) {
+		if (pojos == null) return null;
+
+		List<ESkemaHargaHeader> entities = new ArrayList<ESkemaHargaHeader>();
+		for (SkemaHargaHeader pojo : pojos) {
+			entities.add(pojo.toEntity());
+		}
+
+		return entities;
+	}
+	
+	public static SkemaHargaHeader fromEntity (ESkemaHargaHeader entity) {
+		return fromEntity(entity, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static SkemaHargaHeader fromEntity (ESkemaHargaHeader entity, int depthLevel) {
+		return fromEntity(entity, depthLevel, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static SkemaHargaHeader fromEntity(ESkemaHargaHeader entity, int depthLevel, int detailDepthLevel) {
+		
+		if (entity == null) return null;
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
+	    if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		SkemaHargaHeader pojo = new SkemaHargaHeader();
+		
+		pojo.id = entity.getId();
+		if (depthLevel > 0) {
+			depthLevel--;
+
+			pojo.nama = entity.getNama();
+			pojo.keterangan = entity.getKeterangan();
+			pojo.tipe = entity.getTipe();
+					    
+		    if (entity.getFlakt().equals("Y")) {
+		      pojo.flakt = true;
+		    } else {
+		      pojo.flakt = false;
+		    }
+			
+			pojo.version = entity.getVersion();
+	        pojo.usrcrt = entity.getUsrcrt();
+	        
+			if (entity.getTglcrt() != null && !entity.getTglcrt().trim().equals("")) {
+				pojo.tglcrt = TimeUtil.getDate(entity.getTglcrt());				
+			} else {
+				pojo.tglcrt = null;
+			}
+	        
+	        pojo.jamcrt = entity.getJamcrt();
+	        pojo.usrupd = entity.getUsrupd();
+	        
+			if (entity.getTglupd() != null && !entity.getTglupd().trim().equals("")) {
+				pojo.tglupd = TimeUtil.getDate(entity.getTglupd());				
+			} else {
+				pojo.tglupd = null;
+			}
+	        
+	        pojo.jamupd = entity.getJamupd();
+	      
+			if (detailDepthLevel > 0) {
+				detailDepthLevel--;
+				
+				pojo.detail = SkemaHargaDetail.fromEntities(entity.getDetail(), depthLevel + 1, detailDepthLevel);
+			}
+		}
+
+		return pojo;
+	}
+	
+	public static List<SkemaHargaHeader> fromEntities(List<ESkemaHargaHeader> entities){
+		return fromEntities(entities, BaseConstants.DEFAULT_QUERY_DEPTH, BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH);
+	}
+	
+	public static List<SkemaHargaHeader> fromEntities(List<ESkemaHargaHeader> entities, int depthLevel, int detailDepthLevel){
+		
+		if (entities == null) return new ArrayList<>();
+		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
+		if (detailDepthLevel < 0) detailDepthLevel = BaseConstants.DEFAULT_DETAIL_QUERY_DEPTH;
+		
+		List<SkemaHargaHeader> pojos = new ArrayList<>();
+		
+		for (ESkemaHargaHeader entity : entities) {
+			pojos.add(SkemaHargaHeader.fromEntity(entity, depthLevel, detailDepthLevel));
+		}
+		return pojos;
+	}
+
+	public static List<SearchFieldMapping> getFieldMappings() {
+		List<SearchFieldMapping> mappings = new ArrayList<>();
+		
+		mappings.add(new SearchFieldMapping("nama", "nama"));
+		mappings.add(new SearchFieldMapping("keterangan", "keterangan"));
+		mappings.add(new SearchFieldMapping("tipe", "tipe"));
+		mappings.add(new SearchFieldMapping("flakt", "flakt").searchOnly());
+//		mappings.add(new SearchFieldMapping("widgetId", "widget.id").searchOnly());
+//		mappings.add(new SearchFieldMapping("userId", "user.id"));
+//		mappings.add(new SearchFieldMapping("orderNumber", "orderNumber", Integer.class).sortOnly());
+		
+		return mappings;
+	}
+}	
