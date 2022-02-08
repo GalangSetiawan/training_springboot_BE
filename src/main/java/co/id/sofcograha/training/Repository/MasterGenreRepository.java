@@ -41,14 +41,14 @@ public class MasterGenreRepository extends SimpleJpaRepository<MasterGenreEntity
 		return super.findOne(id);
 	}
 	
-	public MasterGenreEntity findByNama(String namaGenre) {
+	public MasterGenreEntity findByNama(String nama) {
 
 		MasterGenreEntity entity;
 
 		try {
 			entity = em.createQuery("FROM MasterGenreEntity e " +
-		                            "WHERE LOWER(e.namaGenre) = LOWER(:namaGenre)", MasterGenreEntity.class)
-					.setParameter("namaGenre", namaGenre)
+		                            "WHERE LOWER(e.nama) = LOWER(:nama)", MasterGenreEntity.class)
+					.setParameter("nama", nama)
 					.getSingleResult();
 		} catch (NoResultException e) {
 			entity = null;

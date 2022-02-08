@@ -6,25 +6,27 @@ import co.id.sofcograha.base.utils.VersionUtil;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.training.Entity.MasterGenreEntity;
+import co.id.sofcograha.training.Entity.MasterMembershipEntity;
 import co.id.sofcograha.training.Repository.MasterGenreRepository;
+import co.id.sofcograha.training.Repository.MasterMembershipRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service("masterGenreService")
-public class MasterGenreService extends BaseService {
+@Service("masterMembershipService")
+public class MasterMembershipService extends BaseService {
 	
-	@Autowired private MasterGenreRepository repo;
+	@Autowired private MasterMembershipRepository repo;
 	
-	public MasterGenreEntity findByBk(String nama) {
+	public MasterMembershipEntity findByBk(String nama) {
 		return repo.findByBK(nama);
 	}
 	
-	public MasterGenreEntity findById(final String id) {
+	public MasterMembershipEntity findById(final String id) {
 		return repo.getOne(id);
 	}
 
-	public SearchResult<MasterGenreEntity> search(SearchParameter searchParameter) {
+	public SearchResult<MasterMembershipEntity> search(SearchParameter searchParameter) {
 		return repo.search(searchParameter);
 	}
     
@@ -33,7 +35,7 @@ public class MasterGenreService extends BaseService {
 //	}
 	
 	@Transactional
-    public MasterGenreEntity add(MasterGenreEntity entity) {
+    public MasterMembershipEntity add(MasterMembershipEntity entity) {
 		
 		entity.setId(null);
 		
@@ -47,11 +49,11 @@ public class MasterGenreService extends BaseService {
 		
 		manageReferences(entity);
 		throwBatchError();
-		
+
 		valUniquenessOnAdd(entity);
 		throwBatchError();
 
-		MasterGenreEntity addedEntity = repo.add(entity);
+		MasterMembershipEntity addedEntity = repo.add(entity);
 		
 		throwBatchError();
 		return addedEntity;	
@@ -59,7 +61,7 @@ public class MasterGenreService extends BaseService {
     }
        
 	@Transactional
-	public MasterGenreEntity edit(MasterGenreEntity entity) {
+	public MasterMembershipEntity edit(MasterMembershipEntity entity) {
 		
 		valIdVersionRequired(entity.getId(), entity.getVersion());
 		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
@@ -77,7 +79,7 @@ public class MasterGenreService extends BaseService {
 		valUniquenessOnEdit(entity);
 		throwBatchError();
 
-		MasterGenreEntity toBeSaved = repo.getOne(entity.getId());
+		MasterMembershipEntity toBeSaved = repo.getOne(entity.getId());
 		//ECustomer oldEntity = (ECustomer) toBeSaved.clone();
 		
 		defineEditableValues(entity, toBeSaved);
@@ -94,7 +96,7 @@ public class MasterGenreService extends BaseService {
 		valVersion(id, version, MasterGenreEntity.class.getSimpleName());
 		throwBatchError();
 
-		MasterGenreEntity toBeDeleted = repo.getOne(id);
+		MasterMembershipEntity toBeDeleted = repo.getOne(id);
 		
 		valDelete(toBeDeleted);
 		throwBatchError();
@@ -104,23 +106,23 @@ public class MasterGenreService extends BaseService {
 		throwBatchError();
 	}
 	
-    protected void defineDefaultValuesOnAdd(MasterGenreEntity entity) {
+    protected void defineDefaultValuesOnAdd(MasterMembershipEntity entity) {
 //		if (entity.getFlakt() == null) entity.setFlakt(BaseConstants.YA);
 		if (entity.getVersion() == null) entity.setVersion((long) 1);
 	}
     
-    protected void valRequiredValues(MasterGenreEntity entity) {
-		valRequiredString(entity.getKodeGenre(), "master.genre.kodeGenre.required");
-		valRequiredString(entity.getNamaGenre(), "master.genre.namaGenre.required");
+    protected void valRequiredValues(MasterMembershipEntity entity) {
+		valRequiredString(entity.getKodeMembership(), "master.genre.kodeMembership.required");
+		valRequiredString(entity.getNamaMembership(), "master.genre.namaMembership.required");
 	}
     
-    protected void manageMinMaxValues(MasterGenreEntity entity) {
-		valMaxString(entity.getKodeGenre(), 200, "master.genre.kodeGenre.max.length");
-		valMaxString(entity.getNamaGenre(), 200, "master.genre.namaGenre.max.length");
+    protected void manageMinMaxValues(MasterMembershipEntity entity) {
+		valMaxString(entity.getKodeMembership(), 200, "master.genre.kodeMembership.max.length");
+		valMaxString(entity.getNamaMembership(), 200, "master.genre.namaMembership.max.length");
 
 	}
     
-    protected void manageReferences(MasterGenreEntity entity) {
+    protected void manageReferences(MasterMembershipEntity entity) {
 		/*
 		if (entity.getFunctionAccess() != null) {
 			OptionalConsumerUtil.of(functionAccessService.find(entity.getFunctionAccess().getId()))
@@ -138,16 +140,16 @@ public class MasterGenreService extends BaseService {
 		*/
 	}
 
-    protected void valUniquenessOnAdd(MasterGenreEntity addedEntity) {
-		MasterGenreEntity entityFromDb = repo.findByBK(addedEntity.getKodeGenre());
+    protected void valUniquenessOnAdd(MasterMembershipEntity addedEntity) {
+		MasterMembershipEntity entityFromDb = repo.findByBK(addedEntity.getKodeMembership());
 		if (entityFromDb != null) {
-			throw new BusinessException("customer.bk", addedEntity.getKodeGenre());
+			throw new BusinessException("customer.bk", addedEntity.getKodeMembership());
 		}
 	}
     
     private void valVersion(String id, Long version, String entityClassName) {
 		valEntityExists(id, entityClassName);
-		MasterGenreEntity dbEntity = repo.getOne(id);
+		MasterMembershipEntity dbEntity = repo.getOne(id);
 		VersionUtil.check(version, dbEntity.getVersion());
 	}
     
@@ -157,22 +159,20 @@ public class MasterGenreService extends BaseService {
 		}
 	}
 	
-	protected void valUniquenessOnEdit(MasterGenreEntity editedEntity) {
-		MasterGenreEntity entityFromDb = repo.findByBK(editedEntity.getKodeGenre());
+	protected void valUniquenessOnEdit(MasterMembershipEntity editedEntity) {
+		MasterMembershipEntity entityFromDb = repo.findByBK(editedEntity.getKodeMembership());
 		if (entityFromDb != null) {
 			if (!editedEntity.getId().equals(entityFromDb.getId())) {
-				throw new BusinessException("customer.bk", editedEntity.getKodeGenre());
+				throw new BusinessException("customer.bk", editedEntity.getKodeMembership());
 			}
 		}
 	}
 	
-	protected void defineEditableValues(MasterGenreEntity newValues, MasterGenreEntity toBeSaved) {
+	protected void defineEditableValues(MasterMembershipEntity newValues, MasterMembershipEntity toBeSaved) {
 		
 		if (toBeSaved != null) {
-			toBeSaved.setKodeGenre(newValues.getKodeGenre());
-			toBeSaved.setNamaGenre(newValues.getNamaGenre());
-			toBeSaved.setDiskonGenre(newValues.getDiskonGenre());
-
+			toBeSaved.setKodeMembership(newValues.getKodeMembership());
+			toBeSaved.setNamaMembership(newValues.getNamaMembership());
 		}
 		else if (toBeSaved == null) {
 			defineDefaultValuesOnAdd(newValues);
@@ -180,10 +180,10 @@ public class MasterGenreService extends BaseService {
 		
 	}
 	
-	protected void valDelete(MasterGenreEntity toBeDeleted) {	}
+	protected void valDelete(MasterMembershipEntity toBeDeleted) {	}
     
     
-	public MasterGenreEntity get(String id) {
+	public MasterMembershipEntity get(String id) {
 		return repo.getOne(id);
 	}
 }

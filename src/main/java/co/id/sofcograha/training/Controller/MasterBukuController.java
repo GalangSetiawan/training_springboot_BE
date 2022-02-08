@@ -3,9 +3,8 @@ package co.id.sofcograha.training.Controller;
 import co.id.sofcograha.base.utils.ApiResponse;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
 import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
-import co.id.sofcograha.training.Entity.MasterBukuEntity;
-import co.id.sofcograha.training.Pojo.MasterBukuPojo;
 import co.id.sofcograha.training.Service.MasterBukuService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
@@ -29,9 +28,9 @@ public class MasterBukuController {
 	@GetMapping(value = "/search")
 	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
 		
-		SearchResult<MasterBukuEntity> searchResult = masterBukuService.search(SearchParameter.generate(searchParameter, MasterBukuPojo.getFieldMappings()));
+		SearchResult<ECustomerGajiId> searchResult = masterBukuService.search(SearchParameter.generate(searchParameter, CustomerGajiId.getFieldMappings()));
 	    
-		return ApiResponse.dataWithPaging("items", MasterBukuPojo.fromEntities(searchResult.getResult()),
+		return ApiResponse.dataWithPaging("items", CustomerGajiId.fromEntities(searchResult.getResult()),
 				searchResult.getPaging());
 	}
 
@@ -39,24 +38,24 @@ public class MasterBukuController {
 	@GetMapping
 	public ApiResponse get(@RequestParam String nama) throws JsonProcessingException {
 
-		MasterBukuEntity entity = masterBukuService.findByBk(nama);
-
-		return ApiResponse.data("item", MasterBukuPojo.fromEntity(entity));
-
+		ECustomerGajiId entity = masterBukuService.findByBk(nama);
+		
+		return ApiResponse.data("item", CustomerGajiId.fromEntity(entity));
+		
 	}
 
     @PostMapping
-    public ApiResponse add(@RequestBody MasterBukuPojo pojo) {
-
-		MasterBukuEntity result = masterBukuService.add(pojo);
-		return ApiResponse.data("item", MasterBukuPojo.fromEntity(result));
+    public ApiResponse add(@RequestBody CustomerGajiId pojo) {
+		
+		ECustomerGajiId result = masterBukuService.add(pojo.toEntity());
+		return ApiResponse.data("item", CustomerGajiId.fromEntity(result));
     }
     
 	@PutMapping
-	public ApiResponse edit(@RequestBody MasterBukuPojo pojo) {
-
-		MasterBukuEntity result = masterBukuService.edit(pojo);
-		return ApiResponse.data("item", MasterBukuPojo.fromEntity(result));
+	public ApiResponse edit(@RequestBody CustomerGajiId pojo) {
+		
+		ECustomerGajiId result = masterBukuService.edit(pojo.toEntity());
+		return ApiResponse.data("item", CustomerGajiId.fromEntity(result));
 		
 	}
 
@@ -68,7 +67,7 @@ public class MasterBukuController {
 
 	@GetMapping(value = "/get-by-nama")
 	public ApiResponse getByNama(@RequestParam String nama) throws JsonProcessingException {
-		MasterBukuPojo data = masterBukuService.findByNama(nama);
+		CustomerGajiId data = masterBukuService.findByNama(nama);
 		return ApiResponse.data("item", data);
 	}
 }
