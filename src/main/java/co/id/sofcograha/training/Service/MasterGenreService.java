@@ -6,6 +6,8 @@ import co.id.sofcograha.base.utils.VersionUtil;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.training.Entity.MasterGenreEntity;
+import co.id.sofcograha.training.Pojo.MasterBukuPojo;
+import co.id.sofcograha.training.Pojo.MasterGenrePojo;
 import co.id.sofcograha.training.Repository.MasterGenreRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,14 +29,16 @@ public class MasterGenreService extends BaseService {
 	public SearchResult<MasterGenreEntity> search(SearchParameter searchParameter) {
 		return repo.search(searchParameter);
 	}
-    
-//	public MasterGenreEntity findByNama(String nama) {
-//		return MasterGenreEntity.fromEntity(repo.findByNama(nama));
-//	}
+
+	public MasterGenrePojo findByNama(String namaBuku) {
+		return MasterGenrePojo.fromEntity(repo.findByNama(namaBuku));
+	}
 	
 	@Transactional
-    public MasterGenreEntity add(MasterGenreEntity entity) {
-		
+    public MasterGenreEntity add(MasterGenrePojo pojo) {
+
+		MasterGenreEntity entity = pojo.toEntity();
+
 		entity.setId(null);
 		
 		defineDefaultValuesOnAdd(entity);
@@ -59,8 +63,10 @@ public class MasterGenreService extends BaseService {
     }
        
 	@Transactional
-	public MasterGenreEntity edit(MasterGenreEntity entity) {
-		
+	public MasterGenreEntity edit(MasterGenrePojo pojo) {
+
+		MasterGenreEntity entity = pojo.toEntity();
+
 		valIdVersionRequired(entity.getId(), entity.getVersion());
 		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
 		throwBatchError();

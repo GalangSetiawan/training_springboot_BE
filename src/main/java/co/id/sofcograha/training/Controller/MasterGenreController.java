@@ -46,14 +46,14 @@ public class MasterGenreController {
     @PostMapping
     public ApiResponse add(@RequestBody MasterGenrePojo pojo) {
 
-		MasterGenreEntity result = masterGenreService.add(pojo.toEntity());
+		MasterGenreEntity result = masterGenreService.add(pojo);
 		return ApiResponse.data("item", MasterGenrePojo.fromEntity(result));
     }
     
 	@PutMapping
 	public ApiResponse edit(@RequestBody MasterGenrePojo pojo) {
 
-		MasterGenreEntity result = masterGenreService.edit(pojo.toEntity());
+		MasterGenreEntity result = masterGenreService.edit(pojo);
 		return ApiResponse.data("item", MasterGenrePojo.fromEntity(result));
 		
 	}
