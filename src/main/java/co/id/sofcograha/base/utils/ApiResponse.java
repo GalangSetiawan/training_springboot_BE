@@ -14,7 +14,7 @@ import co.id.sofcograha.base.utils.threadlocals.LocalNotices;
 import co.id.sofcograha.base.utils.threadlocals.LocalWarnings;
 
 @JsonInclude(Include.ALWAYS)
-public class ApiResponse {
+public class 	ApiResponse {
 
 	private static final String status_ok = BaseConstants.STATUS_OK;
 	private static final String status_warning = BaseConstants.STATUS_WARNING;

@@ -25,7 +25,7 @@ public class ECustomerRepository extends SimpleJpaRepository<ECustomerGajiId, St
 	
 	public ECustomerGajiId findByBK(String nama) {
 		
-		String query = "SELECT e FROM ECustomerGajiId e " + 
+		String query = "SELECT e FROM MasterGenreEntity e " +
 					   "WHERE e.nama = :nama";
 
 		try {
@@ -47,7 +47,7 @@ public class ECustomerRepository extends SimpleJpaRepository<ECustomerGajiId, St
 		ECustomerGajiId entity;
 
 		try {
-			entity = em.createQuery("FROM ECustomerGajiId e " + 
+			entity = em.createQuery("FROM MasterGenreEntity e " +
 		                            "WHERE e.flakt = :flakt And " +
 					                        "LOWER(e.nama) = LOWER(:nama)", ECustomerGajiId.class)
 					.setParameter("flakt", BaseConstants.YA)
