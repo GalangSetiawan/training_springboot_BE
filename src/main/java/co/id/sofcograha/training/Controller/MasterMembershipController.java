@@ -3,9 +3,9 @@ package co.id.sofcograha.training.Controller;
 import co.id.sofcograha.base.utils.ApiResponse;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
-import co.id.sofcograha.training.Entity.MasterGenreEntity;
-import co.id.sofcograha.training.Pojo.MasterGenrePojo;
-import co.id.sofcograha.training.Service.MasterGenreService;
+import co.id.sofcograha.training.Entity.MasterMembershipEntity;
+import co.id.sofcograha.training.Pojo.MasterMembershipPojo;
+import co.id.sofcograha.training.Service.MasterMembershipService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,22 +15,22 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/genre")
-public class MasterGenreController {
+@RequestMapping("/api/membership")
+public class MasterMembershipController {
 
-	public static final Logger logger = LoggerFactory.getLogger(MasterGenreController.class);
+	public static final Logger logger = LoggerFactory.getLogger(MasterMembershipController.class);
 
 	@Autowired
-	private MasterGenreService masterGenreService;
+	private MasterMembershipService masterMembershipService;
 	
 
 	// -------------------Retrieve Some ---------------------------------------------
 	@GetMapping(value = "/search")
 	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
 		
-		SearchResult<MasterGenreEntity> searchResult = masterGenreService.search(SearchParameter.generate(searchParameter, MasterGenrePojo.getFieldMappings()));
+		SearchResult<MasterMembershipEntity> searchResult = masterMembershipService.search(SearchParameter.generate(searchParameter, MasterMembershipPojo.getFieldMappings()));
 
-		return ApiResponse.dataWithPaging("items", MasterGenrePojo.fromEntities(searchResult.getResult()),
+		return ApiResponse.dataWithPaging("items", MasterMembershipPojo.fromEntities(searchResult.getResult()),
 				searchResult.getPaging());
 	}
 
@@ -38,29 +38,29 @@ public class MasterGenreController {
 	@GetMapping
 	public ApiResponse get(@RequestParam String nama) throws JsonProcessingException {
 
-		MasterGenreEntity entity = masterGenreService.findByBk(nama);
-		return ApiResponse.data("item", MasterGenrePojo.fromEntity(entity));
+		MasterMembershipEntity entity = masterMembershipService.findByBk(nama);
+		return ApiResponse.data("item", MasterMembershipPojo.fromEntity(entity));
 		
 	}
 
     @PostMapping
-    public ApiResponse add(@RequestBody MasterGenrePojo pojo) {
+    public ApiResponse add(@RequestBody MasterMembershipPojo pojo) {
 
-		MasterGenreEntity result = masterGenreService.add(pojo.toEntity());
-		return ApiResponse.data("item", MasterGenrePojo.fromEntity(result));
+		MasterMembershipEntity result = masterMembershipService.add(pojo.toEntity());
+		return ApiResponse.data("item", MasterMembershipPojo.fromEntity(result));
     }
     
 	@PutMapping
-	public ApiResponse edit(@RequestBody MasterGenrePojo pojo) {
+	public ApiResponse edit(@RequestBody MasterMembershipPojo pojo) {
 
-		MasterGenreEntity result = masterGenreService.edit(pojo.toEntity());
-		return ApiResponse.data("item", MasterGenrePojo.fromEntity(result));
+		MasterMembershipEntity result = masterMembershipService.edit(pojo.toEntity());
+		return ApiResponse.data("item", MasterMembershipPojo.fromEntity(result));
 		
 	}
 
 	@DeleteMapping
 	public ApiResponse delete(@RequestParam String id, @RequestParam(required = false) Long version) {
-		masterGenreService.delete(id, version);
+		masterMembershipService.delete(id, version);
 		return ApiResponse.ok();
 	}
 
