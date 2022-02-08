@@ -8,25 +8,22 @@ import java.util.UUID;
 
 @Entity
 @Access(AccessType.FIELD)
-@Table(name = "tbl_galang_saldo_buku", uniqueConstraints = @UniqueConstraint(columnNames = { "id" }))
-public class SaldoBukuEntity implements Cloneable{
+@Table(name = "tbl_galang_range_poin", uniqueConstraints = @UniqueConstraint(columnNames = { "id" }))
+public class RangePointEntity implements Cloneable{
 
 	@Id
-	@Column(name="id")
+	@Column(name = "id")
 	private String id;
 
-	@Column(name="saldo_buku")
-	private Double saldoBuku;
+	@Column(name="min_range")
+	private Double minRange;
 
-	@Version
-	@Column(name="version")
-	private Long version;
+	@Column(name="max_range")
+	private Double maxRange;
 
-	@OneToOne
-	@JoinColumn(name = "id_buku", referencedColumnName = "id")
-	private MasterBukuEntity dataBuku;
+	@Column(name="point")
+	private Integer point;
 
-    
     @Transient
     private boolean isDeleted;
 
@@ -38,28 +35,28 @@ public class SaldoBukuEntity implements Cloneable{
 		this.id = id;
 	}
 
-	public Double getSaldoBuku() {
-		return saldoBuku;
+	public Double getMinRange() {
+		return minRange;
 	}
 
-	public void setSaldoBuku(Double saldoBuku) {
-		this.saldoBuku = saldoBuku;
+	public void setMinRange(Double kodeMembership) {
+		this.minRange = minRange;
 	}
 
-	public Long getVersion() {
-		return version;
+	public Double getMaxRange() {
+		return maxRange;
 	}
 
-	public void setVersion(Long version) {
-		this.version = version;
+	public void setMaxRange(Double maxRange) {
+		this.maxRange = maxRange;
 	}
 
-	public MasterBukuEntity getDataBuku() {
-		return dataBuku;
+	public Integer getPoint() {
+		return point;
 	}
 
-	public void setDataBuku(MasterBukuEntity dataBuku) {
-		this.dataBuku = dataBuku;
+	public void setPoint(Integer point) {
+		this.point = point;
 	}
 
 	public Object clone() {
