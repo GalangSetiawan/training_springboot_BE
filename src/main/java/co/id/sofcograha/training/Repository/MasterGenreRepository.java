@@ -47,9 +47,7 @@ public class MasterGenreRepository extends SimpleJpaRepository<MasterGenreEntity
 
 		try {
 			entity = em.createQuery("FROM MasterGenreEntity e " +
-		                            "WHERE e.flakt = :flakt And " +
-					                        "LOWER(e.nama) = LOWER(:nama)", MasterGenreEntity.class)
-					.setParameter("flakt", BaseConstants.YA)
+		                            "WHERE LOWER(e.nama) = LOWER(:nama)", MasterGenreEntity.class)
 					.setParameter("nama", nama)
 					.getSingleResult();
 		} catch (NoResultException e) {
