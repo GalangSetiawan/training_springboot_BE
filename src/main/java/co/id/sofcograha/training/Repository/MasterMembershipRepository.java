@@ -22,7 +22,7 @@ public class MasterMembershipRepository extends SimpleJpaRepository<MasterMember
 		super(MasterMembershipEntity.class, em);
 		this.em = em;
 	}
-	
+
 	public MasterMembershipEntity findByBK(String nama) {
 		
 		String query = "SELECT e FROM MasterMembershipEntity e " +

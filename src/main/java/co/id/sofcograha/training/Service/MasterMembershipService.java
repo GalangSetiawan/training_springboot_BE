@@ -49,7 +49,7 @@ public class MasterMembershipService extends BaseService {
 		
 		manageReferences(entity);
 		throwBatchError();
-		
+
 		valUniquenessOnAdd(entity);
 		throwBatchError();
 
