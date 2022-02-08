@@ -74,7 +74,7 @@ public class EInvoiceDetailLainLain implements Cloneable {
   
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "id_ti001")
-	private EInvoiceHeader header;  
+	private EInvoiceHeader header;
 
 	public String getId() {
 		return id;

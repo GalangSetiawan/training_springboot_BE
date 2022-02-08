@@ -8,7 +8,7 @@ spring:
     generate-ddl: false
   datasource:
     platform: postgres
-    url: jdbc:postgresql://localhost:5432/main_main
+    url: jdbc:postgresql://scorpio.sofco:7654/gaji_id
     username: sofco
     password: s3234
     driverClassName: org.postgresql.Driver
