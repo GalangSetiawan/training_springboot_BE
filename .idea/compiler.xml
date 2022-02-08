@@ -9,5 +9,8 @@
         <module name="TrnAngularBackEnd" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="TrnAngularBackEnd" target="1.8" />
+    </bytecodeTargetLevel>
   </component>
 </project>
