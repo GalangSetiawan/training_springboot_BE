@@ -1,12 +1,11 @@
 package co.id.sofcograha.training.Repository;
 
-import co.id.sofcograha.base.constants.BaseConstants;
 import co.id.sofcograha.base.utils.QueryUtil;
 import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
-import co.id.sofcograha.training.Entity.MasterGenreEntity;
-import co.id.sofcograha.training.Entity.MasterMembershipEntity;
+import co.id.sofcograha.training.Entity.MasterJenisTransaksiEntity;
+import co.id.sofcograha.training.Entity.RangePointEntity;
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -14,23 +13,23 @@ import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
 
 @Repository
-public class MasterMembershipRepository extends SimpleJpaRepository<MasterMembershipEntity, String> {
+public class RangePointRepository extends SimpleJpaRepository<RangePointEntity, String> {
 
 	protected final EntityManager em;
 
-	public MasterMembershipRepository(EntityManager em) {
-		super(MasterMembershipEntity.class, em);
+	public RangePointRepository(EntityManager em) {
+		super(RangePointEntity.class, em);
 		this.em = em;
 	}
 
-	public MasterMembershipEntity findByBK(String nama) {
+	public MasterJenisTransaksiEntity findByBK(String namaTransaksi) {
 		
-		String query = "SELECT e FROM MasterMembershipEntity e " +
-					   "WHERE e.nama = :nama";
+		String query = "SELECT e FROM RangePointEntity e " +
+					   "WHERE e.namaTransaksi = :namaTransaksi";
 
 		try {
-			return em.createQuery(query, MasterMembershipEntity.class)
-					.setParameter("nama", nama)
+			return em.createQuery(query, MasterJenisTransaksiEntity.class)
+					.setParameter("namaTransaksi", namaTransaksi)
 					.getSingleResult();
 		} catch (NoResultException e) {
 			return null;
@@ -38,17 +37,17 @@ public class MasterMembershipRepository extends SimpleJpaRepository<MasterMember
 
 	}
 	
-	public MasterMembershipEntity getOne(String id) {
+	public RangePointEntity getOne(String id) {
 		return super.findOne(id);
 	}
 	
-	public MasterMembershipEntity findByNama(String nama) {
+	public RangePointEntity findByNama(String nama) {
 
-		MasterMembershipEntity entity;
+		RangePointEntity entity;
 
 		try {
-			entity = em.createQuery("FROM MasterMembershipEntity e " +
-		                            "WHERE LOWER(e.nama) = LOWER(:nama)", MasterMembershipEntity.class)
+			entity = em.createQuery("FROM RangePointEntity e " +
+		                            "WHERE LOWER(e.nama) = LOWER(:nama)", RangePointEntity.class)
 //					.setParameter("flakt", BaseConstants.YA)
 					.setParameter("nama", nama)
 					.getSingleResult();
@@ -59,11 +58,11 @@ public class MasterMembershipRepository extends SimpleJpaRepository<MasterMember
 		return entity;
 	}
 	
-	public SearchResult<MasterMembershipEntity> search(SearchParameter searchParameter) {
-		HqlSimpleSearchBuilder<MasterMembershipEntity> search = new HqlSimpleSearchBuilder<>(MasterMembershipEntity.class, em);
+	public SearchResult<RangePointEntity> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<RangePointEntity> search = new HqlSimpleSearchBuilder<>(RangePointEntity.class, em);
 
-		String kodeMembership = (String) searchParameter.getValueFromMappedParam("kodeMembership");
-		String namaMembership = (String) searchParameter.getValueFromMappedParam("namaMembership");
+		String kodeMembership = (String) searchParameter.getValueFromMappedParam("kodeJenisTransaksi");
+		String namaMembership = (String) searchParameter.getValueFromMappedParam("namaTransaksi");
 
 
 		if (!QueryUtil.isAll(kodeMembership)) {
@@ -84,11 +83,11 @@ public class MasterMembershipRepository extends SimpleJpaRepository<MasterMember
 		return search.getSearchResult();
 	}
 	
-	public MasterMembershipEntity add(MasterMembershipEntity entity) {
+	public RangePointEntity add(RangePointEntity entity) {
 		return save(entity);
 	}
 
-	public MasterMembershipEntity edit(MasterMembershipEntity entity) {
+	public RangePointEntity edit(RangePointEntity entity) {
 		return save(entity);
 	}
 }
