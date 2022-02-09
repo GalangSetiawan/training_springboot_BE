@@ -34,8 +34,8 @@ public class TrxHeaderEntity implements Cloneable{
 	@Column(name="flag_member")
 	private String flagMember;
 
-	@Column(name="flag_member")
-	private String jenis_pembayaran;
+	@Column(name="jenis_pembayaran")
+	private String jenisPembayaran;
 
 	@Version
 	@Column(name="version")
