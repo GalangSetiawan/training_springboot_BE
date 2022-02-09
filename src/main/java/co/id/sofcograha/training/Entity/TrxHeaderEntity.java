@@ -112,12 +112,12 @@ public class TrxHeaderEntity implements Cloneable{
 		this.flagMember = flagMember;
 	}
 
-	public String getJenis_pembayaran() {
-		return jenis_pembayaran;
+	public String getJenisPembayaran() {
+		return jenisPembayaran;
 	}
 
-	public void setJenis_pembayaran(String jenis_pembayaran) {
-		this.jenis_pembayaran = jenis_pembayaran;
+	public void setJenisPembayaran(String jenisPembayaran) {
+		this.jenisPembayaran = jenisPembayaran;
 	}
 
 	public Long getVersion() {
