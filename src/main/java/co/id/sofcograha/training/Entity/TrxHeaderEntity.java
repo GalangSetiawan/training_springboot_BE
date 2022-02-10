@@ -56,7 +56,101 @@ public class TrxHeaderEntity implements Cloneable{
     @Transient
     private boolean isDeleted;
 
+	public String getId() {
+		return id;
+	}
 
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Date getTanggalBon() {
+		return tanggalBon;
+	}
+
+	public void setTanggalBon(Date tanggalBon) {
+		this.tanggalBon = tanggalBon;
+	}
+
+	public String getNomorBon() {
+		return nomorBon;
+	}
+
+	public void setNomorBon(String nomorBon) {
+		this.nomorBon = nomorBon;
+	}
+
+	public Double getDiscountHeader() {
+		return discountHeader;
+	}
+
+	public void setDiscountHeader(Double discountHeader) {
+		this.discountHeader = discountHeader;
+	}
+
+	public String getNamaPembeli() {
+		return namaPembeli;
+	}
+
+	public void setNamaPembeli(String namaPembeli) {
+		this.namaPembeli = namaPembeli;
+	}
+
+	public String getFlagDapatPromo5Pertama() {
+		return flagDapatPromo5Pertama;
+	}
+
+	public void setFlagDapatPromo5Pertama(String flagDapatPromo5Pertama) {
+		this.flagDapatPromo5Pertama = flagDapatPromo5Pertama;
+	}
+
+	public String getFlagMember() {
+		return flagMember;
+	}
+
+	public void setFlagMember(String flagMember) {
+		this.flagMember = flagMember;
+	}
+
+	public String getJenisPembayaran() {
+		return jenisPembayaran;
+	}
+
+	public void setJenisPembayaran(String jenisPembayaran) {
+		this.jenisPembayaran = jenisPembayaran;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public MasterMembershipEntity getDataMembership() {
+		return dataMembership;
+	}
+
+	public void setDataMembership(MasterMembershipEntity dataMembership) {
+		this.dataMembership = dataMembership;
+	}
+
+	public MasterJenisTransaksiEntity getDataJenisTransaksi() {
+		return dataJenisTransaksi;
+	}
+
+	public void setDataJenisTransaksi(MasterJenisTransaksiEntity dataJenisTransaksi) {
+		this.dataJenisTransaksi = dataJenisTransaksi;
+	}
+
+	public List<TrxDetailBuku> getTrxDetailBuku() {
+		return trxDetailBuku;
+	}
+
+	public void setTrxDetailBuku(List<TrxDetailBuku> trxDetailBuku) {
+		this.trxDetailBuku = trxDetailBuku;
+	}
 
 	public Object clone() {
 		try {
