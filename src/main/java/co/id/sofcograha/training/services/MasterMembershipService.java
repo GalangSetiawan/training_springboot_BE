@@ -17,8 +17,8 @@ public class MasterMembershipService extends BaseService {
 	
 	@Autowired private MasterMembershipRepository repo;
 	
-	public MasterMembershipEntity findByBk(String nama) {
-		return repo.findByBK(nama);
+	public MasterMembershipEntity findByBk(String namaMembership) {
+		return repo.findByBK(namaMembership);
 	}
 	
 	public MasterMembershipEntity findById(final String id) {
@@ -111,13 +111,13 @@ public class MasterMembershipService extends BaseService {
 	}
     
     protected void valRequiredValues(MasterMembershipEntity entity) {
-		valRequiredString(entity.getKodeMembership(), "master.genre.kodeMembership.required");
-		valRequiredString(entity.getNamaMembership(), "master.genre.namaMembership.required");
+		valRequiredString(entity.getKodeMembership(), "master.membership.kodeMembership.required");
+		valRequiredString(entity.getNamaMembership(), "master.membership.namaMembership.required");
 	}
     
     protected void manageMinMaxValues(MasterMembershipEntity entity) {
-		valMaxString(entity.getKodeMembership(), 200, "master.genre.kodeMembership.max.length");
-		valMaxString(entity.getNamaMembership(), 200, "master.genre.namaMembership.max.length");
+		valMaxString(entity.getKodeMembership(), 200, "master.membership.kodeMembership.max.length");
+		valMaxString(entity.getNamaMembership(), 200, "master.membership.namaMembership.max.length");
 
 	}
     

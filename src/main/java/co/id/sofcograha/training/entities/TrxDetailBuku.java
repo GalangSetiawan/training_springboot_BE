@@ -34,8 +34,14 @@ public class TrxDetailBuku implements Cloneable{
 	@Column(name="harga_setelah_disc_genre")
 	private Double hargaSetelahDiscGenre;
 
+	@Column(name="persen_disc_header")
+	private Double persenDiscHeader;
+
 	@Column(name="nilai_disc_header")
 	private Double nilaiDiscHeader;
+
+	@Column(name="harga_setelah_disc_header")
+	private Double hargaSetelahDiscHeader;
 
 	@Column(name="nilai_disc_proposional")
 	private Double nilaiDiscProposional;
@@ -104,12 +110,28 @@ public class TrxDetailBuku implements Cloneable{
 		this.hargaSetelahDiscGenre = hargaSetelahDiscGenre;
 	}
 
+	public Double getPersenDiscHeader() {
+		return persenDiscHeader;
+	}
+
+	public void setPersenDiscHeader(Double persenDiscHeader) {
+		this.persenDiscHeader = persenDiscHeader;
+	}
+
 	public Double getNilaiDiscHeader() {
 		return nilaiDiscHeader;
 	}
 
 	public void setNilaiDiscHeader(Double nilaiDiscHeader) {
 		this.nilaiDiscHeader = nilaiDiscHeader;
+	}
+
+	public Double getHargaSetelahDiscHeader() {
+		return hargaSetelahDiscHeader;
+	}
+
+	public void setHargaSetelahDiscHeader(Double hargaSetelahDiscHeader) {
+		this.hargaSetelahDiscHeader = hargaSetelahDiscHeader;
 	}
 
 	public Double getNilaiDiscProposional() {
