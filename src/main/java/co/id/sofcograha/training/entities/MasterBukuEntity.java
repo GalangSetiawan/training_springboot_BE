@@ -25,7 +25,7 @@ public class MasterBukuEntity implements Cloneable{
 	private Double hargaBuku;
 
 	@Column(name="stock_buku")
-	private Double stockBuku;
+	private Integer stockBuku;
 
 	@Column(name="active")
 	private String flagActive;
@@ -70,11 +70,11 @@ public class MasterBukuEntity implements Cloneable{
 		this.hargaBuku = hargaBuku;
 	}
 
-	public Double getStockBuku() {
+	public Integer getStockBuku() {
 		return stockBuku;
 	}
 
-	public void setStockBuku(Double stockBuku) {
+	public void setStockBuku(Integer stockBuku) {
 		this.stockBuku = stockBuku;
 	}
 

@@ -17,10 +17,10 @@ public class MasterBukuPojo {
 	public String kodeBuku;
 	public String namaBuku;
 	public Double hargaBuku;
-	public Double stockBuku;
+	public Integer stockBuku;
 	public String active;
 	public Long version;
-	public MasterGenrePojo dataBuku;
+	public MasterGenrePojo dataGenre;
     
     public MasterBukuEntity toEntity() {
 
@@ -34,9 +34,9 @@ public class MasterBukuPojo {
   		entity.setFlagActive(active);
   		entity.setVersion(version);
 
-		if(dataBuku != null && !dataBuku.id.equals("")){
+		if(dataGenre != null && !dataGenre.id.equals("")){
 			MasterGenreEntity entityRef = new MasterGenreEntity();
-			entityRef.setKodeGenre(dataBuku.id);
+			entityRef.setId(dataGenre.id);
 			entity.setGenreBuku(entityRef);
 		}else{
 			entity.setGenreBuku(null);
@@ -81,7 +81,7 @@ public class MasterBukuPojo {
 			pojo.active = entity.getFlagActive();
 			pojo.version = entity.getVersion();
 
-			pojo.dataBuku = MasterGenrePojo.fromEntity(entity.getGenreBuku());
+			pojo.dataGenre = MasterGenrePojo.fromEntity(entity.getGenreBuku());
 
 
 //	        pojo.usrcrt = entity.getUsrcrt();
