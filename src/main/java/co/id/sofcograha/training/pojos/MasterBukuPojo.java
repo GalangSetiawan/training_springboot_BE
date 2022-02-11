@@ -6,9 +6,11 @@ import co.id.sofcograha.training.entities.MasterBukuEntity;
 import co.id.sofcograha.training.entities.MasterGenreEntity;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.List;
+
 
 @JsonInclude(Include.ALWAYS)
 public class MasterBukuPojo {
@@ -38,6 +40,7 @@ public class MasterBukuPojo {
 			MasterGenreEntity entityRef = new MasterGenreEntity();
 			entityRef.setId(dataGenre.id);
 			entity.setGenreBuku(entityRef);
+
 		}else{
 			entity.setGenreBuku(null);
 		}
