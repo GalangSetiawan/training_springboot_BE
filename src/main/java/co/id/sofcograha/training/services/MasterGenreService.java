@@ -17,8 +17,8 @@ public class MasterGenreService extends BaseService {
 	
 	@Autowired private MasterGenreRepository repo;
 	
-	public MasterGenreEntity findByBk(String nama) {
-		return repo.findByBK(nama);
+	public MasterGenreEntity findByBk(String namaGenre) {
+		return repo.findByBK(namaGenre);
 	}
 	
 	public MasterGenreEntity findById(final String id) {

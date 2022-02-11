@@ -2,8 +2,8 @@ package co.id.sofcograha.training.pojos;
 
 import co.id.sofcograha.base.constants.BaseConstants;
 import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
-import co.id.sofcograha.training.Entity.MasterBukuEntity;
-import co.id.sofcograha.training.Entity.MasterGenreEntity;
+import co.id.sofcograha.training.entities.MasterBukuEntity;
+import co.id.sofcograha.training.entities.MasterGenreEntity;
 import co.id.sofcograha.training.entities.SaldoBukuEntity;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;

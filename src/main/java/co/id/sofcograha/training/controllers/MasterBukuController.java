@@ -5,6 +5,8 @@ import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.domain.invoicing.masters.customer.entities.ECustomerGajiId;
 import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
+import co.id.sofcograha.training.entities.MasterBukuEntity;
+import co.id.sofcograha.training.pojos.MasterBukuPojo;
 import co.id.sofcograha.training.services.MasterBukuService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
@@ -45,17 +47,17 @@ public class MasterBukuController {
 	}
 
     @PostMapping
-    public ApiResponse add(@RequestBody CustomerGajiId pojo) {
+    public ApiResponse add(@RequestBody MasterBukuPojo pojo) {
 		
-		ECustomerGajiId result = masterBukuService.add(pojo.toEntity());
-		return ApiResponse.data("item", CustomerGajiId.fromEntity(result));
+		MasterBukuEntity result = masterBukuService.add(pojo);
+		return ApiResponse.data("item", MasterBukuPojo.fromEntity(result));
     }
     
 	@PutMapping
-	public ApiResponse edit(@RequestBody CustomerGajiId pojo) {
-		
-		ECustomerGajiId result = masterBukuService.edit(pojo.toEntity());
-		return ApiResponse.data("item", CustomerGajiId.fromEntity(result));
+	public ApiResponse edit(@RequestBody MasterBukuPojo pojo) {
+
+		MasterBukuEntity result = masterBukuService.edit(pojo);
+		return ApiResponse.data("item", MasterBukuPojo.fromEntity(result));
 		
 	}
 
@@ -65,9 +67,9 @@ public class MasterBukuController {
 		return ApiResponse.ok();
 	}
 
-	@GetMapping(value = "/get-by-nama")
+	@GetMapping(value = "/get-by-nama-buku")
 	public ApiResponse getByNama(@RequestParam String nama) throws JsonProcessingException {
-		CustomerGajiId data = masterBukuService.findByNama(nama);
+		MasterBukuPojo data = masterBukuService.findByNamaBuku(nama);
 		return ApiResponse.data("item", data);
 	}
 }

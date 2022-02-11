@@ -40,7 +40,7 @@ public class MasterBukuRepository extends SimpleJpaRepository<MasterBukuEntity, 
 		return super.findOne(id);
 	}
 	
-	public MasterBukuEntity findByNama(String namaBuku) {
+	public MasterBukuEntity findByNamaBuku(String namaBuku) {
 
 		MasterBukuEntity entity;
 

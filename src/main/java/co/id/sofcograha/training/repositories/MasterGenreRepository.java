@@ -21,14 +21,14 @@ public class MasterGenreRepository extends SimpleJpaRepository<MasterGenreEntity
 		this.em = em;
 	}
 	
-	public MasterGenreEntity findByBK(String nama) {
+	public MasterGenreEntity findByBK(String kodeGenre) {
 		
 		String query = "SELECT e FROM MasterGenreEntity e " +
-					   "WHERE e.nama = :nama";
+					   "WHERE e.kodeGenre = :kodeGenre";
 
 		try {
 			return em.createQuery(query, MasterGenreEntity.class)
-					.setParameter("nama", nama)
+					.setParameter("kodeGenre", kodeGenre)
 					.getSingleResult();
 		} catch (NoResultException e) {
 			return null;
