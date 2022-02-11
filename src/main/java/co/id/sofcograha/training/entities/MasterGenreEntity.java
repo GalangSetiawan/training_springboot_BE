@@ -15,14 +15,14 @@ public class MasterGenreEntity implements Cloneable{
 	@Column(name = "id")
 	private String id;
 
-	@Column(name="kode_genre", length=10)
+	@Column(name="kode_genre")
 	private String kodeGenre;
 
-	@Column(name="nama_genre", length=50)
+	@Column(name="nama_genre")
 	private String namaGenre;
 
 	@Column(name="diskon_genre")
-	private Double diskonGenre;
+	private Integer diskonGenre;
 
 	@Version
     @Column(name = "version")
@@ -52,11 +52,11 @@ public class MasterGenreEntity implements Cloneable{
 		this.namaGenre = namaGenre;
 	}
 
-	public Double getDiskonGenre() {
+	public Integer getDiskonGenre() {
 		return diskonGenre;
 	}
 
-	public void setDiskonGenre(Double diskonGenre) {
+	public void setDiskonGenre(Integer diskonGenre) {
 		this.diskonGenre = diskonGenre;
 	}
 

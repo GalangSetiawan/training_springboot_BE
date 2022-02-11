@@ -14,7 +14,7 @@ public class MasterGenrePojo {
 
 	public String kodeGenre;
 	public String namaGenre;
-	public Double diskonGenre;
+	public Integer diskonGenre;
 	public Long version;
 	public String id;
     

@@ -51,7 +51,7 @@ import co.id.sofcograha.base.utils.Message;
 import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
 
 //TODO vint: find better error code, not like: method.not.allowed 
-@RestControllerAdvice
+//@RestControllerAdvice
 public class GlobalExceptionHandler {
 
   private static final String ERR_MNA = "method.not.allowed";
