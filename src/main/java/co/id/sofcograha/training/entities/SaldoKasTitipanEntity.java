@@ -8,25 +8,26 @@ import java.util.UUID;
 
 @Entity
 @Access(AccessType.FIELD)
-@Table(name = "tbl_membership", uniqueConstraints = @UniqueConstraint(columnNames = { "kode_member" }))
-public class MasterMembershipEntity implements Cloneable{
+@Table(name = "tbl_saldo_kas_titipan", uniqueConstraints = @UniqueConstraint(columnNames = { "kode" }))
+public class SaldoKasTitipanEntity implements Cloneable{
 
 	@Id
 	@Column(name = "id")
 	private String id;
 
-	@Column(name="kode_member", length=10)
-	private String kodeMembership;
+	@Column(name="nilai_titipan")
+	private Double nilaiTitipan;
 
-	@Column(name="nama_member", length=50)
-	private String namaMembership;
+	@Column(name="nilai_point")
+	private Integer nilaiPoint;
+
+	@OneToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "id_member")
+	private MasterMembershipEntity dataMembership;
 
 	@Version
-    @Column(name = "version")
-    private Long version;
-
-    @Transient
-    private boolean isDeleted;
+	@Column(name="version")
+	private Long version;
 
 	public String getId() {
 		return id;
@@ -36,20 +37,28 @@ public class MasterMembershipEntity implements Cloneable{
 		this.id = id;
 	}
 
-	public String getKodeMembership() {
-		return kodeMembership;
+	public Double getNilaiTitipan() {
+		return nilaiTitipan;
 	}
 
-	public void setKodeMembership(String kodeMembership) {
-		this.kodeMembership = kodeMembership;
+	public void setNilaiTitipan(Double nilaiTitipan) {
+		this.nilaiTitipan = nilaiTitipan;
 	}
 
-	public String getNamaMembership() {
-		return namaMembership;
+	public Integer getNilaiPoint() {
+		return nilaiPoint;
 	}
 
-	public void setNamaMembership(String namaMembership) {
-		this.namaMembership = namaMembership;
+	public void setNilaiPoint(Integer nilaiPoint) {
+		this.nilaiPoint = nilaiPoint;
+	}
+
+	public MasterMembershipEntity getDataMembership() {
+		return dataMembership;
+	}
+
+	public void setDataMembership(MasterMembershipEntity dataMembership) {
+		this.dataMembership = dataMembership;
 	}
 
 	public Long getVersion() {

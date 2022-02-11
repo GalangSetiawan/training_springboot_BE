@@ -22,32 +22,38 @@ public class TrxHeaderEntity implements Cloneable{
 	@Column(name="nomor_bon")
 	private String nomorBon;
 
+	@Column(name="nama_pembeli")
+	private String namaPembeli;
+
 	@Column(name="discount_header")
 	private Double discountHeader;
 
-	@Column(name="nama_pembeli")
-	private String namaPembeli;
+	@Column(name="nilai_kembalian")
+	private Double nilaiKembalian;
+
+	@Column(name="total_pembayaran")
+	private Double totalPembayaran;
+
+	@Column(name="total_pembelian_buku")
+	private Double totalPembelianBuku;
+
+	@Column(name="nilai_diskon_header")
+	private Double nilaiDiskonHeader;
 
 	@Column(name="flag_dapat_promo_5_pertama")
 	private String flagDapatPromo5Pertama;
 
-	@Column(name="flag_member")
-	private String flagMember;
+	@OneToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "id_member")
+	private MasterMembershipEntity dataMembership;
 
-	@Column(name="jenis_pembayaran")
-	private String jenisPembayaran;
+	@OneToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "id_jenis_transaksi")
+	private MasterJenisTransaksiEntity dataJenisTransaksi;
 
 	@Version
 	@Column(name="version")
 	private Long version;
-
-	@OneToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "id_membership")
-	private MasterMembershipEntity dataMembership;
-
-	@OneToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "id_trx")
-	private MasterJenisTransaksiEntity dataJenisTransaksi;
 
 	@OneToMany(mappedBy="dataHeader")
 	private List<TrxDetailBuku> trxDetailBuku;
@@ -100,20 +106,36 @@ public class TrxHeaderEntity implements Cloneable{
 		this.flagDapatPromo5Pertama = flagDapatPromo5Pertama;
 	}
 
-	public String getFlagMember() {
-		return flagMember;
+	public Double getNilaiKembalian() {
+		return nilaiKembalian;
 	}
 
-	public void setFlagMember(String flagMember) {
-		this.flagMember = flagMember;
+	public void setNilaiKembalian(Double nilaiKembalian) {
+		this.nilaiKembalian = nilaiKembalian;
 	}
 
-	public String getJenisPembayaran() {
-		return jenisPembayaran;
+	public Double getTotalPembayaran() {
+		return totalPembayaran;
 	}
 
-	public void setJenisPembayaran(String jenisPembayaran) {
-		this.jenisPembayaran = jenisPembayaran;
+	public void setTotalPembayaran(Double totalPembayaran) {
+		this.totalPembayaran = totalPembayaran;
+	}
+
+	public Double getTotalPembelianBuku() {
+		return totalPembelianBuku;
+	}
+
+	public void setTotalPembelianBuku(Double totalPembelianBuku) {
+		this.totalPembelianBuku = totalPembelianBuku;
+	}
+
+	public Double getNilaiDiskonHeader() {
+		return nilaiDiskonHeader;
+	}
+
+	public void setNilaiDiskonHeader(Double nilaiDiskonHeader) {
+		this.nilaiDiskonHeader = nilaiDiskonHeader;
 	}
 
 	public Long getVersion() {

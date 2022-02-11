@@ -21,14 +21,14 @@ public class MasterMembershipRepository extends SimpleJpaRepository<MasterMember
 		this.em = em;
 	}
 
-	public MasterMembershipEntity findByBK(String nama) {
+	public MasterMembershipEntity findByBK(String namaMembership) {
 		
 		String query = "SELECT e FROM MasterMembershipEntity e " +
 					   "WHERE e.nama = :nama";
 
 		try {
 			return em.createQuery(query, MasterMembershipEntity.class)
-					.setParameter("nama", nama)
+					.setParameter("nama", namaMembership)
 					.getSingleResult();
 		} catch (NoResultException e) {
 			return null;
