@@ -183,7 +183,7 @@ public class MasterBukuService extends BaseService {
 			toBeSaved.setKodeBuku(newValues.getKodeBuku());
 			toBeSaved.setHargaBuku(newValues.getHargaBuku());
 			toBeSaved.setFlagActive(newValues.getFlagActive());
-			toBeSaved.setGenreBuku(newValues.getBillrole2());
+//			toBeSaved.setGenreBuku(newValues.getBillrole2());
 
 		}
 		else if (toBeSaved == null) {
