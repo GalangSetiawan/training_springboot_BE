@@ -30,9 +30,9 @@ public class MasterBukuController {
 	@GetMapping(value = "/search")
 	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
 		
-		SearchResult<ECustomerGajiId> searchResult = masterBukuService.search(SearchParameter.generate(searchParameter, CustomerGajiId.getFieldMappings()));
+		SearchResult<MasterBukuEntity> searchResult = masterBukuService.search(SearchParameter.generate(searchParameter, CustomerGajiId.getFieldMappings()));
 	    
-		return ApiResponse.dataWithPaging("items", CustomerGajiId.fromEntities(searchResult.getResult()),
+		return ApiResponse.dataWithPaging("items", MasterBukuPojo.fromEntities(searchResult.getResult()),
 				searchResult.getPaging());
 	}
 
@@ -40,9 +40,9 @@ public class MasterBukuController {
 	@GetMapping
 	public ApiResponse get(@RequestParam String nama) throws JsonProcessingException {
 
-		ECustomerGajiId entity = masterBukuService.findByBk(nama);
+		MasterBukuEntity entity = masterBukuService.findByBk(nama);
 		
-		return ApiResponse.data("item", CustomerGajiId.fromEntity(entity));
+		return ApiResponse.data("item", MasterBukuPojo.fromEntity(entity));
 		
 	}
 
