@@ -16,9 +16,6 @@ public class TrxHeaderEntity implements Cloneable{
 	@Column(name="id")
 	private String id;
 
-	@Column(name="nomor_trx_header")
-	private String nomorTrxHeader;
-
 	@Column(name="tanggal_bon")
 	private Date tanggalBon;
 
@@ -68,14 +65,6 @@ public class TrxHeaderEntity implements Cloneable{
 
 	public void setId(String id) {
 		this.id = id;
-	}
-
-	public String getNomorTrxHeader() {
-		return nomorTrxHeader;
-	}
-
-	public void setNomorTrxHeader(String nomorTrxHeader) {
-		this.nomorTrxHeader = nomorTrxHeader;
 	}
 
 	public Date getTanggalBon() {

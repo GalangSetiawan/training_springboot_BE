@@ -145,9 +145,9 @@ public class TrxHeaderService extends BaseService {
 	}
 
     protected void valUniquenessOnAdd(TrxHeaderEntity addedEntity) {
-		TrxHeaderEntity entityFromDb = repo.findByBK(addedEntity.getNomorTrxHeader());
+		TrxHeaderEntity entityFromDb = repo.findByBK(addedEntity.getNomorBon());
 		if (entityFromDb != null) {
-			throw new BusinessException("master.membership.bk", addedEntity.getNomorTrxHeader());
+			throw new BusinessException("master.membership.bk", addedEntity.getNomorBon());
 		}
 	}
     
@@ -164,10 +164,10 @@ public class TrxHeaderService extends BaseService {
 	}
 	
 	protected void valUniquenessOnEdit(TrxHeaderEntity editedEntity) {
-		TrxHeaderEntity entityFromDb = repo.findByBK(editedEntity.getNomorTrxHeader());
+		TrxHeaderEntity entityFromDb = repo.findByBK(editedEntity.getNomorBon());
 		if (entityFromDb != null) {
 			if (!editedEntity.getId().equals(entityFromDb.getId())) {
-				throw new BusinessException("master.membership.bk", editedEntity.getNomorTrxHeader());
+				throw new BusinessException("master.membership.bk", editedEntity.getNomorBon());
 			}
 		}
 	}

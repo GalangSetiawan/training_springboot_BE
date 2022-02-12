@@ -22,14 +22,14 @@ public class TrxHeaderRepository extends SimpleJpaRepository<TrxHeaderEntity, St
 		this.em = em;
 	}
 	
-	public TrxHeaderEntity findByBK(String nomorTrxHeader) {
+	public TrxHeaderEntity findByBK(String nomorBon) {
 		
 		String query = "SELECT e FROM TrxHeaderEntity e " +
-					   "WHERE e.nomorTrxHeader = :nomorTrxHeader";
+					   "WHERE e.nomorBon = :nomorBon";
 
 		try {
 			return em.createQuery(query, TrxHeaderEntity.class)
-					.setParameter("nomorTrxHeader", nomorTrxHeader)
+					.setParameter("nomorBon", nomorBon)
 					.getSingleResult();
 		} catch (NoResultException e) {
 			return null;

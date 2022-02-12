@@ -18,7 +18,6 @@ public class TrxHeaderPojo {
 	public String id;
 	public Date tanggalBon;
 	public String nomorBon;
-	public String nomorTrxHeader;
 	public String namaPembeli;
 	public Integer discountHeader;
 	public Double nilaiKembalian;
@@ -56,8 +55,8 @@ public class TrxHeaderPojo {
 		}
 
 		//generate No. Trx Header
-		String nomorTrxHeaderGenerated = "TRX-HEADER-" + TimeUtil.getSystemDate() ;
-		entity.setNomorTrxHeader(nomorTrxHeaderGenerated);
+		String nomorBonGenerated = "NO-BON-" + TimeUtil.getSystemDate() ;
+		entity.setNomorBon(nomorBonGenerated);
 
 
   		return entity;
@@ -81,7 +80,6 @@ public class TrxHeaderPojo {
 			pojo.id = entity.getId();
 			pojo.tanggalBon = entity.getTanggalBon();
 			pojo.nomorBon = entity.getNomorBon();
-			pojo.nomorTrxHeader = entity.getNomorTrxHeader();
 			pojo.namaPembeli = entity.getNamaPembeli();
 			pojo.discountHeader = entity.getDiscountHeader();
 			pojo.nilaiKembalian = entity.getNilaiKembalian();
