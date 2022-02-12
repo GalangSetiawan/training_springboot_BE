@@ -24,11 +24,11 @@ public class MasterMembershipRepository extends SimpleJpaRepository<MasterMember
 	public MasterMembershipEntity findByBK(String namaMembership) {
 		
 		String query = "SELECT e FROM MasterMembershipEntity e " +
-					   "WHERE e.nama = :nama";
+					   "WHERE e.namaMembership = :namaMembership";
 
 		try {
 			return em.createQuery(query, MasterMembershipEntity.class)
-					.setParameter("nama", namaMembership)
+					.setParameter("namaMembership", namaMembership)
 					.getSingleResult();
 		} catch (NoResultException e) {
 			return null;
@@ -40,15 +40,15 @@ public class MasterMembershipRepository extends SimpleJpaRepository<MasterMember
 		return super.findOne(id);
 	}
 	
-	public MasterMembershipEntity findByNama(String nama) {
+	public MasterMembershipEntity findByNamaMember(String namaMembership) {
 
 		MasterMembershipEntity entity;
 
 		try {
 			entity = em.createQuery("FROM MasterMembershipEntity e " +
-		                            "WHERE LOWER(e.nama) = LOWER(:nama)", MasterMembershipEntity.class)
+		                            "WHERE LOWER(e.namaMembership) = LOWER(:namaMembership)", MasterMembershipEntity.class)
 //					.setParameter("flakt", BaseConstants.YA)
-					.setParameter("nama", nama)
+					.setParameter(namaMembership, namaMembership)
 					.getSingleResult();
 		} catch (NoResultException e) {
 			entity = null;

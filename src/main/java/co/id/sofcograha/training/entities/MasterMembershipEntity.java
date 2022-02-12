@@ -15,18 +15,15 @@ public class MasterMembershipEntity implements Cloneable{
 	@Column(name = "id")
 	private String id;
 
-	@Column(name="kode_member", length=10)
+	@Column(name="kode_member")
 	private String kodeMembership;
 
-	@Column(name="nama_member", length=50)
+	@Column(name="nama_member")
 	private String namaMembership;
 
 	@Version
     @Column(name = "version")
     private Long version;
-
-    @Transient
-    private boolean isDeleted;
 
 	public String getId() {
 		return id;

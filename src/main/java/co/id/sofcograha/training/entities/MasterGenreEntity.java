@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @Entity
 @Access(AccessType.FIELD)
-@Table(name = "tbl_galang_mst_genre", uniqueConstraints = @UniqueConstraint(columnNames = { "id" }))
+@Table(name = "tbl_galang_mst_genre", uniqueConstraints = @UniqueConstraint(columnNames = { "kode_genre" }))
 public class MasterGenreEntity implements Cloneable{
 	
 	@Id

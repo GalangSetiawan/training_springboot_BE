@@ -6,57 +6,59 @@ import co.id.sofcograha.base.utils.VersionUtil;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.training.entities.MasterGenreEntity;
-import co.id.sofcograha.training.entities.MasterJenisTransaksiEntity;
 import co.id.sofcograha.training.entities.MasterMembershipEntity;
+import co.id.sofcograha.training.entities.TrxHeaderEntity;
 import co.id.sofcograha.training.pojos.MasterMembershipPojo;
+import co.id.sofcograha.training.pojos.TrxHeaderPojo;
 import co.id.sofcograha.training.repositories.MasterMembershipRepository;
+import co.id.sofcograha.training.repositories.TrxHeaderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service("masterMembershipService")
-public class MasterMembershipService extends BaseService {
-	
-	@Autowired private MasterMembershipRepository repo;
-	
-	public MasterMembershipEntity findByBk(String namaMembership) {
-		return repo.findByBK(namaMembership);
+@Service("trxHeaderService")
+public class TrxHeaderService extends BaseService {
+
+	@Autowired private TrxHeaderRepository repo;
+
+	public TrxHeaderEntity findByBk(String nomorTrxHeader) {
+		return repo.findByBK(nomorTrxHeader);
 	}
-	
-	public MasterMembershipEntity findById(final String id) {
+
+	public TrxHeaderEntity findById(final String id) {
 		return repo.getOne(id);
 	}
 
-	public SearchResult<MasterMembershipEntity> search(SearchParameter searchParameter) {
+	public SearchResult<TrxHeaderEntity> search(SearchParameter searchParameter) {
 		return repo.search(searchParameter);
 	}
-    
-	public MasterMembershipPojo findByNamaMember(String namaMembership) {
-		return MasterMembershipPojo.fromEntity(repo.findByNamaMember(namaMembership));
-	}
-	
-	@Transactional
-    public MasterMembershipEntity add(MasterMembershipPojo pojo) {
 
-		MasterMembershipEntity entity = pojo.toEntity();
+	public TrxHeaderPojo findByNomorBon(String nomorBon) {
+		return TrxHeaderPojo.fromEntity(repo.findByNomorBon(nomorBon));
+	}
+
+	@Transactional
+    public TrxHeaderEntity add(TrxHeaderPojo pojo) {
+
+		TrxHeaderEntity entity = pojo.toEntity();
 
 		entity.setId(null);
-		
+
 		defineDefaultValuesOnAdd(entity);
-		
+
 		valRequiredValues(entity);
 		throwBatchError();
-		
+
 		manageMinMaxValues(entity);
 		throwBatchError();
-		
+
 		manageReferences(entity);
 		throwBatchError();
 
 		valUniquenessOnAdd(entity);
 		throwBatchError();
 
-		MasterMembershipEntity addedEntity = repo.add(entity);
+		TrxHeaderEntity addedEntity = repo.add(entity);
 		
 		throwBatchError();
 		return addedEntity;	
@@ -64,7 +66,7 @@ public class MasterMembershipService extends BaseService {
     }
        
 	@Transactional
-	public MasterMembershipEntity edit(MasterMembershipEntity entity) {
+	public TrxHeaderEntity edit(TrxHeaderEntity entity) {
 		
 		valIdVersionRequired(entity.getId(), entity.getVersion());
 		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
@@ -82,7 +84,7 @@ public class MasterMembershipService extends BaseService {
 		valUniquenessOnEdit(entity);
 		throwBatchError();
 
-		MasterMembershipEntity toBeSaved = repo.getOne(entity.getId());
+		TrxHeaderEntity toBeSaved = repo.getOne(entity.getId());
 		//ECustomer oldEntity = (ECustomer) toBeSaved.clone();
 		
 		defineEditableValues(entity, toBeSaved);
@@ -99,7 +101,7 @@ public class MasterMembershipService extends BaseService {
 		valVersion(id, version, MasterGenreEntity.class.getSimpleName());
 		throwBatchError();
 
-		MasterMembershipEntity toBeDeleted = repo.getOne(id);
+		TrxHeaderEntity toBeDeleted = repo.getOne(id);
 		
 		valDelete(toBeDeleted);
 		throwBatchError();
@@ -109,23 +111,22 @@ public class MasterMembershipService extends BaseService {
 		throwBatchError();
 	}
 	
-    protected void defineDefaultValuesOnAdd(MasterMembershipEntity entity) {
+    protected void defineDefaultValuesOnAdd(TrxHeaderEntity entity) {
 //		if (entity.getFlakt() == null) entity.setFlakt(BaseConstants.YA);
 		if (entity.getVersion() == null) entity.setVersion((long) 1);
 	}
     
-    protected void valRequiredValues(MasterMembershipEntity entity) {
-		valRequiredString(entity.getKodeMembership(), "master.membership.kodeMembership.required");
-		valRequiredString(entity.getNamaMembership(), "master.membership.namaMembership.required");
+    protected void valRequiredValues(TrxHeaderEntity entity) {
+		valRequiredString(entity.getNamaPembeli(), "trx.header.namaPembeli.required");
 	}
     
-    protected void manageMinMaxValues(MasterMembershipEntity entity) {
-		valMaxString(entity.getKodeMembership(), 200, "master.membership.kodeMembership.max.length");
-		valMaxString(entity.getNamaMembership(), 200, "master.membership.namaMembership.max.length");
+    protected void manageMinMaxValues(TrxHeaderEntity entity) {
+		valMaxString(entity.getNamaPembeli(), 200, "trx.header.kodeMembership.max.length");
+//		valMaxString(entity.getNamaMembership(), 200, "trx.header.namaMembership.max.length");
 
 	}
     
-    protected void manageReferences(MasterMembershipEntity entity) {
+    protected void manageReferences(TrxHeaderEntity entity) {
 		/*
 		if (entity.getFunctionAccess() != null) {
 			OptionalConsumerUtil.of(functionAccessService.find(entity.getFunctionAccess().getId()))
@@ -143,16 +144,16 @@ public class MasterMembershipService extends BaseService {
 		*/
 	}
 
-    protected void valUniquenessOnAdd(MasterMembershipEntity addedEntity) {
-		MasterMembershipEntity entityFromDb = repo.findByBK(addedEntity.getKodeMembership());
+    protected void valUniquenessOnAdd(TrxHeaderEntity addedEntity) {
+		TrxHeaderEntity entityFromDb = repo.findByBK(addedEntity.getNomorTrxHeader());
 		if (entityFromDb != null) {
-			throw new BusinessException("master.membership.bk", addedEntity.getKodeMembership());
+			throw new BusinessException("master.membership.bk", addedEntity.getNomorTrxHeader());
 		}
 	}
     
     private void valVersion(String id, Long version, String entityClassName) {
 		valEntityExists(id, entityClassName);
-		MasterMembershipEntity dbEntity = repo.getOne(id);
+		TrxHeaderEntity dbEntity = repo.getOne(id);
 		VersionUtil.check(version, dbEntity.getVersion());
 	}
     
@@ -162,20 +163,32 @@ public class MasterMembershipService extends BaseService {
 		}
 	}
 	
-	protected void valUniquenessOnEdit(MasterMembershipEntity editedEntity) {
-		MasterMembershipEntity entityFromDb = repo.findByBK(editedEntity.getKodeMembership());
+	protected void valUniquenessOnEdit(TrxHeaderEntity editedEntity) {
+		TrxHeaderEntity entityFromDb = repo.findByBK(editedEntity.getNomorTrxHeader());
 		if (entityFromDb != null) {
 			if (!editedEntity.getId().equals(entityFromDb.getId())) {
-				throw new BusinessException("master.membership.bk", editedEntity.getKodeMembership());
+				throw new BusinessException("master.membership.bk", editedEntity.getNomorTrxHeader());
 			}
 		}
 	}
 	
-	protected void defineEditableValues(MasterMembershipEntity newValues, MasterMembershipEntity toBeSaved) {
+	protected void defineEditableValues(TrxHeaderEntity newValues, TrxHeaderEntity toBeSaved) {
 		
 		if (toBeSaved != null) {
-			toBeSaved.setKodeMembership(newValues.getKodeMembership());
-			toBeSaved.setNamaMembership(newValues.getNamaMembership());
+			toBeSaved.setNomorBon(newValues.getNomorBon());
+			toBeSaved.setTanggalBon(newValues.getTanggalBon());
+
+			toBeSaved.setNamaPembeli(newValues.getNamaPembeli());
+			toBeSaved.setDiscountHeader(newValues.getDiscountHeader());
+			toBeSaved.setNilaiKembalian(newValues.getNilaiKembalian());
+			toBeSaved.setTotalPembayaran(newValues.getTotalPembayaran()); // bukan nya ini bentuknya ga sesimpel ini? kan bayarnya gacuma bentuk duit, tp bisa duit & poin
+			toBeSaved.setTotalPembelianBuku(newValues.getTotalPembelianBuku());
+			toBeSaved.setNilaiDiskonHeader(newValues.getNilaiDiskonHeader());
+			toBeSaved.setFlagDapatPromo5Pertama(newValues.getFlagDapatPromo5Pertama());
+			toBeSaved.setDataMembership(newValues.getDataMembership());
+			toBeSaved.setDataJenisTransaksi(newValues.getDataJenisTransaksi());
+
+
 		}
 		else if (toBeSaved == null) {
 			defineDefaultValuesOnAdd(newValues);
@@ -183,10 +196,10 @@ public class MasterMembershipService extends BaseService {
 		
 	}
 	
-	protected void valDelete(MasterMembershipEntity toBeDeleted) {	}
+	protected void valDelete(TrxHeaderEntity toBeDeleted) {	}
     
     
-	public MasterMembershipEntity get(String id) {
+	public TrxHeaderEntity get(String id) {
 		return repo.getOne(id);
 	}
 }
