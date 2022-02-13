@@ -11,9 +11,11 @@ import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
 import co.id.sofcograha.domain.invoicing.masters.customer.repositories.ECustomerRepository;
 import co.id.sofcograha.training.entities.MasterBukuEntity;
 import co.id.sofcograha.training.entities.MasterGenreEntity;
+import co.id.sofcograha.training.entities.SaldoBukuEntity;
 import co.id.sofcograha.training.pojos.MasterBukuPojo;
 import co.id.sofcograha.training.repositories.MasterBukuRepository;
 import co.id.sofcograha.training.repositories.MasterGenreRepository;
+import co.id.sofcograha.training.repositories.SaldoBukuRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +25,8 @@ public class MasterBukuService extends BaseService {
 	
 	@Autowired private MasterBukuRepository repo;
 	@Autowired private MasterGenreRepository repoGenre;
-	
+	@Autowired private SaldoBukuRepository repoSaldo;
+
 	public MasterBukuEntity findByBk(String nama) {
 		return repo.findByBK(nama);
 	}
@@ -66,10 +69,17 @@ public class MasterBukuService extends BaseService {
 			entity.setGenreBuku(masterGenre);
 		}
 
-		MasterBukuEntity addedEntity = repo.add(entity);
+		MasterBukuEntity addedEntityBuku = repo.add(entity);
+
+		//save saldo buku
+		SaldoBukuEntity saldoBuku = new SaldoBukuEntity();
+		saldoBuku.setDataBuku(addedEntityBuku);
+		saldoBuku.setSaldoBuku(addedEntityBuku.getStockBuku());
+		repoSaldo.add(saldoBuku);
+
 		
 		throwBatchError();
-		return addedEntity;	
+		return addedEntityBuku;
 		
     }
        

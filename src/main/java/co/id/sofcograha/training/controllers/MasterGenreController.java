@@ -53,7 +53,7 @@ public class MasterGenreController {
 	@PutMapping
 	public ApiResponse edit(@RequestBody MasterGenrePojo pojo) {
 
-		MasterGenreEntity result = masterGenreService.edit(pojo.toEntity());
+		MasterGenreEntity result = masterGenreService.edit(pojo);
 		return ApiResponse.data("item", MasterGenrePojo.fromEntity(result));
 		
 	}
@@ -63,7 +63,7 @@ public class MasterGenreController {
 		masterGenreService.delete(id, version);
 		return ApiResponse.ok();
 	}
-
+//
 //	@GetMapping(value = "/get-by-nama")
 //	public ApiResponse getByNama(@RequestParam String nama) throws JsonProcessingException {
 //		MasterGenreEntity data = masterGenreService.findByNama(nama);

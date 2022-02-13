@@ -109,6 +109,14 @@ public class MasterBukuPojo {
 
 		return pojo;
 	}
+
+	public static List<MasterBukuEntity> toEntities(List<MasterBukuPojo> pojos){
+		List<MasterBukuEntity> resultPojos = new ArrayList<>();
+		for(MasterBukuPojo eachPojo : pojos){
+			resultPojos.add(eachPojo.toEntity());
+		}
+		return resultPojos;
+	}
 	
 	public static List<MasterBukuPojo> fromEntities(List<MasterBukuEntity> entities){
 		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);

@@ -16,7 +16,7 @@ public class SaldoBukuEntity implements Cloneable{
 	private String id;
 
 	@Column(name="saldo_buku")
-	private Double saldoBuku;
+	private Integer saldoBuku;
 
 	@Version
 	@Column(name="version")
@@ -38,11 +38,11 @@ public class SaldoBukuEntity implements Cloneable{
 		this.id = id;
 	}
 
-	public Double getSaldoBuku() {
+	public Integer getSaldoBuku() {
 		return saldoBuku;
 	}
 
-	public void setSaldoBuku(Double saldoBuku) {
+	public void setSaldoBuku(Integer saldoBuku) {
 		this.saldoBuku = saldoBuku;
 	}
 

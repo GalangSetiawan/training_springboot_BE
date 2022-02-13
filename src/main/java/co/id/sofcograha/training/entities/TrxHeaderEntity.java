@@ -56,7 +56,7 @@ public class TrxHeaderEntity implements Cloneable{
 	private MasterJenisTransaksiEntity dataJenisTransaksi;
 
 	@OneToMany(mappedBy="dataHeader")
-	private List<TrxDetailBuku> trxDetailBuku;
+	private List<TrxDetailBukuEntity> trxDetailBuku;
 
 
 	public String getId() {
@@ -163,11 +163,11 @@ public class TrxHeaderEntity implements Cloneable{
 		this.dataJenisTransaksi = dataJenisTransaksi;
 	}
 
-	public List<TrxDetailBuku> getTrxDetailBuku() {
+	public List<TrxDetailBukuEntity> getTrxDetailBuku() {
 		return trxDetailBuku;
 	}
 
-	public void setTrxDetailBuku(List<TrxDetailBuku> trxDetailBuku) {
+	public void setTrxDetailBuku(List<TrxDetailBukuEntity> trxDetailBuku) {
 		this.trxDetailBuku = trxDetailBuku;
 	}
 
