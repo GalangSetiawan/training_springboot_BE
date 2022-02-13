@@ -4,8 +4,11 @@ import co.id.sofcograha.base.utils.ApiResponse;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.training.entities.MasterGenreEntity;
+import co.id.sofcograha.training.entities.TrxHeaderEntity;
 import co.id.sofcograha.training.pojos.MasterGenrePojo;
+import co.id.sofcograha.training.pojos.TrxHeaderPojo;
 import co.id.sofcograha.training.services.MasterGenreService;
+import co.id.sofcograha.training.services.TrxHeaderService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,16 +24,16 @@ public class TrxPembelianBukuController {
 	public static final Logger logger = LoggerFactory.getLogger(TrxPembelianBukuController.class);
 
 	@Autowired
-	private MasterGenreService masterGenreService;
+	private TrxHeaderService trxHeaderService;
 	
 
 	// -------------------Retrieve Some ---------------------------------------------
 	@GetMapping(value = "/search")
 	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
 		
-		SearchResult<MasterGenreEntity> searchResult = masterGenreService.search(SearchParameter.generate(searchParameter, MasterGenrePojo.getFieldMappings()));
+		SearchResult<TrxHeaderEntity> searchResult = trxHeaderService.search(SearchParameter.generate(searchParameter, MasterGenrePojo.getFieldMappings()));
 
-		return ApiResponse.dataWithPaging("items", MasterGenrePojo.fromEntities(searchResult.getResult()),
+		return ApiResponse.dataWithPaging("items", TrxHeaderPojo.fromEntities(searchResult.getResult()),
 				searchResult.getPaging());
 	}
 
@@ -38,35 +41,35 @@ public class TrxPembelianBukuController {
 	@GetMapping
 	public ApiResponse get(@RequestParam String nama) throws JsonProcessingException {
 
-		MasterGenreEntity entity = masterGenreService.findByBk(nama);
-		return ApiResponse.data("item", MasterGenrePojo.fromEntity(entity));
+		TrxHeaderEntity entity = trxHeaderService.findByBk(nama);
+		return ApiResponse.data("item", TrxHeaderPojo.fromEntity(entity));
 		
 	}
 
     @PostMapping
-    public ApiResponse add(@RequestBody MasterGenrePojo pojo) {
+    public ApiResponse add(@RequestBody TrxHeaderPojo pojo) {
 
-		MasterGenreEntity result = masterGenreService.add(pojo);
-		return ApiResponse.data("item", MasterGenrePojo.fromEntity(result));
+		TrxHeaderEntity result = trxHeaderService.add(pojo);
+		return ApiResponse.data("item", TrxHeaderPojo.fromEntity(result));
     }
     
 	@PutMapping
-	public ApiResponse edit(@RequestBody MasterGenrePojo pojo) {
+	public ApiResponse edit(@RequestBody TrxHeaderPojo pojo) {
 
-		MasterGenreEntity result = masterGenreService.edit(pojo.toEntity());
-		return ApiResponse.data("item", MasterGenrePojo.fromEntity(result));
+		TrxHeaderEntity result = trxHeaderService.edit(pojo.toEntity());
+		return ApiResponse.data("item", TrxHeaderPojo.fromEntity(result));
 		
 	}
 
 	@DeleteMapping
 	public ApiResponse delete(@RequestParam String id, @RequestParam(required = false) Long version) {
-		masterGenreService.delete(id, version);
+		trxHeaderService.delete(id, version);
 		return ApiResponse.ok();
 	}
 
 //	@GetMapping(value = "/get-by-nama")
 //	public ApiResponse getByNama(@RequestParam String nama) throws JsonProcessingException {
-//		MasterGenreEntity data = masterGenreService.findByNama(nama);
+//		TrxHeaderEntity data = trxHeaderService.findByNama(nama);
 //		return ApiResponse.data("item", data);
 //	}
 }
