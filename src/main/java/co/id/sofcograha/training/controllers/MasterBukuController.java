@@ -30,7 +30,7 @@ public class MasterBukuController {
 	@GetMapping(value = "/search")
 	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
 		
-		SearchResult<MasterBukuEntity> searchResult = masterBukuService.search(SearchParameter.generate(searchParameter, CustomerGajiId.getFieldMappings()));
+		SearchResult<MasterBukuEntity> searchResult = masterBukuService.search(SearchParameter.generate(searchParameter, MasterBukuPojo.getFieldMappings()));
 	    
 		return ApiResponse.dataWithPaging("items", MasterBukuPojo.fromEntities(searchResult.getResult()),
 				searchResult.getPaging());
