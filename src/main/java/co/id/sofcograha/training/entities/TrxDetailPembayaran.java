@@ -30,7 +30,7 @@ public class TrxDetailPembayaran implements Cloneable{
 
 	@ManyToOne
 	@JoinColumn(name = "id_header", referencedColumnName = "id")
-	private TrxHeaderEntity dataHeader;
+	private TrxHeaderEntity transaksiHeader;
 
 	public String getId() {
 		return id;
@@ -72,12 +72,12 @@ public class TrxDetailPembayaran implements Cloneable{
 		this.jumlahPoint = jumlahPoint;
 	}
 
-	public TrxHeaderEntity getDataHeader() {
-		return dataHeader;
+	public TrxHeaderEntity getTransaksiHeader() {
+		return transaksiHeader;
 	}
 
-	public void setDataHeader(TrxHeaderEntity dataHeader) {
-		this.dataHeader = dataHeader;
+	public void setTransaksiHeader(TrxHeaderEntity transaksiHeader) {
+		this.transaksiHeader = transaksiHeader;
 	}
 
 	public Object clone() {
@@ -89,25 +89,25 @@ public class TrxDetailPembayaran implements Cloneable{
 	}
 
     @PrePersist
-	private void prePersist() {	
-    	
+	private void prePersist() {
+
       Date currentDate = new Date();
-      
+
       this.id = UUID.randomUUID().toString();
-      
+
 //      this.usrcrt = "user";
 //      this.tglcrt = new SimpleDateFormat("yyyyMMdd").format(currentDate);
 //      this.jamcrt = new SimpleDateFormat("HHmmss").format(currentDate);
-      
+
     }
-    
+
     @PreUpdate
 	private void preUpdate() {
 		Date currentDate = new Date();
-		
+
 //		this.usrupd = "user";
 //		this.tglupd = new SimpleDateFormat("yyyyMMdd").format(currentDate);
 //		this.jamupd = new SimpleDateFormat("HHmmss").format(currentDate);
 	}
-    
+
 }
