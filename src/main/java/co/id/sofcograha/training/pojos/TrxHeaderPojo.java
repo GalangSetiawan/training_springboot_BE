@@ -27,7 +27,7 @@ public class TrxHeaderPojo {
 	public String flagDapatPromo5Pertama;
 	public Long version;
 	public MasterMembershipPojo dataMembership;
-	public List<MasterBukuPojo> dataBuku;
+	public List<TrxDetailBukuPojo> dataBuku;
 	public MasterJenisTransaksiPojo dataJenisTransaksi;
 
     public TrxHeaderEntity toEntity() {

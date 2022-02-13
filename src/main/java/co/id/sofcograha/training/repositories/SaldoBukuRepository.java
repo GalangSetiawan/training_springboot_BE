@@ -22,14 +22,14 @@ public class SaldoBukuRepository extends SimpleJpaRepository<SaldoBukuEntity, St
 		this.em = em;
 	}
 	
-	public SaldoBukuEntity findByBK(String kodeBuku) {
+	public SaldoBukuEntity findByBK(String id) {
 		
 		String query = "SELECT e FROM SaldoBukuEntity e " +
-					   "WHERE e.kodeBuku = :kodeBuku";
+					   "WHERE e.id = :id";
 
 		try {
 			return em.createQuery(query, SaldoBukuEntity.class)
-					.setParameter("kodeBuku", kodeBuku)
+					.setParameter("id", id)
 					.getSingleResult();
 		} catch (NoResultException e) {
 			return null;
@@ -40,17 +40,15 @@ public class SaldoBukuRepository extends SimpleJpaRepository<SaldoBukuEntity, St
 	public SaldoBukuEntity getOne(String id) {
 		return super.findOne(id);
 	}
-	
-	public SaldoBukuEntity findByNamaBuku(String namaBuku) {
+
+	public SaldoBukuEntity findByIdBuku(String idBuku) {
 
 		SaldoBukuEntity entity;
 
 		try {
 			entity = em.createQuery("FROM SaldoBukuEntity e " +
-		                            "WHERE e.flagActive= :flagActive And " +
-					                        "LOWER(e.namaBuku) = LOWER(:namaBuku)", SaldoBukuEntity.class)
-					.setParameter("flagActive", true)
-					.setParameter("namaBuku", namaBuku)
+		                            "WHERE e.dataBuku = :idBuku ", SaldoBukuEntity.class)
+					.setParameter("idBuku", idBuku)
 					.getSingleResult();
 		} catch (NoResultException e) {
 			entity = null;
