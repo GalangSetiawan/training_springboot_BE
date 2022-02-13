@@ -46,7 +46,7 @@ public class MasterMembershipController {
     @PostMapping
     public ApiResponse add(@RequestBody MasterMembershipPojo pojo) {
 
-		MasterMembershipEntity result = masterMembershipService.add(pojo.toEntity());
+		MasterMembershipEntity result = masterMembershipService.add(pojo);
 		return ApiResponse.data("item", MasterMembershipPojo.fromEntity(result));
     }
     

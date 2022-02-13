@@ -30,7 +30,7 @@ public class MasterBukuEntity implements Cloneable{
 	@Column(name="active")
 	private String flagActive;
 
-	@OneToOne
+	@OneToOne ()
 	@JoinColumn(name = "id_genre", referencedColumnName = "id")
 	private MasterGenreEntity genreBuku;
 

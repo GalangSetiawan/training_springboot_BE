@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Access(AccessType.FIELD)
-@Table(name = "tbl_galang_trx_header", uniqueConstraints = @UniqueConstraint(columnNames = { "id" }))
+@Table(name = "tbl_galang_trx_header", uniqueConstraints = @UniqueConstraint(columnNames = { "nomor_bon" }))
 public class TrxHeaderEntity implements Cloneable{
 
 	@Id
@@ -26,7 +26,7 @@ public class TrxHeaderEntity implements Cloneable{
 	private String namaPembeli;
 
 	@Column(name="discount_header")
-	private Double discountHeader;
+	private Integer discountHeader;
 
 	@Column(name="nilai_kembalian")
 	private Double nilaiKembalian;
@@ -43,6 +43,10 @@ public class TrxHeaderEntity implements Cloneable{
 	@Column(name="flag_dapat_promo_5_pertama")
 	private String flagDapatPromo5Pertama;
 
+	@Version
+	@Column(name="version")
+	private Long version;
+
 	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "id_member")
 	private MasterMembershipEntity dataMembership;
@@ -51,12 +55,9 @@ public class TrxHeaderEntity implements Cloneable{
 	@JoinColumn(name = "id_jenis_transaksi")
 	private MasterJenisTransaksiEntity dataJenisTransaksi;
 
-	@Version
-	@Column(name="version")
-	private Long version;
-
 	@OneToMany(mappedBy="dataHeader")
 	private List<TrxDetailBuku> trxDetailBuku;
+
 
 	public String getId() {
 		return id;
@@ -82,14 +83,6 @@ public class TrxHeaderEntity implements Cloneable{
 		this.nomorBon = nomorBon;
 	}
 
-	public Double getDiscountHeader() {
-		return discountHeader;
-	}
-
-	public void setDiscountHeader(Double discountHeader) {
-		this.discountHeader = discountHeader;
-	}
-
 	public String getNamaPembeli() {
 		return namaPembeli;
 	}
@@ -98,12 +91,12 @@ public class TrxHeaderEntity implements Cloneable{
 		this.namaPembeli = namaPembeli;
 	}
 
-	public String getFlagDapatPromo5Pertama() {
-		return flagDapatPromo5Pertama;
+	public Integer getDiscountHeader() {
+		return discountHeader;
 	}
 
-	public void setFlagDapatPromo5Pertama(String flagDapatPromo5Pertama) {
-		this.flagDapatPromo5Pertama = flagDapatPromo5Pertama;
+	public void setDiscountHeader(Integer discountHeader) {
+		this.discountHeader = discountHeader;
 	}
 
 	public Double getNilaiKembalian() {
@@ -136,6 +129,14 @@ public class TrxHeaderEntity implements Cloneable{
 
 	public void setNilaiDiskonHeader(Double nilaiDiskonHeader) {
 		this.nilaiDiskonHeader = nilaiDiskonHeader;
+	}
+
+	public String getFlagDapatPromo5Pertama() {
+		return flagDapatPromo5Pertama;
+	}
+
+	public void setFlagDapatPromo5Pertama(String flagDapatPromo5Pertama) {
+		this.flagDapatPromo5Pertama = flagDapatPromo5Pertama;
 	}
 
 	public Long getVersion() {
