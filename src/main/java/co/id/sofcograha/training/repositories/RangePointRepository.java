@@ -22,14 +22,14 @@ public class RangePointRepository extends SimpleJpaRepository<RangePointEntity, 
 		this.em = em;
 	}
 
-	public MasterJenisTransaksiEntity findByBK(String namaTransaksi) {
+	public RangePointEntity findByBK(String id) {
 		
 		String query = "SELECT e FROM RangePointEntity e " +
 					   "WHERE e.namaTransaksi = :namaTransaksi";
 
 		try {
-			return em.createQuery(query, MasterJenisTransaksiEntity.class)
-					.setParameter("namaTransaksi", namaTransaksi)
+			return em.createQuery(query, RangePointEntity.class)
+					.setParameter("id", id)
 					.getSingleResult();
 		} catch (NoResultException e) {
 			return null;
@@ -41,14 +41,14 @@ public class RangePointRepository extends SimpleJpaRepository<RangePointEntity, 
 		return super.findOne(id);
 	}
 	
-	public RangePointEntity findByNama(String nama) {
+	public RangePointEntity findByPoint(String nama) {
 
 		RangePointEntity entity;
 
 		try {
 			entity = em.createQuery("FROM RangePointEntity e " +
 		                            "WHERE LOWER(e.nama) = LOWER(:nama)", RangePointEntity.class)
-//					.setParameter("flakt", BaseConstants.YA)
+
 					.setParameter("nama", nama)
 					.getSingleResult();
 		} catch (NoResultException e) {

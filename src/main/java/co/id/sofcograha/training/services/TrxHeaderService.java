@@ -27,6 +27,7 @@ public class TrxHeaderService extends BaseService {
 	@Autowired private TrxDetailBukuRepository repoTrxDetailBuku;
 	@Autowired private TrxDetailPembayaranRepository trxDetailPembayaranRepository;
 	@Autowired private SaldoKasTitipanRepository saldoKasTitipanRepository;
+	@Autowired private RangePointRepository rangePointRepository;
 
 	public TrxHeaderEntity findByBk(String nomorTrxHeader) {
 		return repo.findByBK(nomorTrxHeader);
@@ -122,7 +123,7 @@ public class TrxHeaderService extends BaseService {
 
 			addPointPembayaran(addedEntity, isMember);
 
-			addKasTitipan();
+			addKasTitipan(addedEntity, isMember);
 
 
 		}
@@ -407,13 +408,18 @@ public class TrxHeaderService extends BaseService {
 
 
 	private void addPointPembayaran(TrxHeaderEntity entityHeader, boolean isMember){
+		RangePointEntity rangePointEntity =rangePointRepository.findByBK(entityHeader.getDataMembership().getId());
+		Double minRange = rangePointEntity.getMinRange();
+		Double maxRange = rangePointEntity.getMaxRange();
+
+		if(maxRange == 10000){
+			entityHeader.getDataMembership();
+		}
+	}
+
+	private void addKasTitipan(TrxHeaderEntity entityHeader, boolean isMember){
 		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(entityHeader.getDataMembership().getId());
 		Integer rangePoint = saldoKasTitipanEntity.getNilaiPoint();
 		Double rangeNilai = saldoKasTitipanEntity.getNilaiTitipan();
-
-	}
-
-	private void addKasTitipan(){
-
 	}
 }
