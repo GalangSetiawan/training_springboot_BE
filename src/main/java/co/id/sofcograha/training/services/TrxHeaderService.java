@@ -6,11 +6,11 @@ import co.id.sofcograha.base.utils.VersionUtil;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.training.entities.MasterGenreEntity;
-import co.id.sofcograha.training.entities.MasterMembershipEntity;
+import co.id.sofcograha.training.entities.TrxDetailPembayaran;
 import co.id.sofcograha.training.entities.TrxHeaderEntity;
-import co.id.sofcograha.training.pojos.MasterMembershipPojo;
+import co.id.sofcograha.training.pojos.TrxDetailPembayaranPojo;
 import co.id.sofcograha.training.pojos.TrxHeaderPojo;
-import co.id.sofcograha.training.repositories.MasterMembershipRepository;
+import co.id.sofcograha.training.repositories.TrxDetailPembayaranRepository;
 import co.id.sofcograha.training.repositories.TrxHeaderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class TrxHeaderService extends BaseService {
 
 	@Autowired private TrxHeaderRepository repo;
+
+	@Autowired private TrxDetailPembayaranRepository trxDetailPembayaranRepository;
 
 	public TrxHeaderEntity findByBk(String nomorTrxHeader) {
 		return repo.findByBK(nomorTrxHeader);
@@ -59,7 +61,25 @@ public class TrxHeaderService extends BaseService {
 		throwBatchError();
 
 		TrxHeaderEntity addedEntity = repo.add(entity);
-		
+
+		for(TrxDetailPembayaranPojo detailPembayaranPojo : pojo.trxDetailPembayaranPojo) {
+			TrxDetailPembayaran entityDetailPembayaran = detailPembayaranPojo.toEntity();
+			entityDetailPembayaran.getTransaksiHeader().setId(entity.getId());
+
+			boolean isMember = false;
+
+			if (entity.getDataMembership().getId() != null) {
+				isMember = true;
+			}
+
+			addPointPembayaran(entityDetailPembayaran, isMember);
+
+			addKasTitipan();
+			if (isMember) {
+
+			}
+		}
+
 		throwBatchError();
 		return addedEntity;	
 		
@@ -198,7 +218,15 @@ public class TrxHeaderService extends BaseService {
 	
 	protected void valDelete(TrxHeaderEntity toBeDeleted) {	}
     
-    
+    private void addPointPembayaran(TrxDetailPembayaran entityDetailPembayaran, boolean isMember){
+//		TrxDetailPembayaran trxDetailPembayaran =trxDetailPembayaranRepository.findByBK(trxDetailPembayaranPojo.id);
+
+	}
+
+	private void addKasTitipan(){
+
+	}
+
 	public TrxHeaderEntity get(String id) {
 		return repo.getOne(id);
 	}
