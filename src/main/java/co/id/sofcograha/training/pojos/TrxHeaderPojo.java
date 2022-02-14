@@ -29,6 +29,8 @@ public class TrxHeaderPojo {
 	public MasterMembershipPojo dataMembership;
 //	public MasterJenisTransaksiPojo dataJenisTransaksi;
 
+	public List<TrxDetailPembayaranPojo> trxDetailPembayaranPojo;
+
     public TrxHeaderEntity toEntity() {
 
 		TrxHeaderEntity entity = new TrxHeaderEntity();
