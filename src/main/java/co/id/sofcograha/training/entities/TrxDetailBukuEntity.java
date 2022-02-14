@@ -9,7 +9,7 @@ import java.util.UUID;
 @Entity
 @Access(AccessType.FIELD)
 @Table(name = "tbl_galang_trx_detail", uniqueConstraints = @UniqueConstraint(columnNames = { "id" }))
-public class TrxDetailBuku implements Cloneable{
+public class TrxDetailBukuEntity implements Cloneable{
 
 	@Id
 	@Column(name="id")
@@ -20,22 +20,19 @@ public class TrxDetailBuku implements Cloneable{
 	private Long version;
 
 	@Column(name="qty")
-	private Double qty;
+	private Integer qty;
 
 	@Column(name="total_harga")
 	private Double totalHarga;
 
 	@Column(name="persen_disc_genre")
-	private Double persenDiscGenre;
+	private Integer persenDiscGenre;
 
 	@Column(name="nilai_disc_genre")
 	private Double nilaiDiscGenre;
 
 	@Column(name="harga_setelah_disc_genre")
 	private Double hargaSetelahDiscGenre;
-
-	@Column(name="persen_disc_header")
-	private Double persenDiscHeader;
 
 	@Column(name="nilai_disc_header")
 	private Double nilaiDiscHeader;
@@ -70,11 +67,11 @@ public class TrxDetailBuku implements Cloneable{
 		this.version = version;
 	}
 
-	public Double getQty() {
+	public Integer getQty() {
 		return qty;
 	}
 
-	public void setQty(Double qty) {
+	public void setQty(Integer qty) {
 		this.qty = qty;
 	}
 
@@ -86,11 +83,11 @@ public class TrxDetailBuku implements Cloneable{
 		this.totalHarga = totalHarga;
 	}
 
-	public Double getPersenDiscGenre() {
+	public Integer getPersenDiscGenre() {
 		return persenDiscGenre;
 	}
 
-	public void setPersenDiscGenre(Double persenDiscGenre) {
+	public void setPersenDiscGenre(Integer persenDiscGenre) {
 		this.persenDiscGenre = persenDiscGenre;
 	}
 
@@ -108,14 +105,6 @@ public class TrxDetailBuku implements Cloneable{
 
 	public void setHargaSetelahDiscGenre(Double hargaSetelahDiscGenre) {
 		this.hargaSetelahDiscGenre = hargaSetelahDiscGenre;
-	}
-
-	public Double getPersenDiscHeader() {
-		return persenDiscHeader;
-	}
-
-	public void setPersenDiscHeader(Double persenDiscHeader) {
-		this.persenDiscHeader = persenDiscHeader;
 	}
 
 	public Double getNilaiDiscHeader() {

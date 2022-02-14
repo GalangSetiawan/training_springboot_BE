@@ -15,9 +15,9 @@ import java.util.List;
 public class SaldoBukuPojo {
 
 	public String id;
-	public Double saldoBuku;
+	public Integer saldoBuku;
 	public Long version;
-	public MasterBukuPojo id_buku;
+	public MasterBukuPojo dataBuku;
     
     public SaldoBukuEntity toEntity() {
 
@@ -28,9 +28,9 @@ public class SaldoBukuPojo {
 
   		entity.setVersion(version);
 
-		if(id_buku != null && !id_buku.id.equals("")){
+		if(dataBuku != null && !dataBuku.id.equals("")){
 			MasterBukuEntity entityRef = new MasterBukuEntity();
-			entityRef.setId(id_buku.id);
+			entityRef.setId(dataBuku.id);
 			entity.setDataBuku(entityRef);
 		}else{
 			entity.setDataBuku(null);
@@ -72,7 +72,7 @@ public class SaldoBukuPojo {
 			pojo.saldoBuku = entity.getSaldoBuku();
 			pojo.version = entity.getVersion();
 
-			pojo.id_buku = MasterBukuPojo.fromEntity(entity.getDataBuku());
+			pojo.dataBuku = MasterBukuPojo.fromEntity(entity.getDataBuku());
 
 //	        pojo.usrcrt = entity.getUsrcrt();
 //

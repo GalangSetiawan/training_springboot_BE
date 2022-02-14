@@ -4,8 +4,7 @@ import co.id.sofcograha.base.utils.QueryUtil;
 import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
-import co.id.sofcograha.training.entities.MasterGenreEntity;
-import co.id.sofcograha.training.entities.TrxHeaderEntity;
+import co.id.sofcograha.training.entities.TrxDetailBukuEntity;
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -15,36 +14,23 @@ import java.util.Date;
 import java.util.List;
 
 @Repository
-public class TrxHeaderRepository extends SimpleJpaRepository<TrxHeaderEntity, String> {
+public class TrxDetailBukuRepository extends SimpleJpaRepository<TrxDetailBukuEntity, String> {
 
 	protected final EntityManager em;
 
-	public TrxHeaderRepository(EntityManager em) {
-		super(TrxHeaderEntity.class, em);
+	public TrxDetailBukuRepository(EntityManager em) {
+		super(TrxDetailBukuEntity.class, em);
 		this.em = em;
 	}
 
-	public List<TrxHeaderEntity> get5DataPertamaByTanggalTrx(Date tanggalBon){
-		String query = "SELECT e FROM TrxHeaderEntity e "+
-				"WHERE e.tanggalBon = :tanggalBon" +
-				"ORDER BY e.tanggalBon DESC" +
-				"LIMIT 5";
 
-		try {
-			return em.createQuery(query, TrxHeaderEntity.class)
-					.getResultList();
-		} catch (NoResultException e) {
-			return null;
-		}
-	}
-
-	public TrxHeaderEntity findByBK(String nomorBon) {
+	public TrxDetailBukuEntity findByBK(String nomorBon) {
 		
-		String query = "SELECT e FROM TrxHeaderEntity e " +
+		String query = "SELECT e FROM TrxDetailBukuEntity e " +
 					   "WHERE e.nomorBon = :nomorBon";
 
 		try {
-			return em.createQuery(query, TrxHeaderEntity.class)
+			return em.createQuery(query, TrxDetailBukuEntity.class)
 					.setParameter("nomorBon", nomorBon)
 					.getSingleResult();
 		} catch (NoResultException e) {
@@ -53,17 +39,17 @@ public class TrxHeaderRepository extends SimpleJpaRepository<TrxHeaderEntity, St
 
 	}
 	
-	public TrxHeaderEntity getOne(String id) {
+	public TrxDetailBukuEntity getOne(String id) {
 		return super.findOne(id);
 	}
 	
-	public TrxHeaderEntity findByNomorBon(String nomorBon) {
+	public TrxDetailBukuEntity findByNomorBon(String nomorBon) {
 
-		TrxHeaderEntity entity;
+		TrxDetailBukuEntity entity;
 
 		try {
-			entity = em.createQuery("FROM TrxHeaderEntity e " +
-		                            "WHERE LOWER(e.nomorBon) = LOWER(:nomorBon)", TrxHeaderEntity.class)
+			entity = em.createQuery("FROM TrxDetailBukuEntity e " +
+		                            "WHERE LOWER(e.nomorBon) = LOWER(:nomorBon)", TrxDetailBukuEntity.class)
 					.setParameter("nomorBon", nomorBon)
 					.getSingleResult();
 		} catch (NoResultException e) {
@@ -73,8 +59,8 @@ public class TrxHeaderRepository extends SimpleJpaRepository<TrxHeaderEntity, St
 		return entity;
 	}
 	
-	public SearchResult<TrxHeaderEntity> search(SearchParameter searchParameter) {
-		HqlSimpleSearchBuilder<TrxHeaderEntity> search = new HqlSimpleSearchBuilder<>(TrxHeaderEntity.class, em);
+	public SearchResult<TrxDetailBukuEntity> search(SearchParameter searchParameter) {
+		HqlSimpleSearchBuilder<TrxDetailBukuEntity> search = new HqlSimpleSearchBuilder<>(TrxDetailBukuEntity.class, em);
 
 		String kodeGenre = (String) searchParameter.getValueFromMappedParam("kodeGenre");
 		String namaGenre = (String) searchParameter.getValueFromMappedParam("namaGenre");
@@ -98,11 +84,11 @@ public class TrxHeaderRepository extends SimpleJpaRepository<TrxHeaderEntity, St
 		return search.getSearchResult();
 	}
 	
-	public TrxHeaderEntity add(TrxHeaderEntity entity) {
+	public TrxDetailBukuEntity add(TrxDetailBukuEntity entity) {
 		return save(entity);
 	}
 
-	public TrxHeaderEntity edit(TrxHeaderEntity entity) {
+	public TrxDetailBukuEntity edit(TrxDetailBukuEntity entity) {
 		return save(entity);
 	}
 }

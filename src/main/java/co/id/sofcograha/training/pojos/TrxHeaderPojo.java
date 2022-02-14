@@ -27,7 +27,8 @@ public class TrxHeaderPojo {
 	public String flagDapatPromo5Pertama;
 	public Long version;
 	public MasterMembershipPojo dataMembership;
-//	public MasterJenisTransaksiPojo dataJenisTransaksi;
+	public List<TrxDetailBukuPojo> dataBuku;
+	public MasterJenisTransaksiPojo dataJenisTransaksi;
 
 	public List<TrxDetailPembayaranPojo> trxDetailPembayaranPojo;
 
@@ -59,7 +60,6 @@ public class TrxHeaderPojo {
 		//generate No. Trx Header
 		String nomorBonGenerated = "NO-BON-" + TimeUtil.getSystemDate() ;
 		entity.setNomorBon(nomorBonGenerated);
-
 
   		return entity;
   	}

@@ -29,9 +29,9 @@ public class MasterGenreService extends BaseService {
 		return repo.search(searchParameter);
 	}
     
-//	public MasterGenreEntity findByNama(String nama) {
-//		return MasterGenreEntity.fromEntity(repo.findByNama(nama));
-//	}
+	public MasterGenrePojo findByNama(String nama) {
+		return MasterGenrePojo.fromEntity(repo.findByNama(nama));
+	}
 	
 	@Transactional
     public MasterGenreEntity add(MasterGenrePojo pojo) {
@@ -62,8 +62,10 @@ public class MasterGenreService extends BaseService {
     }
        
 	@Transactional
-	public MasterGenreEntity edit(MasterGenreEntity entity) {
-		
+	public MasterGenreEntity edit(MasterGenrePojo pojo) {
+
+		MasterGenreEntity entity = pojo.toEntity();
+
 		valIdVersionRequired(entity.getId(), entity.getVersion());
 		valVersion(entity.getId(), entity.getVersion(), entity.getClass().getSimpleName());
 		throwBatchError();
