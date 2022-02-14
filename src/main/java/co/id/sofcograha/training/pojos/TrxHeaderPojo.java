@@ -30,6 +30,8 @@ public class TrxHeaderPojo {
 	public List<TrxDetailBukuPojo> dataBuku;
 	public MasterJenisTransaksiPojo dataJenisTransaksi;
 
+	public List<TrxDetailPembayaranPojo> trxDetailPembayaranPojo;
+
     public TrxHeaderEntity toEntity() {
 
 		TrxHeaderEntity entity = new TrxHeaderEntity();

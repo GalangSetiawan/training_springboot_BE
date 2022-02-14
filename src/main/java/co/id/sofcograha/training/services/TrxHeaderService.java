@@ -25,6 +25,8 @@ public class TrxHeaderService extends BaseService {
 	@Autowired private SaldoBukuRepository repoSaldoBuku;
 	@Autowired private MasterGenreRepository repoGenre;
 	@Autowired private TrxDetailBukuRepository repoTrxDetailBuku;
+	@Autowired private TrxDetailPembayaranRepository trxDetailPembayaranRepository;
+	@Autowired private SaldoKasTitipanRepository saldoKasTitipanRepository;
 
 	public TrxHeaderEntity findByBk(String nomorTrxHeader) {
 		return repo.findByBK(nomorTrxHeader);
@@ -109,16 +111,24 @@ public class TrxHeaderService extends BaseService {
 		// kalo dapet promo, kasih buku tulis + update saldo buku tulis
 
 		// proses promosi
-		if(addedEntity.getDataMembership() != null){
+		if(addedEntity.getDataMembership().getId() != null){
 			Boolean flagDapatPromo = checkLimaPembeliPertamaByNomorBonDanDate(addedEntity);
 
 			if(flagDapatPromo){
 				kurangiSaldoBukuTulis(addedEntity);
 			}
 
+			boolean isMember = true;
+
+			addPointPembayaran(addedEntity, isMember);
+
+			addKasTitipan();
+
+
 		}
 
-		
+
+
 		throwBatchError();
 		return addedEntity;	
 		
@@ -392,6 +402,18 @@ public class TrxHeaderService extends BaseService {
 		trxDetailEntity.getDataBuku().setId(masterBukuEntity.getId());
 
 		updateSaldoBuku(trxDetailEntity, "tambah");
+
+	}
+
+
+	private void addPointPembayaran(TrxHeaderEntity entityHeader, boolean isMember){
+		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(entityHeader.getDataMembership().getId());
+		Integer rangePoint = saldoKasTitipanEntity.getNilaiPoint();
+		Double rangeNilai = saldoKasTitipanEntity.getNilaiTitipan();
+
+	}
+
+	private void addKasTitipan(){
 
 	}
 }
