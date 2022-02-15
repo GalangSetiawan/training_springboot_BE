@@ -138,7 +138,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		}
 
 		// proses promosi
-		if(addedHeaderEntity.getDataMembership().getId() != null){
+		if(addedHeaderEntity.getDataMembership() != null){
 			Boolean flagDapatPromo = checkLimaPembeliPertamaByNomorBonDanDate(addedHeaderEntity);
 
 			if(flagDapatPromo){
