@@ -21,13 +21,6 @@ import java.util.List;
 public class TrxHeaderService extends BaseService {
 
 	@Autowired private TrxHeaderRepository repo;
-	@Autowired private MasterBukuRepository repoMasterBuku;
-	@Autowired private SaldoBukuRepository repoSaldoBuku;
-	@Autowired private MasterGenreRepository repoGenre;
-	@Autowired private TrxDetailBukuRepository repoTrxDetailBuku;
-	@Autowired private TrxDetailPembayaranRepository trxDetailPembayaranRepository;
-	@Autowired private SaldoKasTitipanRepository saldoKasTitipanRepository;
-	@Autowired private RangePointRepository rangePointRepository;
 
 	public TrxHeaderEntity findByBk(String nomorTrxHeader) {
 		return repo.findByBK(nomorTrxHeader);
@@ -44,6 +37,7 @@ public class TrxHeaderService extends BaseService {
 	public TrxHeaderPojo findByNomorBon(String nomorBon) {
 		return TrxHeaderPojo.fromEntity(repo.findByNomorBon(nomorBon));
 	}
+
 
 	@Transactional
     public TrxHeaderEntity add(TrxHeaderPojo pojo) {
@@ -67,68 +61,6 @@ public class TrxHeaderService extends BaseService {
 		throwBatchError();
 
 		TrxHeaderEntity addedEntity = repo.add(entity);
-
-		Double totalHargaSetelahDiscGenre = 0.0;
-
-		List<TrxDetailBukuEntity> listBukuAfterValidation = null;
-
-		for (TrxDetailBukuPojo detailBukuPojo : pojo.dataBuku) {
-
-
-			// inisialisasi detail entity
-			TrxDetailBukuEntity detailEntity = detailBukuPojo.toEntity();
-			detailEntity.getDataHeader().setId(addedEntity.getId());
-
-			// validasi detail buku
-			validasiDetailBuku(detailEntity);
-
-			// hitung harga buku ( harga * qty )
-			hitungHargaBukuVsQty(detailEntity);
-
-			// hitung discount per genre
-			hitungTotalHargaBukuVsDiscountGenre(detailEntity);
-
-			// hitung total harga setelah disc genre
-			totalHargaSetelahDiscGenre = totalHargaSetelahDiscGenre + detailEntity.getHargaSetelahDiscGenre();
-
-			// tampung list Detail pembelian buku kedalam array untuk looping ke 2
-			listBukuAfterValidation.add(detailEntity);
-
-			// update saldo buku
-			updateSaldoBuku(detailEntity, "kurang");
-		}
-
-		//loop ke 2
-		for(TrxDetailBukuEntity detailBuku : listBukuAfterValidation){
-
-			// hitung disc proposional
-			hitungNilaiDiscountHeaderProposional(addedEntity, detailBuku, totalHargaSetelahDiscGenre);
-
-			//save TrxDetail
-			repoTrxDetailBuku.save(detailBuku);
-
-		}
-
-		// kalo dapet promo, kasih buku tulis + update saldo buku tulis
-
-		// proses promosi
-		if(addedEntity.getDataMembership().getId() != null){
-			Boolean flagDapatPromo = checkLimaPembeliPertamaByNomorBonDanDate(addedEntity);
-
-			if(flagDapatPromo){
-				kurangiSaldoBukuTulis(addedEntity);
-			}
-
-			boolean isMember = true;
-
-			addPointPembayaran(addedEntity, isMember);
-
-			addKasTitipan(addedEntity, isMember);
-
-
-		}
-
-
 
 		throwBatchError();
 		return addedEntity;	
@@ -258,168 +190,17 @@ public class TrxHeaderService extends BaseService {
 			toBeSaved.setDataMembership(newValues.getDataMembership());
 			toBeSaved.setDataJenisTransaksi(newValues.getDataJenisTransaksi());
 
-
 		}
 		else if (toBeSaved == null) {
 			defineDefaultValuesOnAdd(newValues);
 		}
-		
+
 	}
 	
 	protected void valDelete(TrxHeaderEntity toBeDeleted) {	}
-    
-    
+
 	public TrxHeaderEntity get(String id) {
 		return repo.getOne(id);
 	}
 
-	public void validasiDetailBuku(TrxDetailBukuEntity trxDetailBuku){
-		validasiBukuAdaDimasterDanAktif(trxDetailBuku);
-		validasiBukuHarusAdaDisaldo(trxDetailBuku);
-		validasiSaldoBukuMencukupi(trxDetailBuku);
-	}
-
-	public void validasiBukuAdaDimasterDanAktif(TrxDetailBukuEntity trxDetailBuku){
-		MasterBukuEntity dataBuku = new MasterBukuEntity();
-		dataBuku = repoMasterBuku.findByNamaBuku(trxDetailBuku.getDataBuku().getNamaBuku());
-
-		if( dataBuku == null){
-			throw new BusinessException("buku.yang.diinput.tidak.ada.pada.database", trxDetailBuku.getDataBuku().getNamaBuku());
-		}
-	}
-
-	public void validasiBukuHarusAdaDisaldo(TrxDetailBukuEntity trxDetailBuku){
-		MasterBukuEntity dataBuku = null;
-		dataBuku = repoMasterBuku.findByNamaBuku(trxDetailBuku.getDataBuku().getNamaBuku());
-
-		SaldoBukuEntity saldoBuku = null;
-		saldoBuku = repoSaldoBuku.findByIdBuku(trxDetailBuku.getDataBuku().getId());
-
-		if(saldoBuku == null){
-			throw new BusinessException("tidak.terdapat.saldo.pada.buku", trxDetailBuku.getDataBuku().getNamaBuku());
-
-		}
-
-
-	}
-
-	public void validasiSaldoBukuMencukupi(TrxDetailBukuEntity trxDetailBuku){
-		MasterBukuEntity dataBuku = null;
-		dataBuku = repoMasterBuku.findByNamaBuku(trxDetailBuku.getDataBuku().getNamaBuku());
-
-		SaldoBukuEntity saldoBuku = null;
-		saldoBuku = repoSaldoBuku.findByIdBuku(trxDetailBuku.getDataBuku().getId());
-
-		if(saldoBuku.getSaldoBuku() - trxDetailBuku.getQty() <= 0){
-			throw new BusinessException(
-				"saldo.buku.tidak.mencukupi,.sisa.saldo.buku.saat.ini",
-				trxDetailBuku.getDataBuku().getNamaBuku(),
-				saldoBuku.getSaldoBuku()
-			);
-		}
-	}
-
-	public void hitungHargaBukuVsQty(TrxDetailBukuEntity trxDetailBuku){
-		Double totalHarga = 0.0;
-		Double hargaBuku = trxDetailBuku.getDataBuku().getHargaBuku();
-		Integer qty = trxDetailBuku.getQty();
-		totalHarga = hargaBuku * qty;
-
-		trxDetailBuku.setTotalHarga(totalHarga);
-	}
-
-	public void hitungTotalHargaBukuVsDiscountGenre(TrxDetailBukuEntity trxDetailBuku){
-		MasterBukuEntity dataBuku = null;
-		dataBuku = repoMasterBuku.findByNamaBuku(trxDetailBuku.getDataBuku().getNamaBuku());
-
-		MasterGenreEntity dataGenre = null;
-		dataGenre = repoGenre.getOne(dataBuku.getGenreBuku().getId());
-
-		Integer persenDiscGenre = dataGenre.getDiskonGenre();
-		Double totalHarga = trxDetailBuku.getTotalHarga();
-		Double nilaiDiscGenre = ( totalHarga * persenDiscGenre ) / 100;
-		Double hargaSetelahDiscGenre = totalHarga - nilaiDiscGenre;
-
-		trxDetailBuku.setNilaiDiscGenre(nilaiDiscGenre);
-		trxDetailBuku.setHargaSetelahDiscGenre(hargaSetelahDiscGenre);
-
-	}
-
-	public void updateSaldoBuku(TrxDetailBukuEntity trxDetailBuku, String jenisUpdate){
-		MasterBukuEntity dataBuku = null;
-		dataBuku = repoMasterBuku.findByNamaBuku(trxDetailBuku.getDataBuku().getNamaBuku());
-
-		SaldoBukuEntity saldoBuku = null;
-		saldoBuku = repoSaldoBuku.findByIdBuku(dataBuku.getId());
-
-		Integer sisaSaldoBukuTersedia = saldoBuku.getSaldoBuku();
-		if(jenisUpdate == "tambah"){
-			sisaSaldoBukuTersedia = saldoBuku.getSaldoBuku() + trxDetailBuku.getQty();
-		}else if(jenisUpdate == "kurang"){
-			sisaSaldoBukuTersedia = saldoBuku.getSaldoBuku() - trxDetailBuku.getQty();
-		}
-
-		saldoBuku.setSaldoBuku(sisaSaldoBukuTersedia);
-
-		repoSaldoBuku.save(saldoBuku);
-	}
-
-	public void hitungNilaiDiscountHeaderProposional(TrxHeaderEntity header, TrxDetailBukuEntity trxDetailBuku, Double totalHargaSetelahDiscGenre){
-		Integer persenDiscHeader = header.getDiscountHeader();
-		Double nilaiDiscHeader = (totalHargaSetelahDiscGenre * persenDiscHeader) / 100;
-		Double hargaSetelahDiscGenre = trxDetailBuku.getHargaSetelahDiscGenre();
-		Double nilaiDiscProposional = ( hargaSetelahDiscGenre / totalHargaSetelahDiscGenre ) * nilaiDiscHeader;
-
-		trxDetailBuku.setNilaiDiscHeader(nilaiDiscHeader);
-		trxDetailBuku.setNilaiDiscProposional(nilaiDiscProposional);
-	}
-
-	private Boolean checkLimaPembeliPertamaByNomorBonDanDate(TrxHeaderEntity headerEntity) {
-		List <TrxHeaderEntity> listPembeli = repo.get5DataPertamaByTanggalTrx(headerEntity.getTanggalBon());
-
-		Boolean flagDapatpromo = true;
-
-		if(listPembeli.size() > 5 ){
-			flagDapatpromo = false;
-		}else{
-			for(TrxHeaderEntity eachData : listPembeli){
-				if(eachData.getDataMembership().getId().equals(headerEntity.getDataMembership().getId())){
-					flagDapatpromo = false;
-				}
-			}
-		}
-
-		return flagDapatpromo;
-	}
-
-	public void kurangiSaldoBukuTulis(TrxHeaderEntity trxHeaderEntity){
-		// get data buku tulis
-		MasterBukuEntity masterBukuEntity = new MasterBukuEntity();
-		masterBukuEntity = repoMasterBuku.findByNamaBuku("Buku tulis");
-
-		// inisialisasi trx detail
-		TrxDetailBukuEntity trxDetailEntity = new TrxDetailBukuEntity();
-		trxDetailEntity.getDataHeader().setId(trxHeaderEntity.getId());
-		trxDetailEntity.getDataBuku().setId(masterBukuEntity.getId());
-
-		updateSaldoBuku(trxDetailEntity, "tambah");
-
-	}
-
-
-	private void addPointPembayaran(TrxHeaderEntity entityHeader, boolean isMember){
-		RangePointEntity rangePointEntity =rangePointRepository.findByBK(entityHeader.getDataMembership().getId());
-		Double minRange = rangePointEntity.getMinRange();
-		Double maxRange = rangePointEntity.getMaxRange();
-
-		if(maxRange == 10000){
-			entityHeader.getDataMembership();
-		}
-	}
-
-	private void addKasTitipan(TrxHeaderEntity entityHeader, boolean isMember){
-		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(entityHeader.getDataMembership().getId());
-		Integer rangePoint = saldoKasTitipanEntity.getNilaiPoint();
-		Double rangeNilai = saldoKasTitipanEntity.getNilaiTitipan();
-	}
 }

@@ -41,7 +41,7 @@ public class TrxHeaderEntity implements Cloneable{
 	private Double nilaiDiskonHeader;
 
 	@Column(name="flag_dapat_promo_5_pertama")
-	private String flagDapatPromo5Pertama;
+	private Boolean flagDapatPromo5Pertama;
 
 	@Version
 	@Column(name="version")
@@ -133,11 +133,11 @@ public class TrxHeaderEntity implements Cloneable{
 		this.nilaiDiskonHeader = nilaiDiskonHeader;
 	}
 
-	public String getFlagDapatPromo5Pertama() {
+	public Boolean getFlagDapatPromo5Pertama() {
 		return flagDapatPromo5Pertama;
 	}
 
-	public void setFlagDapatPromo5Pertama(String flagDapatPromo5Pertama) {
+	public void setFlagDapatPromo5Pertama(Boolean flagDapatPromo5Pertama) {
 		this.flagDapatPromo5Pertama = flagDapatPromo5Pertama;
 	}
 

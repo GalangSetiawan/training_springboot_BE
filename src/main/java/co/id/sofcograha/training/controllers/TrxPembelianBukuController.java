@@ -8,6 +8,7 @@ import co.id.sofcograha.training.entities.TrxHeaderEntity;
 import co.id.sofcograha.training.pojos.MasterGenrePojo;
 import co.id.sofcograha.training.pojos.TrxHeaderPojo;
 import co.id.sofcograha.training.services.MasterGenreService;
+import co.id.sofcograha.training.services.TrxCompositePembelianBukuService;
 import co.id.sofcograha.training.services.TrxHeaderService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
@@ -25,13 +26,16 @@ public class TrxPembelianBukuController {
 
 	@Autowired
 	private TrxHeaderService trxHeaderService;
+
+	@Autowired
+	private TrxCompositePembelianBukuService trxCompositePembelianBukuService;
 	
 
 	// -------------------Retrieve Some ---------------------------------------------
 	@GetMapping(value = "/search")
 	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
-		
-		SearchResult<TrxHeaderEntity> searchResult = trxHeaderService.search(SearchParameter.generate(searchParameter, MasterGenrePojo.getFieldMappings()));
+
+		SearchResult<TrxHeaderEntity> searchResult = trxCompositePembelianBukuService.search(SearchParameter.generate(searchParameter, MasterGenrePojo.getFieldMappings()));
 
 		return ApiResponse.dataWithPaging("items", TrxHeaderPojo.fromEntities(searchResult.getResult()),
 				searchResult.getPaging());
@@ -43,13 +47,13 @@ public class TrxPembelianBukuController {
 
 		TrxHeaderEntity entity = trxHeaderService.findByBk(nama);
 		return ApiResponse.data("item", TrxHeaderPojo.fromEntity(entity));
-		
+
 	}
 
     @PostMapping
     public ApiResponse add(@RequestBody TrxHeaderPojo pojo) {
 
-		TrxHeaderEntity result = trxHeaderService.add(pojo);
+		TrxHeaderEntity result = trxCompositePembelianBukuService.add(pojo);
 		return ApiResponse.data("item", TrxHeaderPojo.fromEntity(result));
     }
     
@@ -58,7 +62,7 @@ public class TrxPembelianBukuController {
 
 		TrxHeaderEntity result = trxHeaderService.edit(pojo.toEntity());
 		return ApiResponse.data("item", TrxHeaderPojo.fromEntity(result));
-		
+
 	}
 
 	@DeleteMapping
