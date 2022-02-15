@@ -58,7 +58,7 @@ public class TrxHeaderEntity implements Cloneable{
 	@OneToMany(mappedBy="dataHeader")
 	private List<TrxDetailBukuEntity> trxDetailBuku;
 
-	@OneToMany(mappedBy="dataHeader")
+	@OneToMany(mappedBy="transaksiHeader")
 	private List<TrxDetailPembayaran> trxDetailPembayaran;
 
 	public String getId() {

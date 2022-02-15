@@ -21,6 +21,10 @@ public class MasterMembershipEntity implements Cloneable{
 	@Column(name="nama_member")
 	private String namaMembership;
 
+	@OneToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "id")
+	private SaldoKasTitipanEntity saldoKasTitipan;
+
 	@Version
     @Column(name = "version")
     private Long version;
@@ -47,6 +51,14 @@ public class MasterMembershipEntity implements Cloneable{
 
 	public void setNamaMembership(String namaMembership) {
 		this.namaMembership = namaMembership;
+	}
+
+	public SaldoKasTitipanEntity getSaldoKasTitipan() {
+		return saldoKasTitipan;
+	}
+
+	public void setSaldoKasTitipan(SaldoKasTitipanEntity saldoKasTitipan) {
+		this.saldoKasTitipan = saldoKasTitipan;
 	}
 
 	public Long getVersion() {
