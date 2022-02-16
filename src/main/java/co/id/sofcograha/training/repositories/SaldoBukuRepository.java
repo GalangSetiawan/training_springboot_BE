@@ -41,20 +41,33 @@ public class SaldoBukuRepository extends SimpleJpaRepository<SaldoBukuEntity, St
 		return super.findOne(id);
 	}
 
-	public SaldoBukuEntity findByIdBuku(String idBuku) {
+	public SaldoBukuEntity findById(String id) {
 
-		SaldoBukuEntity entity;
+		String query = "SELECT e FROM SaldoBukuEntity e " +
+				"WHERE e.id = :id";
 
 		try {
-			entity = em.createQuery("FROM SaldoBukuEntity e " +
-		                            "WHERE e.dataBuku = :idBuku ", SaldoBukuEntity.class)
+			return em.createQuery(query, SaldoBukuEntity.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+
+	}
+
+	public SaldoBukuEntity findByIdBuku(String idBuku) {
+
+		String query = "SELECT e FROM SaldoBukuEntity e " +
+				"WHERE e.dataBuku = :idBuku";
+		try {
+			return em.createQuery(query, SaldoBukuEntity.class)
 					.setParameter("idBuku", idBuku)
 					.getSingleResult();
 		} catch (NoResultException e) {
-			entity = null;
+			return null;
 		}
 
-		return entity;
 	}
 	
 	public SearchResult<SaldoBukuEntity> search(SearchParameter searchParameter) {

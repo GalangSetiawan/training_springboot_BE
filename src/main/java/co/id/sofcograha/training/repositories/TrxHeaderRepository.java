@@ -26,8 +26,8 @@ public class TrxHeaderRepository extends SimpleJpaRepository<TrxHeaderEntity, St
 
 	public List<TrxHeaderEntity> get5DataPertamaByTanggalTrx(Date tanggalBon){
 		String query = "SELECT e FROM TrxHeaderEntity e "+
-				"WHERE e.tanggalBon = :tanggalBon" +
-				"ORDER BY e.tanggalBon DESC" +
+				"WHERE e.tanggalBon = :tanggalBon " +
+				"ORDER BY e.tanggalBon DESC " +
 				"LIMIT 5";
 
 		try {

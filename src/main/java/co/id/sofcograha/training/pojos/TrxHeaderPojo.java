@@ -24,10 +24,10 @@ public class TrxHeaderPojo {
 	public Double totalPembayaran;
 	public Double totalPembelianBuku;
 	public Double nilaiDiskonHeader;
-	public String flagDapatPromo5Pertama;
+	public Boolean flagDapatPromo5Pertama;
 	public Long version;
 	public MasterMembershipPojo dataMembership;
-	public List<TrxDetailBukuPojo> dataBuku;
+	public List<TrxDetailBukuPojo> listBuku;
 	public MasterJenisTransaksiPojo dataJenisTransaksi;
 
 	public List<TrxDetailPembayaranPojo> trxDetailPembayaranPojo;
@@ -58,7 +58,7 @@ public class TrxHeaderPojo {
 		}
 
 		//generate No. Trx Header
-		String nomorBonGenerated = "NO-BON-" + TimeUtil.getSystemDate() ;
+		String nomorBonGenerated = "NO-BONs-" + TimeUtil.getSystemDateTime() ;
 		entity.setNomorBon(nomorBonGenerated);
 
   		return entity;

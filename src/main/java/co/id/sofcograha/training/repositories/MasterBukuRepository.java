@@ -20,6 +20,22 @@ public class MasterBukuRepository extends SimpleJpaRepository<MasterBukuEntity, 
 		super(MasterBukuEntity.class, em);
 		this.em = em;
 	}
+
+	public MasterBukuEntity findById(String id) {
+
+		String query = "SELECT e FROM MasterBukuEntity e " +
+				"WHERE e.id = :id";
+
+		try {
+			return em.createQuery(query, MasterBukuEntity.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+
+	}
+
 	
 	public MasterBukuEntity findByBK(String kodeBuku) {
 		
