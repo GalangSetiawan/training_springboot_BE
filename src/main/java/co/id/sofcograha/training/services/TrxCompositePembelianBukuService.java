@@ -73,7 +73,6 @@ public class TrxCompositePembelianBukuService extends BaseService {
 			entity.setDataMembership(dataMember);
 		}
 
-
 		TrxHeaderEntity addedHeaderEntity = repoTrxHeader.add(entity);
 
 		// Galang
@@ -127,27 +126,40 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		}
 
 		//loop ke 2
+		Double totalPembelianBuku = totalHargaSetelahDiscGenre;
+		Double totalNilaiDiscountHeader = 0.0;
+
 		for(TrxDetailBukuEntity detailBuku : listBukuAfterValidation){
 
 			// hitung disc proposional
 			hitungNilaiDiscountHeaderProposional(addedHeaderEntity, detailBuku, totalHargaSetelahDiscGenre);
+
+			totalPembelianBuku = totalPembelianBuku - detailBuku.getNilaiDiscHeader();
+			totalNilaiDiscountHeader = totalNilaiDiscountHeader + detailBuku.getNilaiDiscHeader();
 
 			//save TrxDetail
 			repoTrxDetailBuku.save(detailBuku);
 
 		}
 
+		addedHeaderEntity.setTotalPembelianBuku(totalPembelianBuku);
+		addedHeaderEntity.setNilaiDiskonHeader(totalNilaiDiscountHeader);
+
 		// proses promosi
 		if(addedHeaderEntity.getDataMembership() != null){
 			Boolean flagDapatPromo = checkLimaPembeliPertamaByNomorBonDanDate(addedHeaderEntity);
 
-			if(flagDapatPromo){
+			if(flagDapatPromo == true){
 				kurangiSaldoBukuTulis(addedHeaderEntity);
-
 				addedHeaderEntity.setFlagDapatPromo5Pertama(true);
-				repoTrxHeader.edit(addedHeaderEntity);
+			}else{
+				addedHeaderEntity.setFlagDapatPromo5Pertama(false);
 			}
+		}else{
+			addedHeaderEntity.setFlagDapatPromo5Pertama(false);
 		}
+
+		repoTrxHeader.edit(addedHeaderEntity);
 
 	}
 
@@ -387,21 +399,25 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	private Boolean checkLimaPembeliPertamaByNomorBonDanDate(TrxHeaderEntity headerEntity) {
 		List <TrxHeaderEntity> listPembeli = repoTrxHeader.get5DataPertamaByTanggalTrx(headerEntity.getTanggalBon());
 
+		Integer countGaDapatPromo = 0;
 		Boolean flagDapatpromo = true;
 
 		String currentInputMemberId = headerEntity.getDataMembership().getId();
 
-		// listPembeli isinya data yg di DB + data header yg baru di inputkan, jd dilebihin 1 size nya => 5+1
-		if(listPembeli.size() > 6 ){
-			flagDapatpromo = false;
+		if(listPembeli.size() >= 5 ){
+			countGaDapatPromo++;
 		}else{
 			for(TrxHeaderEntity eachData : listPembeli){
 				if(!currentInputMemberId.equals(eachData.getDataMembership().getId())){
-					if(eachData.getDataMembership().getId().equals(headerEntity.getDataMembership().getId())){
-						flagDapatpromo = false;
+					if(eachData.getDataMembership().getId().equals(currentInputMemberId)){
+						countGaDapatPromo++;
 					}
 				}
 			}
+		}
+
+		if(countGaDapatPromo > 0){
+			flagDapatpromo = false;
 		}
 
 		return flagDapatpromo;
@@ -410,14 +426,14 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	public void kurangiSaldoBukuTulis(TrxHeaderEntity trxHeaderEntity){
 		// get data buku tulis
 		MasterBukuEntity masterBukuEntity = new MasterBukuEntity();
-		masterBukuEntity = repoMasterBuku.findByNamaBuku("Buku tulis");
+		masterBukuEntity = repoMasterBuku.findByBK("BukuTulis");
 
 		// inisialisasi trx detail
 		TrxDetailBukuEntity trxDetailEntity = new TrxDetailBukuEntity();
-		trxDetailEntity.getDataHeader().setId(trxHeaderEntity.getId());
-		trxDetailEntity.getDataBuku().setId(masterBukuEntity.getId());
-
-		updateSaldoBuku(trxDetailEntity, "tambah");
+		trxDetailEntity.setDataHeader(trxHeaderEntity);
+		trxDetailEntity.setDataBuku(masterBukuEntity);
+		trxDetailEntity.setQty(1);
+		updateSaldoBuku(trxDetailEntity, "kurang");
 
 	}
 
