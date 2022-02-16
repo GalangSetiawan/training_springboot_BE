@@ -21,6 +21,8 @@ public class TrxDetailPembayaranPojo {
 	public String jenisPembayaran;
 	public Double nilaiRupiah;
 	public Integer jumlahPoint;
+	public Boolean flagPoint;
+	public Boolean flagKasTitipan;
 	public Long version;
 
 	public TrxHeaderPojo transaksiHeader;
@@ -35,6 +37,8 @@ public class TrxDetailPembayaranPojo {
 		entity.setJenisPembayaran(jenisPembayaran);
   		entity.setNilaiRupiah(nilaiRupiah);
   		entity.setJumlahPoint(jumlahPoint);
+		entity.setFlagPoint(flagPoint);
+		entity.setFlagKasTitipan(flagKasTitipan);
   		entity.setVersion(version);
 
 		if(transaksiHeader != null && !transaksiHeader.id.equals("")){
@@ -66,9 +70,10 @@ public class TrxDetailPembayaranPojo {
 			pojo.jenisPembayaran = entity.getJenisPembayaran();
 			pojo.nilaiRupiah = entity.getNilaiRupiah();
 			pojo.jumlahPoint = entity.getJumlahPoint();
+			pojo.flagPoint = entity.getFlagPoint();
+			pojo.flagKasTitipan = entity.getFlagKasTitipan();
 			pojo.version = entity.getVersion();
 			pojo.transaksiHeader = TrxHeaderPojo.fromEntity(entity.getTransaksiHeader());
-
 
 		}
 
@@ -95,8 +100,6 @@ public class TrxDetailPembayaranPojo {
 		List<SearchFieldMapping> mappings = new ArrayList<>();
 	
 		mappings.add(new SearchFieldMapping("id", "id"));
-//		mappings.add(new SearchFieldMapping("namaBuku", "namaBuku"));
-
 	
 		return mappings;
 	} 

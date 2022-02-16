@@ -5,11 +5,10 @@ import co.id.sofcograha.base.extendables.BaseService;
 import co.id.sofcograha.base.utils.VersionUtil;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
-import co.id.sofcograha.training.entities.MasterGenreEntity;
-import co.id.sofcograha.training.entities.MasterJenisTransaksiEntity;
-import co.id.sofcograha.training.entities.MasterMembershipEntity;
+import co.id.sofcograha.training.entities.*;
 import co.id.sofcograha.training.pojos.MasterMembershipPojo;
 import co.id.sofcograha.training.repositories.MasterMembershipRepository;
+import co.id.sofcograha.training.repositories.SaldoKasTitipanRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,9 +17,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class MasterMembershipService extends BaseService {
 	
 	@Autowired private MasterMembershipRepository repo;
+	@Autowired private SaldoKasTitipanRepository repoSaldoKasTitipan;
 	
-	public MasterMembershipEntity findByBk(String namaMembership) {
+	public MasterMembershipEntity findByBK(String namaMembership) {
 		return repo.findByBK(namaMembership);
+	}
+
+	public MasterMembershipEntity findByPoint(String namaMembership) {
+		return repo.findByPoint(namaMembership);
 	}
 	
 	public MasterMembershipEntity findById(final String id) {
@@ -57,6 +61,13 @@ public class MasterMembershipService extends BaseService {
 		throwBatchError();
 
 		MasterMembershipEntity addedEntity = repo.add(entity);
+
+		//save saldo kas titipan
+		SaldoKasTitipanEntity saldoKasTitipan = new SaldoKasTitipanEntity();
+		saldoKasTitipan.setDataMembership(addedEntity);
+		saldoKasTitipan.setNilaiPoint(0);
+		saldoKasTitipan.setNilaiTitipan(0.0);
+		repoSaldoKasTitipan.add(saldoKasTitipan);
 		
 		throwBatchError();
 		return addedEntity;	
@@ -110,7 +121,6 @@ public class MasterMembershipService extends BaseService {
 	}
 	
     protected void defineDefaultValuesOnAdd(MasterMembershipEntity entity) {
-//		if (entity.getFlakt() == null) entity.setFlakt(BaseConstants.YA);
 		if (entity.getVersion() == null) entity.setVersion((long) 1);
 	}
     

@@ -30,7 +30,7 @@ public class MasterMembershipController {
 		
 		SearchResult<MasterMembershipEntity> searchResult = masterMembershipService.search(SearchParameter.generate(searchParameter, MasterMembershipPojo.getFieldMappings()));
 
-		return ApiResponse.dataWithPaging("items", MasterMembershipPojo.fromEntities(searchResult.getResult()),
+		return ApiResponse.dataWithPaging("items", MasterMembershipPojo.fromEntities(searchResult.getResult(), 2),
 				searchResult.getPaging());
 	}
 
@@ -38,7 +38,7 @@ public class MasterMembershipController {
 	@GetMapping
 	public ApiResponse get(@RequestParam String nama) throws JsonProcessingException {
 
-		MasterMembershipEntity entity = masterMembershipService.findByBk(nama);
+		MasterMembershipEntity entity = masterMembershipService.findByBK(nama);
 		return ApiResponse.data("item", MasterMembershipPojo.fromEntity(entity));
 		
 	}
