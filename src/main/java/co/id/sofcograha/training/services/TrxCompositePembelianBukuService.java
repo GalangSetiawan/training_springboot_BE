@@ -143,6 +143,9 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 			if(flagDapatPromo){
 				kurangiSaldoBukuTulis(addedHeaderEntity);
+
+				addedHeaderEntity.setFlagDapatPromo5Pertama(true);
+				repoTrxHeader.edit(addedHeaderEntity);
 			}
 		}
 
@@ -309,24 +312,18 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	public void validasiBukuHarusAdaDisaldo(TrxDetailBukuEntity trxDetailBuku){
-
-
 		SaldoBukuEntity saldoBuku = null;
-//		saldoBuku = repoSaldoBuku.findByIdBuku(trxDetailBuku.getDataBuku().getId());
-		saldoBuku = repoSaldoBuku.findById("9d73e01a-2f91-4d60-8e61-8eae6ee79d67");
+		saldoBuku = repoSaldoBuku.findByDataBuku(trxDetailBuku.getDataBuku());
 
 		if(saldoBuku == null){
 			throw new BusinessException("tidak.terdapat.saldo.pada.buku", trxDetailBuku.getDataBuku().getNamaBuku());
 
 		}
-
-
 	}
 
 	public void validasiSaldoBukuMencukupi(TrxDetailBukuEntity trxDetailBuku){
 		SaldoBukuEntity saldoBuku = null;
-//		saldoBuku = repoSaldoBuku.findByIdBuku(trxDetailBuku.getDataBuku().getId());
-		saldoBuku = repoSaldoBuku.findById("9d73e01a-2f91-4d60-8e61-8eae6ee79d67");
+		saldoBuku = repoSaldoBuku.findByDataBuku(trxDetailBuku.getDataBuku());
 
 		if(saldoBuku.getSaldoBuku() - trxDetailBuku.getQty() <= 0){
 			throw new BusinessException(
@@ -363,8 +360,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 	public void updateSaldoBuku(TrxDetailBukuEntity trxDetailBuku, String jenisUpdate){
 		SaldoBukuEntity saldoBuku = null;
-//		saldoBuku = repoSaldoBuku.findByIdBuku(trxDetailBuku.getDataBuku().getId());
-		saldoBuku = repoSaldoBuku.findById("9d73e01a-2f91-4d60-8e61-8eae6ee79d67");
+		saldoBuku = repoSaldoBuku.findByDataBuku(trxDetailBuku.getDataBuku());
 
 		Integer sisaSaldoBukuTersedia = saldoBuku.getSaldoBuku();
 		if(jenisUpdate == "tambah"){
@@ -393,12 +389,17 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 		Boolean flagDapatpromo = true;
 
-		if(listPembeli.size() > 5 ){
+		String currentInputMemberId = headerEntity.getDataMembership().getId();
+
+		// listPembeli isinya data yg di DB + data header yg baru di inputkan, jd dilebihin 1 size nya => 5+1
+		if(listPembeli.size() > 6 ){
 			flagDapatpromo = false;
 		}else{
 			for(TrxHeaderEntity eachData : listPembeli){
-				if(eachData.getDataMembership().getId().equals(headerEntity.getDataMembership().getId())){
-					flagDapatpromo = false;
+				if(!currentInputMemberId.equals(eachData.getDataMembership().getId())){
+					if(eachData.getDataMembership().getId().equals(headerEntity.getDataMembership().getId())){
+						flagDapatpromo = false;
+					}
 				}
 			}
 		}

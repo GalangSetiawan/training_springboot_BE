@@ -28,7 +28,7 @@ public class MasterBukuEntity implements Cloneable{
 	private Integer stockBuku;
 
 	@Column(name="active")
-	private String flagActive;
+	private Boolean flagActive;
 
 	@OneToOne ()
 	@JoinColumn(name = "id_genre", referencedColumnName = "id")
@@ -78,11 +78,11 @@ public class MasterBukuEntity implements Cloneable{
 		this.stockBuku = stockBuku;
 	}
 
-	public String getFlagActive() {
+	public Boolean getFlagActive() {
 		return flagActive;
 	}
 
-	public void setFlagActive(String flagActive) {
+	public void setFlagActive(Boolean flagActive) {
 		this.flagActive = flagActive;
 	}
 

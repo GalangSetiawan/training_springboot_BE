@@ -132,7 +132,7 @@ public class MasterBukuService extends BaseService {
 	}
 	
     protected void defineDefaultValuesOnAdd(MasterBukuEntity entity) {
-		if (entity.getFlagActive() == null) entity.setFlagActive(BaseConstants.YA);
+		if (entity.getFlagActive() == null) entity.setFlagActive(true);
 		if (entity.getVersion() == null) entity.setVersion((long) 1);
 	}
     

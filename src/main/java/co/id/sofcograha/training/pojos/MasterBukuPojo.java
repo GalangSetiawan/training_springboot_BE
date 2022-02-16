@@ -20,7 +20,7 @@ public class MasterBukuPojo {
 	public String namaBuku;
 	public Double hargaBuku;
 	public Integer stockBuku;
-	public String active;
+	public Boolean active;
 	public Long version;
 	public MasterGenrePojo dataGenre;
     
