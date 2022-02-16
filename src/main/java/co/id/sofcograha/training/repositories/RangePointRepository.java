@@ -25,7 +25,7 @@ public class RangePointRepository extends SimpleJpaRepository<RangePointEntity, 
 	public RangePointEntity findByBK(String id) {
 		
 		String query = "SELECT e FROM RangePointEntity e " +
-					   "WHERE e.namaTransaksi = :namaTransaksi";
+					   "WHERE e.id = :id";
 
 		try {
 			return em.createQuery(query, RangePointEntity.class)
@@ -41,21 +41,32 @@ public class RangePointRepository extends SimpleJpaRepository<RangePointEntity, 
 		return super.findOne(id);
 	}
 	
-	public RangePointEntity findByPoint(String nama) {
+	public RangePointEntity findByTotalBayar(Double totalBayar, Boolean flagPoint) {
 
-		RangePointEntity entity;
+		String query = "SELECT e FROM RangePointEntity e " +
+				"WHERE :totalBayar between minRange and maxRange";
 
 		try {
-			entity = em.createQuery("FROM RangePointEntity e " +
-		                            "WHERE LOWER(e.nama) = LOWER(:nama)", RangePointEntity.class)
-
-					.setParameter("nama", nama)
+			return em.createQuery(query, RangePointEntity.class)
+					.setParameter("totalBayar", totalBayar)
 					.getSingleResult();
 		} catch (NoResultException e) {
-			entity = null;
+			return null;
 		}
+	}
 
-		return entity;
+	public RangePointEntity findByTotal(Double totalBayar) {
+
+		String query = "SELECT e FROM RangePointEntity e " +
+				"WHERE :totalBayar between minRange and maxRange";
+
+		try {
+			return em.createQuery(query, RangePointEntity.class)
+					.setParameter("totalBayar", totalBayar)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
 	}
 	
 	public SearchResult<RangePointEntity> search(SearchParameter searchParameter) {

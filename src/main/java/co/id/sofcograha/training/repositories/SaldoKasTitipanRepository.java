@@ -4,6 +4,7 @@ import co.id.sofcograha.base.utils.QueryUtil;
 import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.training.entities.MasterMembershipEntity;
 import co.id.sofcograha.training.entities.SaldoBukuEntity;
 import co.id.sofcograha.training.entities.SaldoKasTitipanEntity;
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
@@ -41,7 +42,7 @@ public class SaldoKasTitipanRepository extends SimpleJpaRepository<SaldoKasTitip
 		return super.findOne(id);
 	}
 
-	public SaldoKasTitipanEntity findByIdMember(String idMember) {
+	public SaldoKasTitipanEntity findByIdMember(MasterMembershipEntity idMember) {
 
 		SaldoKasTitipanEntity entity;
 

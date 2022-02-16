@@ -3,6 +3,7 @@ package co.id.sofcograha.training.pojos;
 import co.id.sofcograha.base.constants.BaseConstants;
 import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
 import co.id.sofcograha.training.entities.MasterMembershipEntity;
+import co.id.sofcograha.training.entities.SaldoKasTitipanEntity;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
@@ -16,6 +17,8 @@ public class MasterMembershipPojo {
 	public String namaMembership;
 	public Long version;
 	public String id;
+
+	public SaldoKasTitipanPojo saldoKasTitipanPojo;
     
     public MasterMembershipEntity toEntity() {
 
@@ -24,6 +27,14 @@ public class MasterMembershipPojo {
 		entity.setNamaMembership(namaMembership);
 		entity.setVersion(version);
 		entity.setId(id);
+
+		if(saldoKasTitipanPojo != null && !saldoKasTitipanPojo.id.equals("")){
+			SaldoKasTitipanEntity entityRef = new SaldoKasTitipanEntity();
+			entityRef.setId(saldoKasTitipanPojo.id);
+			entity.setSaldoKasTitipan(entityRef);
+		}else{
+			entity.setSaldoKasTitipan(null);
+		}
 
   		return entity;
   	}
@@ -46,6 +57,8 @@ public class MasterMembershipPojo {
 			pojo.namaMembership = entity.getNamaMembership();
 			pojo.version = entity.getVersion();
 			pojo.id = entity.getId();
+
+			pojo.saldoKasTitipanPojo = SaldoKasTitipanPojo.fromEntity(entity.getSaldoKasTitipan(), 2);
 
 		}
 
@@ -73,7 +86,6 @@ public class MasterMembershipPojo {
 	
 		mappings.add(new SearchFieldMapping("kodeMembership", "kodeMembership"));
 		mappings.add(new SearchFieldMapping("namaMembership", "namaMembership"));
-
 
 	
 		return mappings;

@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @Entity
 @Access(AccessType.FIELD)
-@Table(name = "tbl_membership", uniqueConstraints = @UniqueConstraint(columnNames = { "kode_member" }))
+@Table(name = "tbl_membership", uniqueConstraints = @UniqueConstraint(columnNames = { "id" }))
 public class MasterMembershipEntity implements Cloneable{
 
 	@Id
@@ -21,8 +21,8 @@ public class MasterMembershipEntity implements Cloneable{
 	@Column(name="nama_member")
 	private String namaMembership;
 
-	@OneToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "id")
+	@OneToOne()
+	@JoinColumn(name = "id_kas_titipan", referencedColumnName = "id")
 	private SaldoKasTitipanEntity saldoKasTitipan;
 
 	@Version

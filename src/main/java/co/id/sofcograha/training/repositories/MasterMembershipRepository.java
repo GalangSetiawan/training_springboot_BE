@@ -21,10 +21,28 @@ public class MasterMembershipRepository extends SimpleJpaRepository<MasterMember
 		this.em = em;
 	}
 
+
 	public MasterMembershipEntity findByBK(String namaMembership) {
 		
 		String query = "SELECT e FROM MasterMembershipEntity e " +
 					   "WHERE e.namaMembership = :namaMembership";
+
+		try {
+			return em.createQuery(query, MasterMembershipEntity.class)
+					.setParameter("namaMembership", namaMembership)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			return null;
+		}
+
+	}
+
+	public MasterMembershipEntity findByPoint(String namaMembership) {
+
+		String query = "SELECT e.kode_member, e.nama_member, B.nilai_titipan, B.nilai_point" +
+				"FROM MasterMembershipEntity e " +
+				"JOIN tbl_saldo_kas_titipan B ON B.id = e.id_kas_titipan" +
+				"WHERE e.namaMembership = :namaMembership";
 
 		try {
 			return em.createQuery(query, MasterMembershipEntity.class)
@@ -47,7 +65,6 @@ public class MasterMembershipRepository extends SimpleJpaRepository<MasterMember
 		try {
 			entity = em.createQuery("FROM MasterMembershipEntity e " +
 		                            "WHERE LOWER(e.namaMembership) = LOWER(:namaMembership)", MasterMembershipEntity.class)
-//					.setParameter("flakt", BaseConstants.YA)
 					.setParameter(namaMembership, namaMembership)
 					.getSingleResult();
 		} catch (NoResultException e) {
