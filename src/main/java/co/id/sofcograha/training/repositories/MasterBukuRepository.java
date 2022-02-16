@@ -62,7 +62,7 @@ public class MasterBukuRepository extends SimpleJpaRepository<MasterBukuEntity, 
 
 		try {
 			entity = em.createQuery("FROM MasterBukuEntity e " +
-		                            "WHERE e.flagActive :flagActive And " +
+		                            "WHERE e.flagActive = :flagActive And " +
 					                        "LOWER(e.namaBuku) = LOWER(:namaBuku)", MasterBukuEntity.class)
 					.setParameter("flagActive", true)
 					.setParameter("namaBuku", namaBuku)
