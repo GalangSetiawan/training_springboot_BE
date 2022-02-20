@@ -5,6 +5,7 @@ import co.id.sofcograha.base.extendables.BaseService;
 import co.id.sofcograha.base.utils.VersionUtil;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
 import co.id.sofcograha.training.entities.*;
 import co.id.sofcograha.training.pojos.MasterMembershipPojo;
 import co.id.sofcograha.training.repositories.MasterMembershipRepository;
@@ -34,7 +35,11 @@ public class MasterMembershipService extends BaseService {
 	public SearchResult<MasterMembershipEntity> search(SearchParameter searchParameter) {
 		return repo.search(searchParameter);
 	}
-    
+
+	public MasterMembershipPojo getByPoint(String namaMember) {
+		return MasterMembershipPojo.fromEntity(repo.findByPoint(namaMember));
+	}
+
 	public MasterMembershipPojo findByNamaMember(String namaMembership) {
 		return MasterMembershipPojo.fromEntity(repo.findByNamaMember(namaMembership));
 	}
@@ -168,6 +173,10 @@ public class MasterMembershipService extends BaseService {
     
 	private void valEntityExists(String id, String entityClassName) {
 		if (repo.getOne(id) == null) {
+			throw new BusinessException("data.not.found", entityClassName, id);
+		}
+
+		if (repo.findByPoint(id) == null) {
 			throw new BusinessException("data.not.found", entityClassName, id);
 		}
 	}

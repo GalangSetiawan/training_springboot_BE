@@ -2,9 +2,11 @@ package co.id.sofcograha.training.services;
 
 import co.id.sofcograha.base.exceptions.BusinessException;
 import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.Message;
 import co.id.sofcograha.base.utils.VersionUtil;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
 import co.id.sofcograha.training.entities.*;
 import co.id.sofcograha.training.pojos.TrxDetailPembelianBukuPojo;
 import co.id.sofcograha.training.pojos.TrxDetailPembayaranPojo;
@@ -34,6 +36,8 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	@Autowired private TrxHeaderService trxHeaderService;
 	@Autowired private TrxDetailPembelianBukuService trxDetailPembelianBukuService;
 
+	private boolean isErrorDetail = false;
+	
 	public TrxHeaderEntity findByBk(String nomorTrxHeader) {
 		return repo.findByBK(nomorTrxHeader);
 	}
@@ -74,8 +78,8 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		// Galang
 		hitungPembelianBuku(pojo ,addedHeaderEntity );
 
-//		// Evi
-//		hitungPembayaranBuku(addedHeaderEntity, pojo, saldoKasTitipanEntity);
+		// Evi
+		hitungPembayaranBuku(addedHeaderEntity, pojo);
 
 		throwBatchError();
 		return addedHeaderEntity;
@@ -168,18 +172,18 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 
 	@Transactional
-	public void hitungPembayaranBuku (TrxHeaderEntity trxHeaderEntity, TrxHeaderPojo trxHeaderPojo, SaldoKasTitipanEntity saldoKasTitipanEntity){
+	public void hitungPembayaranBuku (TrxHeaderEntity trxHeaderEntity, TrxHeaderPojo trxHeaderPojo){
 		if(trxHeaderEntity.getDataMembership() != null){
 
 				//tambah point untuk setiap pembelian buku
-				addPointPembayaran(trxHeaderEntity, saldoKasTitipanEntity);
+				addPointPembayaran(trxHeaderEntity);
 
 			for(TrxDetailPembayaranPojo detailPembayaranPojo : trxHeaderPojo.trxDetailPembayaranPojo) {
 				TrxDetailPembayaran entityDetailBayar = detailPembayaranPojo.toEntity();
 
 					if(entityDetailBayar.getJenisPembayaran() == "Tunai"){
 						//update kas titipan
-						updateKasTitipan(trxHeaderEntity, saldoKasTitipanEntity);
+						updateKasTitipan(trxHeaderEntity);
 					}
 
 					if(entityDetailBayar.getJenisPembayaran() == "Point"){
@@ -200,10 +204,46 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 					if(entityDetailBayar.getJenisPembayaran() == "Transfer"){
 						//update point
-						updatePoint(trxHeaderEntity, saldoKasTitipanEntity);
+						updatePoint(trxHeaderEntity);
 					}
 
 				trxDetailPembayaranRepository.save(entityDetailBayar);
+
+				if (isAnyBatchErrors()) {
+					isErrorDetail = true;
+
+					// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini
+
+					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+
+						// khusus untuk error yang muncul di grid
+						Message message = new Message();
+						ArrayList<Object> newParameters = new ArrayList<Object>();
+
+						for (Object object : businessException.getMessageParameters()) {
+							newParameters.add(object);
+						}
+
+						message.setCode(businessException.getMessageCode());
+						message.setArgs(newParameters);
+
+						if (detailPembayaranPojo.errorMsg == null) {
+							detailPembayaranPojo.errorMsg = new ArrayList<Message>();
+						}
+
+						detailPembayaranPojo.errorMsg.clear();
+						detailPembayaranPojo.errorMsg.add(message);
+					}
+
+					// bersihkan error yang ada di LocalError
+					removeBatchErrors();
+
+					continue;
+					// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
+					// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
+					// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik
+					// satu satu sampai anak ter dalam
+				}
 			}
 
 		}
@@ -503,22 +543,24 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 
-	private void addPointPembayaran(TrxHeaderEntity entityHeader, SaldoKasTitipanEntity saldoKasTitipan){
+	private void addPointPembayaran(TrxHeaderEntity entityHeader){
 		RangePointEntity rangePoint =rangePointRepository.findByTotal(entityHeader.getTotalPembelianBuku());
 		Integer point = rangePoint.getPoint();
 
-		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(saldoKasTitipan.getId());
+		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+
+		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(masterMembershipEntity.getId());
 		saldoKasTitipanEntity.setNilaiPoint(point);
 
 		saldoKasTitipanRepository.save(saldoKasTitipanEntity);
 	}
 
-	private void updateKasTitipan(TrxHeaderEntity entityHeader, SaldoKasTitipanEntity saldoKasTitipan){
-		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(saldoKasTitipan.getId());
+	private void updateKasTitipan(TrxHeaderEntity entityHeader){
+		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
 
+		SaldoKasTitipanEntity saldoKasTitipanEntity = saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
 		Double nilaiKembalian = entityHeader.getNilaiKembalian();
 
-		if(entityHeader.getFlagKembalian() == false){
 			saldoKasTitipanEntity.setNilaiTitipan(nilaiKembalian);
 
 			entityHeader.setNilaiKembalian(0.0);
@@ -527,13 +569,15 @@ public class TrxCompositePembelianBukuService extends BaseService {
 			Integer point = rangePoint.getPoint();
 
 			saldoKasTitipanEntity.setNilaiPoint(point);
-		}
+
 
 		saldoKasTitipanRepository.save(saldoKasTitipanEntity);
 	}
 
 	public void validasiSaldoPointMencukupi(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
-		SaldoKasTitipanEntity saldoPoint =saldoKasTitipanRepository.findByIdMember(entityHeader.getDataMembership());
+		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+
+		SaldoKasTitipanEntity saldoPoint = saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
 
 		if(saldoPoint.getNilaiPoint() - entityDetailBayar.getJumlahPoint() <= 0){
 			throw new BusinessException(
@@ -545,7 +589,9 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	public void kurangiPoint(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
-		SaldoKasTitipanEntity saldoPoint =saldoKasTitipanRepository.findByIdMember(entityHeader.getDataMembership());
+		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+
+		SaldoKasTitipanEntity saldoPoint =saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
 		Integer point = saldoPoint.getNilaiPoint();
 
 		point = point - entityDetailBayar.getJumlahPoint();
@@ -556,7 +602,9 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	public void validasiSaldoKasTitipanMencukupi(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
-		SaldoKasTitipanEntity saldoKasTitipan =saldoKasTitipanRepository.findByIdMember(entityHeader.getDataMembership());
+		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+
+		SaldoKasTitipanEntity saldoKasTitipan =saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
 
 		if(saldoKasTitipan.getNilaiTitipan() - entityDetailBayar.getNilaiRupiah() <= 0){
 			throw new BusinessException(
@@ -568,7 +616,9 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	public void kurangiKasTitipan(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
-		SaldoKasTitipanEntity saldoKasTitipan =saldoKasTitipanRepository.findByIdMember(entityHeader.getDataMembership());
+		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+
+		SaldoKasTitipanEntity saldoKasTitipan =saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
 		Double nilaiTitipan = saldoKasTitipan.getNilaiTitipan();
 
 		nilaiTitipan = nilaiTitipan - entityDetailBayar.getNilaiRupiah();
@@ -578,8 +628,10 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		saldoKasTitipanRepository.save(saldoKasTitipan);
 	}
 
-	private void updatePoint(TrxHeaderEntity entityHeader, SaldoKasTitipanEntity saldoKasTitipan){
-		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(saldoKasTitipan.getId());
+	private void updatePoint(TrxHeaderEntity entityHeader){
+		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+
+		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(masterMembershipEntity.getId());
 
 		RangePointEntity rangePoint =rangePointRepository.findByTotal(entityHeader.getTotalPembelianBuku());
 		Integer point = rangePoint.getPoint();
