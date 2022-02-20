@@ -22,7 +22,6 @@ public class TrxHeaderService extends BaseService {
 	@Autowired private TrxHeaderRepository repo;
 	@Autowired private MasterMembershipRepository masterMembershipRepository;
 	@Autowired private TrxCompositePembelianBukuService trxCompositePembelianBukuService;
-	@Autowired private MasterMembershipRepository repoMember;
 
 	public TrxHeaderEntity findByBk(String nomorTrxHeader) {
 		return repo.findByBK(nomorTrxHeader);
@@ -61,13 +60,6 @@ public class TrxHeaderService extends BaseService {
 
 		valUniquenessOnAdd(entity);
 		throwBatchError();
-
-		//Generate nomor bon
-		generateNomorBon(entity);
-
-		//Patch tanggal bon
-		entity.setTanggalBon(new Date());
-
 
 		throwBatchError();
 		return entity;
@@ -137,7 +129,7 @@ public class TrxHeaderService extends BaseService {
     
     protected void manageReferences(TrxHeaderEntity entity) {
 		if(entity.getDataMembership() != null){
-			MasterMembershipEntity dataMember = repoMember.getOne(entity.getDataMembership().getId());
+			MasterMembershipEntity dataMember = masterMembershipRepository.getOne(entity.getDataMembership().getId());
 			entity.setDataMembership(dataMember);
 		}
 	}
@@ -197,13 +189,6 @@ public class TrxHeaderService extends BaseService {
 
 	public TrxHeaderEntity get(String id) {
 		return repo.getOne(id);
-	}
-
-	public TrxHeaderEntity generateNomorBon(TrxHeaderEntity entity){
-		String nomorBonGenerated = "Trx-Nomor-Bon-" + TimeUtil.getSystemDateTime() ;
-		entity.setNomorBon(nomorBonGenerated);
-
-		return entity;
 	}
 
 	public boolean check5pembeliPertama(String idMembership) {

@@ -1,6 +1,7 @@
 package co.id.sofcograha.training.pojos;
 
 import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
 import co.id.sofcograha.base.utils.TimeUtil;
 import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
 import co.id.sofcograha.training.entities.*;
@@ -33,7 +34,6 @@ public class TrxHeaderPojo {
 	public MasterMembershipPojo dataMembership;
 	public List<TrxDetailPembelianBukuPojo> listBuku;
 	public MasterJenisTransaksiPojo dataJenisTransaksi;
-
 	public List<TrxDetailPembayaranPojo> trxDetailPembayaranPojo;
 
     public TrxHeaderEntity toEntity() {
