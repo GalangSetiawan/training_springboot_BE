@@ -2,25 +2,26 @@ package co.id.sofcograha.training.services;
 
 import co.id.sofcograha.base.exceptions.BusinessException;
 import co.id.sofcograha.base.extendables.BaseService;
+import co.id.sofcograha.base.utils.TimeUtil;
 import co.id.sofcograha.base.utils.VersionUtil;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.training.entities.*;
-import co.id.sofcograha.training.pojos.MasterBukuPojo;
 import co.id.sofcograha.training.pojos.MasterMembershipPojo;
-import co.id.sofcograha.training.pojos.TrxDetailBukuPojo;
 import co.id.sofcograha.training.pojos.TrxHeaderPojo;
 import co.id.sofcograha.training.repositories.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Date;
 
 @Service("trxHeaderService")
 public class TrxHeaderService extends BaseService {
 
 	@Autowired private TrxHeaderRepository repo;
+	@Autowired private MasterMembershipRepository masterMembershipRepository;
+	@Autowired private TrxCompositePembelianBukuService trxCompositePembelianBukuService;
 
 	public TrxHeaderEntity findByBk(String nomorTrxHeader) {
 		return repo.findByBK(nomorTrxHeader);
@@ -60,10 +61,15 @@ public class TrxHeaderService extends BaseService {
 		valUniquenessOnAdd(entity);
 		throwBatchError();
 
-		TrxHeaderEntity addedEntity = repo.add(entity);
+		//Generate nomor bon
+		generateNomorBon(entity);
+
+		//Patch tanggal bon
+		entity.setTanggalBon(new Date());
+
 
 		throwBatchError();
-		return addedEntity;	
+		return entity;
 		
     }
        
@@ -203,4 +209,28 @@ public class TrxHeaderService extends BaseService {
 		return repo.getOne(id);
 	}
 
+	public TrxHeaderEntity generateNomorBon(TrxHeaderEntity entity){
+		String nomorBonGenerated = "Trx-Nomor-Bon-" + TimeUtil.getSystemDateTime() ;
+		entity.setNomorBon(nomorBonGenerated);
+
+		return entity;
+	}
+
+	public boolean check5pembeliPertama(String idMembership) {
+
+		MasterMembershipEntity dataMember = masterMembershipRepository.getOne(idMembership);
+
+		if(dataMember != null){
+			TrxHeaderEntity trxHeaderEntityDummy = new TrxHeaderEntity();
+			trxHeaderEntityDummy.setTanggalBon(new Date());
+			trxHeaderEntityDummy.setDataMembership(dataMember);
+
+			return trxCompositePembelianBukuService.checkLimaPembeliPertamaByNomorBonDanDate(trxHeaderEntityDummy);
+		}else{
+			batchError("idMembership.tidak.ditemukan");
+			return false;
+		}
+
+
+	}
 }

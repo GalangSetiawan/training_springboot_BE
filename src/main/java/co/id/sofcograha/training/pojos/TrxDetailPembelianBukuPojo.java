@@ -3,8 +3,7 @@ package co.id.sofcograha.training.pojos;
 import co.id.sofcograha.base.constants.BaseConstants;
 import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
 import co.id.sofcograha.training.entities.MasterBukuEntity;
-import co.id.sofcograha.training.entities.MasterGenreEntity;
-import co.id.sofcograha.training.entities.TrxDetailBukuEntity;
+import co.id.sofcograha.training.entities.TrxDetailPembelianBukuEntity;
 import co.id.sofcograha.training.entities.TrxHeaderEntity;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -14,11 +13,12 @@ import java.util.List;
 
 
 @JsonInclude(Include.ALWAYS)
-public class TrxDetailBukuPojo {
+public class TrxDetailPembelianBukuPojo {
 
 	public String id;
 	public Long version;
 	public Integer qty;
+	public Integer persenDiscBuku;
 	public Double totalHarga;
 	public Integer persenDiscGenre;
 	public Double nilaiDiscGenre;
@@ -29,13 +29,14 @@ public class TrxDetailBukuPojo {
 	public MasterBukuPojo dataBuku;
 	public TrxHeaderPojo dataTrxHeader;
     
-    public TrxDetailBukuEntity toEntity() {
+    public TrxDetailPembelianBukuEntity toEntity() {
 
-		TrxDetailBukuEntity entity = new TrxDetailBukuEntity();
+		TrxDetailPembelianBukuEntity entity = new TrxDetailPembelianBukuEntity();
   		
   	    entity.setId(id);
 		entity.setVersion(version);
 		entity.setQty(qty);
+		entity.setPersenDiscBuku(persenDiscBuku);
 		entity.setTotalHarga(totalHarga);
 		entity.setPersenDiscGenre(persenDiscGenre);
 		entity.setNilaiDiscGenre(nilaiDiscGenre);
@@ -63,15 +64,15 @@ public class TrxDetailBukuPojo {
   		return entity;
   	}
     
-	public static TrxDetailBukuPojo fromEntity (TrxDetailBukuEntity entity) {
+	public static TrxDetailPembelianBukuPojo fromEntity (TrxDetailPembelianBukuEntity entity) {
 		return fromEntity(entity,BaseConstants.DEFAULT_QUERY_DEPTH);
 	}
 	
-	public static TrxDetailBukuPojo fromEntity(TrxDetailBukuEntity entity, int depthLevel) {
+	public static TrxDetailPembelianBukuPojo fromEntity(TrxDetailPembelianBukuEntity entity, int depthLevel) {
 		if (entity == null) return null;
 		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;	
 		
-		TrxDetailBukuPojo pojo = new TrxDetailBukuPojo();
+		TrxDetailPembelianBukuPojo pojo = new TrxDetailPembelianBukuPojo();
 		
 		pojo.id = entity.getId();
 		if (depthLevel > 0) {
@@ -80,6 +81,7 @@ public class TrxDetailBukuPojo {
 			pojo.qty = entity.getQty();
 			pojo.totalHarga = entity.getTotalHarga();
 			pojo.persenDiscGenre = entity.getPersenDiscGenre();
+			pojo.persenDiscBuku = entity.getPersenDiscBuku();
 			pojo.nilaiDiscGenre = entity.getNilaiDiscGenre();
 			pojo.hargaSetelahDiscGenre = entity.getHargaSetelahDiscGenre();
 			pojo.nilaiDiscHeader = entity.getNilaiDiscHeader();
@@ -94,18 +96,18 @@ public class TrxDetailBukuPojo {
 		return pojo;
 	}
 	
-	public static List<TrxDetailBukuPojo> fromEntities(List<TrxDetailBukuEntity> entities){
+	public static List<TrxDetailPembelianBukuPojo> fromEntities(List<TrxDetailPembelianBukuEntity> entities){
 		return fromEntities(entities,BaseConstants.DEFAULT_QUERY_DEPTH);
 	}
 	
-	public static List<TrxDetailBukuPojo> fromEntities(List<TrxDetailBukuEntity> entities, int depthLevel){
+	public static List<TrxDetailPembelianBukuPojo> fromEntities(List<TrxDetailPembelianBukuEntity> entities, int depthLevel){
 		if (entities == null) return new ArrayList<>();
 		if (depthLevel < 0) depthLevel = BaseConstants.DEFAULT_QUERY_DEPTH;
 		
-		List<TrxDetailBukuPojo> pojos = new ArrayList<>();
+		List<TrxDetailPembelianBukuPojo> pojos = new ArrayList<>();
 		
-		for (TrxDetailBukuEntity entity : entities) {
-			pojos.add(TrxDetailBukuPojo.fromEntity(entity, depthLevel));
+		for (TrxDetailPembelianBukuEntity entity : entities) {
+			pojos.add(TrxDetailPembelianBukuPojo.fromEntity(entity, depthLevel));
 		}
 		return pojos;
 	}

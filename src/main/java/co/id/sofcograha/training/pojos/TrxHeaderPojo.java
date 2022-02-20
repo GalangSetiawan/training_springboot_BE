@@ -29,7 +29,7 @@ public class TrxHeaderPojo {
 	public Boolean flagKembalian;
 	public Long version;
 	public MasterMembershipPojo dataMembership;
-	public List<TrxDetailBukuPojo> listBuku;
+	public List<TrxDetailPembelianBukuPojo> listBuku;
 	public MasterJenisTransaksiPojo dataJenisTransaksi;
 
 	public List<TrxDetailPembayaranPojo> trxDetailPembayaranPojo;
@@ -60,10 +60,6 @@ public class TrxHeaderPojo {
 		}else{
 			entity.setDataMembership(null);
 		}
-
-		//generate No. Trx Header
-		String nomorBonGenerated = "NO-BONs-" + TimeUtil.getSystemDateTime() ;
-		entity.setNomorBon(nomorBonGenerated);
 
   		return entity;
   	}
@@ -98,7 +94,7 @@ public class TrxHeaderPojo {
 			pojo.version = entity.getVersion();
 			pojo.dataMembership = MasterMembershipPojo.fromEntity(entity.getDataMembership());
 
-//			pojo.dataJenisTransaksi = MasterJenisTransaksiPojo.fromEntity(entity.getDataJenisTransaksi());
+			pojo.listBuku = TrxDetailPembelianBukuPojo.fromEntities(entity.getTrxDetailPembelianBuku(),1);
 
 
 		}
