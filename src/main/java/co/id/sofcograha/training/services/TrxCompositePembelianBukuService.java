@@ -168,11 +168,17 @@ public class TrxCompositePembelianBukuService extends BaseService {
 					}
 
 					if(entityDetailBayar.getJenisPembayaran() == "Point"){
+						//validasi point ada atau tidak
+						validasiSaldoPointMencukupi(trxHeaderEntity, entityDetailBayar);
+
 						//update kas titipan
 						kurangiPoint(trxHeaderEntity, entityDetailBayar);
 					}
 
 					if(entityDetailBayar.getJenisPembayaran() == "Kas titipan"){
+						//validasi kas titipan ada atau tidak
+						validasiSaldoKasTitipanMencukupi(trxHeaderEntity, entityDetailBayar);
+
 						//update kas titipan
 						kurangiKasTitipan(trxHeaderEntity, entityDetailBayar);
 					}
@@ -484,6 +490,18 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		saldoKasTitipanRepository.save(saldoKasTitipanEntity);
 	}
 
+	public void validasiSaldoPointMencukupi(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
+		SaldoKasTitipanEntity saldoPoint =saldoKasTitipanRepository.findByIdMember(entityHeader.getDataMembership());
+
+		if(saldoPoint.getNilaiPoint() - entityDetailBayar.getJumlahPoint() <= 0){
+			throw new BusinessException(
+					"saldo.point.tidak.mencukupi,.sisa.saldo.point.saat.ini",
+					entityDetailBayar.getJumlahPoint(),
+					saldoPoint.getNilaiPoint()
+			);
+		}
+	}
+
 	public void kurangiPoint(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
 		SaldoKasTitipanEntity saldoPoint =saldoKasTitipanRepository.findByIdMember(entityHeader.getDataMembership());
 		Integer point = saldoPoint.getNilaiPoint();
@@ -493,6 +511,18 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		saldoPoint.setNilaiPoint(point);
 
 		saldoKasTitipanRepository.save(saldoPoint);
+	}
+
+	public void validasiSaldoKasTitipanMencukupi(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
+		SaldoKasTitipanEntity saldoKasTitipan =saldoKasTitipanRepository.findByIdMember(entityHeader.getDataMembership());
+
+		if(saldoKasTitipan.getNilaiTitipan() - entityDetailBayar.getNilaiRupiah() <= 0){
+			throw new BusinessException(
+					"saldo.kas.titipan.tidak.mencukupi,.sisa.saldo.kas.titipan.saat.ini",
+					entityDetailBayar.getNilaiRupiah(),
+					saldoKasTitipan.getNilaiTitipan()
+			);
+		}
 	}
 
 	public void kurangiKasTitipan(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){

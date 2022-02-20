@@ -18,7 +18,7 @@ public class MasterMembershipPojo {
 	public Long version;
 	public String id;
 
-	public SaldoKasTitipanPojo saldoKasTitipanPojo;
+//	public SaldoKasTitipanPojo saldoKasTitipanPojo;
     
     public MasterMembershipEntity toEntity() {
 
@@ -28,13 +28,13 @@ public class MasterMembershipPojo {
 		entity.setVersion(version);
 		entity.setId(id);
 
-		if(saldoKasTitipanPojo != null && !saldoKasTitipanPojo.id.equals("")){
-			SaldoKasTitipanEntity entityRef = new SaldoKasTitipanEntity();
-			entityRef.setId(saldoKasTitipanPojo.id);
-			entity.setSaldoKasTitipan(entityRef);
-		}else{
-			entity.setSaldoKasTitipan(null);
-		}
+//		if(saldoKasTitipanPojo != null && !saldoKasTitipanPojo.id.equals("")){
+//			SaldoKasTitipanEntity entityRef = new SaldoKasTitipanEntity();
+//			entityRef.setId(saldoKasTitipanPojo.id);
+//			entity.setSaldoKasTitipan(entityRef);
+//		}else{
+//			entity.setSaldoKasTitipan(null);
+//		}
 
   		return entity;
   	}
@@ -58,7 +58,7 @@ public class MasterMembershipPojo {
 			pojo.version = entity.getVersion();
 			pojo.id = entity.getId();
 
-			pojo.saldoKasTitipanPojo = SaldoKasTitipanPojo.fromEntity(entity.getSaldoKasTitipan(), 2);
+//			pojo.saldoKasTitipanPojo = SaldoKasTitipanPojo.fromEntity(entity.getSaldoKasTitipan(), 2);
 
 		}
 
