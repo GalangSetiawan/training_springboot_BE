@@ -5,6 +5,7 @@ import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.training.entities.MasterGenreEntity;
+import co.id.sofcograha.training.entities.MasterMembershipEntity;
 import co.id.sofcograha.training.entities.TrxHeaderEntity;
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.stereotype.Repository;
@@ -25,13 +26,15 @@ public class TrxHeaderRepository extends SimpleJpaRepository<TrxHeaderEntity, St
 	}
 
 	public List<TrxHeaderEntity> get5DataPertamaByTanggalTrx(Date tanggalBon){
-		String query = "SELECT e FROM TrxHeaderEntity e "+
+		String query = "SELECT e FROM TrxHeaderEntity e " +
 				"WHERE e.tanggalBon = :tanggalBon " +
-				"ORDER BY e.tanggalBon DESC " +
-				"LIMIT 5";
+				"AND e.dataMembership is not null "+
+				"ORDER BY e.tanggalBon DESC " ;
 
 		try {
 			return em.createQuery(query, TrxHeaderEntity.class)
+					.setParameter("tanggalBon", tanggalBon)
+					.setMaxResults(5)
 					.getResultList();
 		} catch (NoResultException e) {
 			return null;

@@ -74,7 +74,6 @@ public class TrxCompositePembelianBukuService extends BaseService {
 			entity.setDataMembership(dataMember);
 		}
 
-
 		TrxHeaderEntity addedHeaderEntity = repoTrxHeader.add(entity);
 
 		// Galang
@@ -128,24 +127,40 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		}
 
 		//loop ke 2
+		Double totalPembelianBuku = totalHargaSetelahDiscGenre;
+		Double totalNilaiDiscountHeader = 0.0;
+
 		for(TrxDetailBukuEntity detailBuku : listBukuAfterValidation){
 
 			// hitung disc proposional
 			hitungNilaiDiscountHeaderProposional(addedHeaderEntity, detailBuku, totalHargaSetelahDiscGenre);
+
+			totalPembelianBuku = totalPembelianBuku - detailBuku.getNilaiDiscHeader();
+			totalNilaiDiscountHeader = totalNilaiDiscountHeader + detailBuku.getNilaiDiscHeader();
 
 			//save TrxDetail
 			repoTrxDetailBuku.save(detailBuku);
 
 		}
 
+		addedHeaderEntity.setTotalPembelianBuku(totalPembelianBuku);
+		addedHeaderEntity.setNilaiDiskonHeader(totalNilaiDiscountHeader);
+
 		// proses promosi
 		if(addedHeaderEntity.getDataMembership() != null){
 			Boolean flagDapatPromo = checkLimaPembeliPertamaByNomorBonDanDate(addedHeaderEntity);
 
-			if(flagDapatPromo){
+			if(flagDapatPromo == true){
 				kurangiSaldoBukuTulis(addedHeaderEntity);
+				addedHeaderEntity.setFlagDapatPromo5Pertama(true);
+			}else{
+				addedHeaderEntity.setFlagDapatPromo5Pertama(false);
 			}
+		}else{
+			addedHeaderEntity.setFlagDapatPromo5Pertama(false);
 		}
+
+		repoTrxHeader.edit(addedHeaderEntity);
 
 	}
 
@@ -343,24 +358,18 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	public void validasiBukuHarusAdaDisaldo(TrxDetailBukuEntity trxDetailBuku){
-
-
 		SaldoBukuEntity saldoBuku = null;
-//		saldoBuku = repoSaldoBuku.findByIdBuku(trxDetailBuku.getDataBuku().getId());
-		saldoBuku = repoSaldoBuku.findById("9d73e01a-2f91-4d60-8e61-8eae6ee79d67");
+		saldoBuku = repoSaldoBuku.findByDataBuku(trxDetailBuku.getDataBuku());
 
 		if(saldoBuku == null){
 			throw new BusinessException("tidak.terdapat.saldo.pada.buku", trxDetailBuku.getDataBuku().getNamaBuku());
 
 		}
-
-
 	}
 
 	public void validasiSaldoBukuMencukupi(TrxDetailBukuEntity trxDetailBuku){
 		SaldoBukuEntity saldoBuku = null;
-//		saldoBuku = repoSaldoBuku.findByIdBuku(trxDetailBuku.getDataBuku().getId());
-		saldoBuku = repoSaldoBuku.findById("9d73e01a-2f91-4d60-8e61-8eae6ee79d67");
+		saldoBuku = repoSaldoBuku.findByDataBuku(trxDetailBuku.getDataBuku());
 
 		if(saldoBuku.getSaldoBuku() - trxDetailBuku.getQty() <= 0){
 			throw new BusinessException(
@@ -397,8 +406,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 	public void updateSaldoBuku(TrxDetailBukuEntity trxDetailBuku, String jenisUpdate){
 		SaldoBukuEntity saldoBuku = null;
-//		saldoBuku = repoSaldoBuku.findByIdBuku(trxDetailBuku.getDataBuku().getId());
-		saldoBuku = repoSaldoBuku.findById("9d73e01a-2f91-4d60-8e61-8eae6ee79d67");
+		saldoBuku = repoSaldoBuku.findByDataBuku(trxDetailBuku.getDataBuku());
 
 		Integer sisaSaldoBukuTersedia = saldoBuku.getSaldoBuku();
 		if(jenisUpdate == "tambah"){
@@ -425,16 +433,25 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	private Boolean checkLimaPembeliPertamaByNomorBonDanDate(TrxHeaderEntity headerEntity) {
 		List <TrxHeaderEntity> listPembeli = repoTrxHeader.get5DataPertamaByTanggalTrx(headerEntity.getTanggalBon());
 
+		Integer countGaDapatPromo = 0;
 		Boolean flagDapatpromo = true;
 
-		if(listPembeli.size() > 5 ){
-			flagDapatpromo = false;
+		String currentInputMemberId = headerEntity.getDataMembership().getId();
+
+		if(listPembeli.size() >= 5 ){
+			countGaDapatPromo++;
 		}else{
 			for(TrxHeaderEntity eachData : listPembeli){
-				if(eachData.getDataMembership().getId().equals(headerEntity.getDataMembership().getId())){
-					flagDapatpromo = false;
+				if(!currentInputMemberId.equals(eachData.getDataMembership().getId())){
+					if(eachData.getDataMembership().getId().equals(currentInputMemberId)){
+						countGaDapatPromo++;
+					}
 				}
 			}
+		}
+
+		if(countGaDapatPromo > 0){
+			flagDapatpromo = false;
 		}
 
 		return flagDapatpromo;
@@ -443,14 +460,14 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	public void kurangiSaldoBukuTulis(TrxHeaderEntity trxHeaderEntity){
 		// get data buku tulis
 		MasterBukuEntity masterBukuEntity = new MasterBukuEntity();
-		masterBukuEntity = repoMasterBuku.findByNamaBuku("Buku tulis");
+		masterBukuEntity = repoMasterBuku.findByBK("BukuTulis");
 
 		// inisialisasi trx detail
 		TrxDetailBukuEntity trxDetailEntity = new TrxDetailBukuEntity();
-		trxDetailEntity.getDataHeader().setId(trxHeaderEntity.getId());
-		trxDetailEntity.getDataBuku().setId(masterBukuEntity.getId());
-
-		updateSaldoBuku(trxDetailEntity, "tambah");
+		trxDetailEntity.setDataHeader(trxHeaderEntity);
+		trxDetailEntity.setDataBuku(masterBukuEntity);
+		trxDetailEntity.setQty(1);
+		updateSaldoBuku(trxDetailEntity, "kurang");
 
 	}
 
