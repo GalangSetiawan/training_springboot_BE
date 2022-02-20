@@ -530,7 +530,6 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		SaldoKasTitipanEntity saldoKasTitipanEntity = saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
 		Double nilaiKembalian = entityHeader.getNilaiKembalian();
 
-		if(entityHeader.getFlagKembalian() == false){
 			saldoKasTitipanEntity.setNilaiTitipan(nilaiKembalian);
 
 			entityHeader.setNilaiKembalian(0.0);
@@ -539,7 +538,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 			Integer point = rangePoint.getPoint();
 
 			saldoKasTitipanEntity.setNilaiPoint(point);
-		}
+
 
 		saldoKasTitipanRepository.save(saldoKasTitipanEntity);
 	}

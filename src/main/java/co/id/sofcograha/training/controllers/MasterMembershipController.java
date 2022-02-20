@@ -64,9 +64,9 @@ public class MasterMembershipController {
 		return ApiResponse.ok();
 	}
 
-//	@GetMapping(value = "/get-by-nama")
-//	public ApiResponse getByNama(@RequestParam String nama) throws JsonProcessingException {
-//		MasterGenreEntity data = masterGenreService.findByNama(nama);
-//		return ApiResponse.data("item", data);
-//	}
+	@GetMapping(value = "/get-by-point")
+	public ApiResponse getByPoint(@RequestParam String namaMember) throws JsonProcessingException {
+		MasterMembershipEntity data = masterMembershipService.findByPoint(namaMember);
+		return ApiResponse.data("item", data);
+	}
 }
