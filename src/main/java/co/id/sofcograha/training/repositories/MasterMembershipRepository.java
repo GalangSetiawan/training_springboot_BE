@@ -1,15 +1,19 @@
 package co.id.sofcograha.training.repositories;
 
+import co.id.sofcograha.base.constants.BaseConstants;
 import co.id.sofcograha.base.utils.QueryUtil;
 import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
 import co.id.sofcograha.training.entities.MasterMembershipEntity;
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.stereotype.Repository;
 
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
+import javax.persistence.Query;
+import java.util.List;
 
 @Repository
 public class MasterMembershipRepository extends SimpleJpaRepository<MasterMembershipEntity, String> {
@@ -39,16 +43,23 @@ public class MasterMembershipRepository extends SimpleJpaRepository<MasterMember
 
 	public MasterMembershipEntity findByPoint(String namaMembership) {
 
-		String query = "SELECT e.kode_member, e.nama_member, B.nilai_titipan, B.nilai_point" +
+		Query query;
+
+		StringBuilder queryStringBuilder = new StringBuilder();
+
+		queryStringBuilder.append("SELECT e.kode_member, e.nama_member, B.nilai_titipan, B.nilai_point" +
 				"FROM MasterMembershipEntity e " +
 				"JOIN tbl_saldo_kas_titipan B ON B.id = e.id_kas_titipan" +
-				"WHERE e.namaMembership = :namaMembership";
+				"WHERE e.namaMembership = :namaMembership");
 
-		try {
-			return em.createQuery(query, MasterMembershipEntity.class)
-					.setParameter("namaMembership", namaMembership)
-					.getSingleResult();
-		} catch (NoResultException e) {
+		query = em.createNativeQuery(queryStringBuilder.toString(), MasterMembershipEntity.class);
+
+		query.setParameter("namaMembership", namaMembership);
+		List<Object> list = query.getResultList();
+
+		if (!list.isEmpty()) {
+			return (MasterMembershipEntity) list.get(0);
+		} else {
 			return null;
 		}
 

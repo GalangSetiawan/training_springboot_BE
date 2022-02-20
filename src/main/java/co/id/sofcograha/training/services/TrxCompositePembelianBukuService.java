@@ -49,7 +49,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	@Transactional
-    public TrxHeaderEntity add(TrxHeaderPojo pojo) {
+    public TrxHeaderEntity add(TrxHeaderPojo pojo, SaldoKasTitipanEntity saldoKasTitipanEntity) {
 
 		TrxHeaderEntity entity = pojo.toEntity();
 
@@ -81,7 +81,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		hitungPembelianBuku(pojo ,addedHeaderEntity );
 
 		// Evi
-		hitungPembayaranBuku(addedHeaderEntity, pojo);
+		hitungPembayaranBuku(addedHeaderEntity, pojo, saldoKasTitipanEntity);
 
 		throwBatchError();
 		return addedHeaderEntity;
@@ -150,21 +150,18 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	@Transactional
-	public void hitungPembayaranBuku (TrxHeaderEntity trxHeaderEntity, TrxHeaderPojo trxHeaderPojo){
+	public void hitungPembayaranBuku (TrxHeaderEntity trxHeaderEntity, TrxHeaderPojo trxHeaderPojo, SaldoKasTitipanEntity saldoKasTitipanEntity){
 		if(trxHeaderEntity.getDataMembership() != null){
 
-			//cek pembayaran pakai point atau tidak
-			if(trxHeaderEntity.getFlagPoint() == false){
 				//tambah point untuk setiap pembelian buku
-				addPointPembayaran(trxHeaderEntity);
-			}
+				addPointPembayaran(trxHeaderEntity, saldoKasTitipanEntity);
 
 			for(TrxDetailPembayaranPojo detailPembayaranPojo : trxHeaderPojo.trxDetailPembayaranPojo) {
 				TrxDetailPembayaran entityDetailBayar = detailPembayaranPojo.toEntity();
 
 					if(entityDetailBayar.getJenisPembayaran() == "Tunai"){
 						//update kas titipan
-						updateKasTitipan(trxHeaderEntity);
+						updateKasTitipan(trxHeaderEntity, saldoKasTitipanEntity);
 					}
 
 					if(entityDetailBayar.getJenisPembayaran() == "Point"){
@@ -185,7 +182,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 					if(entityDetailBayar.getJenisPembayaran() == "Transfer"){
 						//update point
-						updatePoint(trxHeaderEntity);
+						updatePoint(trxHeaderEntity, saldoKasTitipanEntity);
 					}
 
 				trxDetailPembayaranRepository.save(entityDetailBayar);
@@ -457,22 +454,19 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 	}
 
-	private void addPembayaran(){
 
-	}
-
-	private void addPointPembayaran(TrxHeaderEntity entityHeader){
+	private void addPointPembayaran(TrxHeaderEntity entityHeader, SaldoKasTitipanEntity saldoKasTitipan){
 		RangePointEntity rangePoint =rangePointRepository.findByTotal(entityHeader.getTotalPembelianBuku());
 		Integer point = rangePoint.getPoint();
 
-		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(entityHeader.getDataMembership().getSaldoKasTitipan().getId());
+		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(saldoKasTitipan.getId());
 		saldoKasTitipanEntity.setNilaiPoint(point);
 
 		saldoKasTitipanRepository.save(saldoKasTitipanEntity);
 	}
 
-	private void updateKasTitipan(TrxHeaderEntity entityHeader){
-		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(entityHeader.getDataMembership().getSaldoKasTitipan().getId());
+	private void updateKasTitipan(TrxHeaderEntity entityHeader, SaldoKasTitipanEntity saldoKasTitipan){
+		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(saldoKasTitipan.getId());
 
 		Double nilaiKembalian = entityHeader.getNilaiKembalian();
 
@@ -536,8 +530,8 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		saldoKasTitipanRepository.save(saldoKasTitipan);
 	}
 
-	private void updatePoint(TrxHeaderEntity entityHeader){
-		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(entityHeader.getDataMembership().getSaldoKasTitipan().getId());
+	private void updatePoint(TrxHeaderEntity entityHeader, SaldoKasTitipanEntity saldoKasTitipan){
+		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(saldoKasTitipan.getId());
 
 		RangePointEntity rangePoint =rangePointRepository.findByTotal(entityHeader.getTotalPembelianBuku());
 		Integer point = rangePoint.getPoint();
