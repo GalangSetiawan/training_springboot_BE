@@ -22,6 +22,7 @@ public class TrxHeaderService extends BaseService {
 	@Autowired private TrxHeaderRepository repo;
 	@Autowired private MasterMembershipRepository masterMembershipRepository;
 	@Autowired private TrxCompositePembelianBukuService trxCompositePembelianBukuService;
+	@Autowired private MasterMembershipRepository repoMember;
 
 	public TrxHeaderEntity findByBk(String nomorTrxHeader) {
 		return repo.findByBK(nomorTrxHeader);
@@ -135,21 +136,10 @@ public class TrxHeaderService extends BaseService {
 	}
     
     protected void manageReferences(TrxHeaderEntity entity) {
-		/*
-		if (entity.getFunctionAccess() != null) {
-			OptionalConsumerUtil.of(functionAccessService.find(entity.getFunctionAccess().getId()))
-			.ifPresent(functionAccess -> {
-				if (functionAccess.getActive()) {
-					entity.setFunctionAccess(functionAccess);
-				} else {
-					batchError("widget.functionAccess.not.active");
-				}
-			})
-			.ifNotPresent(() -> {
-				batchError("widget.functionAccess.not.found");
-			});
+		if(entity.getDataMembership() != null){
+			MasterMembershipEntity dataMember = repoMember.getOne(entity.getDataMembership().getId());
+			entity.setDataMembership(dataMember);
 		}
-		*/
 	}
 
     protected void valUniquenessOnAdd(TrxHeaderEntity addedEntity) {

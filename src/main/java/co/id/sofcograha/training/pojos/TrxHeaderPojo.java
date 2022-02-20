@@ -100,7 +100,7 @@ public class TrxHeaderPojo {
 			pojo.version = entity.getVersion();
 			pojo.dataMembership = MasterMembershipPojo.fromEntity(entity.getDataMembership());
 
-			pojo.listBuku = TrxDetailPembelianBukuPojo.fromEntities(entity.getTrxDetailPembelianBuku(),1);
+//			pojo.listBuku = TrxDetailPembelianBukuPojo.fromEntities(entity.getTrxDetailPembelianBuku(),1);
 
 
 		}

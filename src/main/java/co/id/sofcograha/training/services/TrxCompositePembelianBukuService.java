@@ -68,18 +68,13 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		}
 
 
-		if(entity.getDataMembership() != null){
-			MasterMembershipEntity dataMember = repoMember.getOne(entity.getDataMembership().getId());
-			entity.setDataMembership(dataMember);
-		}
-
 		TrxHeaderEntity addedHeaderEntity = repoTrxHeader.add(entity);
 
 		// Galang
 		hitungPembelianBuku(pojo ,addedHeaderEntity );
 
-		// Evi
-		hitungPembayaranBuku(addedHeaderEntity, pojo);
+//		// Evi
+//		hitungPembayaranBuku(addedHeaderEntity, pojo);
 
 		throwBatchError();
 		return addedHeaderEntity;

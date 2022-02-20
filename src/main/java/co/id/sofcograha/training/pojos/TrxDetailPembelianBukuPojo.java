@@ -88,8 +88,8 @@ public class TrxDetailPembelianBukuPojo {
 			pojo.hargaSetelahDiscHeader = entity.getHargaSetelahDiscHeader();
 			pojo.nilaiDiscProposional = entity.getNilaiDiscProposional();
 			pojo.version = entity.getVersion();
-			pojo.dataBuku = MasterBukuPojo.fromEntity(entity.getDataBuku());
-			pojo.dataTrxHeader = TrxHeaderPojo.fromEntity(entity.getDataHeader());
+			pojo.dataBuku = MasterBukuPojo.fromEntity(entity.getDataBuku(),1);
+			pojo.dataTrxHeader = TrxHeaderPojo.fromEntity(entity.getDataHeader(),1);
 
 		}
 
