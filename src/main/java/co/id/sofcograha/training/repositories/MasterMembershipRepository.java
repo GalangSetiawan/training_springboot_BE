@@ -49,7 +49,7 @@ public class MasterMembershipRepository extends SimpleJpaRepository<MasterMember
 
 		queryStringBuilder.append("SELECT e.kode_member, e.nama_member, B.nilai_titipan, B.nilai_point" +
 				"FROM MasterMembershipEntity e " +
-				"JOIN tbl_saldo_kas_titipan B ON B.id = e.id_kas_titipan" +
+				"JOIN tbl_saldo_kas_titipan B ON B.id_member = e.id" +
 				"WHERE e.namaMembership = :namaMembership");
 
 		query = em.createNativeQuery(queryStringBuilder.toString(), MasterMembershipEntity.class);

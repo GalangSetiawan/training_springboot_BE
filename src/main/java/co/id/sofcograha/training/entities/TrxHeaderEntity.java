@@ -49,6 +49,15 @@ public class TrxHeaderEntity implements Cloneable{
 	@Column(name="flag_kembalian")
 	private Boolean flagKembalian;
 
+	@Column(name="ppn")
+	private Integer PPN;
+
+	@Column(name="keterangan")
+	private String keterangan;
+
+	@Column(name="dpp")
+	private Double DPP;
+
 	@Version
 	@Column(name="version")
 	private Long version;
@@ -161,6 +170,30 @@ public class TrxHeaderEntity implements Cloneable{
 
 	public void setFlagKembalian(Boolean flagKembalian) {
 		this.flagKembalian = flagKembalian;
+	}
+
+	public Integer getPPN() {
+		return PPN;
+	}
+
+	public void setPPN(Integer PPN) {
+		this.PPN = PPN;
+	}
+
+	public String getKeterangan() {
+		return keterangan;
+	}
+
+	public void setKeterangan(String keterangan) {
+		this.keterangan = keterangan;
+	}
+
+	public Double getDPP() {
+		return DPP;
+	}
+
+	public void setDPP(Double DPP) {
+		this.DPP = DPP;
 	}
 
 	public Long getVersion() {

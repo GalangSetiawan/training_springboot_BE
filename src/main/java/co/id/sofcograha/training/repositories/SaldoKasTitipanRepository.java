@@ -42,7 +42,7 @@ public class SaldoKasTitipanRepository extends SimpleJpaRepository<SaldoKasTitip
 		return super.findOne(id);
 	}
 
-	public SaldoKasTitipanEntity findByIdMember(MasterMembershipEntity idMember) {
+	public SaldoKasTitipanEntity findByIdMember(String idMember) {
 
 		SaldoKasTitipanEntity entity;
 

@@ -27,6 +27,9 @@ public class TrxHeaderPojo {
 	public Boolean flagDapatPromo5Pertama;
 	public Boolean flagPoint;
 	public Boolean flagKembalian;
+	public Integer PPN;
+	public String keterangan;
+	public Double DPP;
 	public Long version;
 	public MasterMembershipPojo dataMembership;
 	public List<TrxDetailBukuPojo> listBuku;
@@ -51,6 +54,9 @@ public class TrxHeaderPojo {
 		entity.setFlagPoint(flagPoint);
 		entity.setFlagKembalian(flagKembalian);
 		entity.setNilaiKembalian(nilaiKembalian);
+		entity.setPPN(PPN);
+		entity.setKeterangan(keterangan);
+		entity.setDPP(DPP);
   		entity.setVersion(version);
 
 		if(dataMembership != null && !dataMembership.id.equals("")){
@@ -95,6 +101,9 @@ public class TrxHeaderPojo {
 			pojo.flagDapatPromo5Pertama = entity.getFlagDapatPromo5Pertama();
 			pojo.flagPoint = entity.getFlagPoint();
 			pojo.flagKembalian = entity.getFlagKembalian();
+			pojo.PPN = entity.getPPN();
+			pojo.keterangan = entity.getKeterangan();
+			pojo.DPP = entity.getDPP();
 			pojo.version = entity.getVersion();
 			pojo.dataMembership = MasterMembershipPojo.fromEntity(entity.getDataMembership());
 
