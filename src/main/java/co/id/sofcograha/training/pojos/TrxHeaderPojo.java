@@ -25,9 +25,11 @@ public class TrxHeaderPojo {
 	public Double totalPembelianBuku;
 	public Double nilaiDiskonHeader;
 	public Boolean flagDapatPromo5Pertama;
+	public Boolean flagPoint;
+	public Boolean flagKembalian;
 	public Long version;
 	public MasterMembershipPojo dataMembership;
-	public List<TrxDetailBukuPojo> listBuku;
+	public List<TrxDetailPembelianBukuPojo> listBuku;
 	public MasterJenisTransaksiPojo dataJenisTransaksi;
 
 	public List<TrxDetailPembayaranPojo> trxDetailPembayaranPojo;
@@ -46,6 +48,8 @@ public class TrxHeaderPojo {
 		entity.setTotalPembelianBuku(totalPembelianBuku);
 		entity.setNilaiKembalian(nilaiDiskonHeader);
 		entity.setFlagDapatPromo5Pertama(flagDapatPromo5Pertama);
+		entity.setFlagPoint(flagPoint);
+		entity.setFlagKembalian(flagKembalian);
 		entity.setNilaiKembalian(nilaiKembalian);
   		entity.setVersion(version);
 
@@ -56,10 +60,6 @@ public class TrxHeaderPojo {
 		}else{
 			entity.setDataMembership(null);
 		}
-
-		//generate No. Trx Header
-		String nomorBonGenerated = "NO-BONs-" + TimeUtil.getSystemDateTime() ;
-		entity.setNomorBon(nomorBonGenerated);
 
   		return entity;
   	}
@@ -89,10 +89,12 @@ public class TrxHeaderPojo {
 			pojo.totalPembelianBuku = entity.getTotalPembelianBuku();
 			pojo.nilaiDiskonHeader = entity.getNilaiDiskonHeader();
 			pojo.flagDapatPromo5Pertama = entity.getFlagDapatPromo5Pertama();
+			pojo.flagPoint = entity.getFlagPoint();
+			pojo.flagKembalian = entity.getFlagKembalian();
 			pojo.version = entity.getVersion();
 			pojo.dataMembership = MasterMembershipPojo.fromEntity(entity.getDataMembership());
 
-//			pojo.dataJenisTransaksi = MasterJenisTransaksiPojo.fromEntity(entity.getDataJenisTransaksi());
+			pojo.listBuku = TrxDetailPembelianBukuPojo.fromEntities(entity.getTrxDetailPembelianBuku(),1);
 
 
 		}

@@ -44,21 +44,6 @@ public class MasterBukuPojo {
 		}else{
 			entity.setGenreBuku(null);
 		}
-    		
-//        entity.setUsrcrt(usrcrt);
-//
-//		if (tglcrt != null) {
-//			entity.setTglcrt(TimeUtil.convertDateToYyyyMmDd(tglcrt));
-//		}
-//
-//        entity.setJamcrt(jamcrt);
-//        entity.setUsrupd(usrupd);
-//
-//		if (tglupd != null) {
-//			entity.setTglupd(TimeUtil.convertDateToYyyyMmDd(tglupd));
-//		}
-//
-//        entity.setJamupd(jamupd);
           
   		return entity;
   	}

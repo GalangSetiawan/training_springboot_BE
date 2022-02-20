@@ -71,6 +71,12 @@ public class TrxPembelianBukuController {
 		return ApiResponse.ok();
 	}
 
+	@GetMapping(value = "/check-lima-pembeli-pertama")
+	public ApiResponse getByNama(@RequestParam String idMembership) throws JsonProcessingException {
+		Boolean data = trxHeaderService.check5pembeliPertama(idMembership);
+		return ApiResponse.data("item", data);
+	}
+
 //	@GetMapping(value = "/get-by-nama")
 //	public ApiResponse getByNama(@RequestParam String nama) throws JsonProcessingException {
 //		TrxHeaderEntity data = trxHeaderService.findByNama(nama);

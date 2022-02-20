@@ -9,7 +9,7 @@ import java.util.UUID;
 @Entity
 @Access(AccessType.FIELD)
 @Table(name = "tbl_trx_detail_pembelian_buku", uniqueConstraints = @UniqueConstraint(columnNames = { "id" }))
-public class TrxDetailBukuEntity implements Cloneable{
+public class TrxDetailPembelianBukuEntity implements Cloneable{
 
 	@Id
 	@Column(name="id")
@@ -33,6 +33,9 @@ public class TrxDetailBukuEntity implements Cloneable{
 
 	@Column(name="nilai_disc_genre")
 	private Double nilaiDiscGenre;
+
+	@Column(name="nilai_disc_buku")
+	private Double nilaiDiscBuku;
 
 	@Column(name="harga_setelah_disc_buku")
 	private Double hargaSetelahDiscBuku;
@@ -111,6 +114,14 @@ public class TrxDetailBukuEntity implements Cloneable{
 
 	public void setNilaiDiscGenre(Double nilaiDiscGenre) {
 		this.nilaiDiscGenre = nilaiDiscGenre;
+	}
+
+	public Double getNilaiDiscBuku() {
+		return nilaiDiscBuku;
+	}
+
+	public void setNilaiDiscBuku(Double nilaiDiscBuku) {
+		this.nilaiDiscBuku = nilaiDiscBuku;
 	}
 
 	public Double getHargaSetelahDiscBuku() {

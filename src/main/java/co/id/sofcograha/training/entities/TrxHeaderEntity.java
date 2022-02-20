@@ -43,6 +43,12 @@ public class TrxHeaderEntity implements Cloneable{
 	@Column(name="flag_dapat_promo_5_pertama")
 	private Boolean flagDapatPromo5Pertama;
 
+	@Column(name="flag_point")
+	private Boolean flagPoint;
+
+	@Column(name="flag_kembalian")
+	private Boolean flagKembalian;
+
 	@Version
 	@Column(name="version")
 	private Long version;
@@ -56,7 +62,7 @@ public class TrxHeaderEntity implements Cloneable{
 	private MasterJenisTransaksiEntity dataJenisTransaksi;
 
 	@OneToMany(mappedBy="dataHeader")
-	private List<TrxDetailBukuEntity> trxDetailBuku;
+	private List<TrxDetailPembelianBukuEntity> trxDetailPembelianBuku;
 
 	@OneToMany(mappedBy="transaksiHeader")
 	private List<TrxDetailPembayaran> trxDetailPembayaran;
@@ -141,6 +147,22 @@ public class TrxHeaderEntity implements Cloneable{
 		this.flagDapatPromo5Pertama = flagDapatPromo5Pertama;
 	}
 
+	public Boolean getFlagPoint() {
+		return flagPoint;
+	}
+
+	public void setFlagPoint(Boolean flagPoint) {
+		this.flagPoint = flagPoint;
+	}
+
+	public Boolean getFlagKembalian() {
+		return flagKembalian;
+	}
+
+	public void setFlagKembalian(Boolean flagKembalian) {
+		this.flagKembalian = flagKembalian;
+	}
+
 	public Long getVersion() {
 		return version;
 	}
@@ -165,12 +187,12 @@ public class TrxHeaderEntity implements Cloneable{
 		this.dataJenisTransaksi = dataJenisTransaksi;
 	}
 
-	public List<TrxDetailBukuEntity> getTrxDetailBuku() {
-		return trxDetailBuku;
+	public List<TrxDetailPembelianBukuEntity> getTrxDetailPembelianBuku() {
+		return trxDetailPembelianBuku;
 	}
 
-	public void setTrxDetailBuku(List<TrxDetailBukuEntity> trxDetailBuku) {
-		this.trxDetailBuku = trxDetailBuku;
+	public void setTrxDetailPembelianBuku(List<TrxDetailPembelianBukuEntity> trxDetailPembelianBuku) {
+		this.trxDetailPembelianBuku = trxDetailPembelianBuku;
 	}
 
 	public List<TrxDetailPembayaran> getTrxDetailPembayaran() {

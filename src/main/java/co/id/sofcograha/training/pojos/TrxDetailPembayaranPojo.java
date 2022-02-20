@@ -69,7 +69,6 @@ public class TrxDetailPembayaranPojo {
 			pojo.version = entity.getVersion();
 			pojo.transaksiHeader = TrxHeaderPojo.fromEntity(entity.getTransaksiHeader());
 
-
 		}
 
 		return pojo;
@@ -95,8 +94,6 @@ public class TrxDetailPembayaranPojo {
 		List<SearchFieldMapping> mappings = new ArrayList<>();
 	
 		mappings.add(new SearchFieldMapping("id", "id"));
-//		mappings.add(new SearchFieldMapping("namaBuku", "namaBuku"));
-
 	
 		return mappings;
 	} 
