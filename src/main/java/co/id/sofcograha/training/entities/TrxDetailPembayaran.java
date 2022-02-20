@@ -28,12 +28,6 @@ public class TrxDetailPembayaran implements Cloneable{
 	@Column(name="jumlah_point")
 	private Integer jumlahPoint;
 
-	@Column(name="flag_point")
-	private Boolean flagPoint;
-
-	@Column(name="flag_kas_titipan")
-	private Boolean flagKasTitipan;
-
 	@ManyToOne
 	@JoinColumn(name = "id_header", referencedColumnName = "id")
 	private TrxHeaderEntity transaksiHeader;
@@ -76,22 +70,6 @@ public class TrxDetailPembayaran implements Cloneable{
 
 	public void setJumlahPoint(Integer jumlahPoint) {
 		this.jumlahPoint = jumlahPoint;
-	}
-
-	public Boolean getFlagPoint() {
-		return flagPoint;
-	}
-
-	public void setFlagPoint(Boolean flagPoint) {
-		this.flagPoint = flagPoint;
-	}
-
-	public Boolean getFlagKasTitipan() {
-		return flagKasTitipan;
-	}
-
-	public void setFlagKasTitipan(Boolean flagKasTitipan) {
-		this.flagKasTitipan = flagKasTitipan;
 	}
 
 	public TrxHeaderEntity getTransaksiHeader() {
