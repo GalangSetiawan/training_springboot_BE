@@ -7,6 +7,7 @@ import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.entities.EInvoiceHeader;
 import co.id.sofcograha.training.entities.MasterMembershipEntity;
+import co.id.sofcograha.training.entities.MembershipGetSaldoKasEntity;
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -41,24 +42,24 @@ public class MasterMembershipRepository extends SimpleJpaRepository<MasterMember
 
 	}
 
-	public MasterMembershipEntity findByPoint(String namaMembership) {
+	public MembershipGetSaldoKasEntity findByPoint(String namaMembership) {
 
 		Query query;
 
 		StringBuilder queryStringBuilder = new StringBuilder();
 
-		queryStringBuilder.append("SELECT e.kode_member, e.nama_member, B.nilai_titipan, B.nilai_point" +
-				"FROM tbl_membership e " +
-				"JOIN tbl_saldo_kas_titipan B ON B.id_member = e.id" +
-				"WHERE e.namaMembership = :namaMembership");
+		queryStringBuilder.append("SELECT B.id, A.kode_member, A.nama_member, B.nilai_titipan, B.nilai_point, A.version " +
+				"FROM tbl_membership A " +
+				"JOIN tbl_saldo_kas_titipan B ON B.id_member = A.id " +
+				"WHERE A.nama_member = :namaMembership");
 
-		query = em.createNativeQuery(queryStringBuilder.toString(), MasterMembershipEntity.class);
+		query = em.createNativeQuery(queryStringBuilder.toString(), MembershipGetSaldoKasEntity.class);
 
 		query.setParameter("namaMembership", namaMembership);
-		List<Object> list = query.getResultList();
+		List<MembershipGetSaldoKasEntity> list = query.getResultList();
 
 		if (!list.isEmpty()) {
-			return (MasterMembershipEntity) list.get(0);
+			return list.get(0);
 		} else {
 			return null;
 		}

@@ -8,6 +8,7 @@ import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.domain.invoicing.masters.customer.pojos.CustomerGajiId;
 import co.id.sofcograha.training.entities.*;
 import co.id.sofcograha.training.pojos.MasterMembershipPojo;
+import co.id.sofcograha.training.pojos.MembershipGetSaldoKasPojo;
 import co.id.sofcograha.training.repositories.MasterMembershipRepository;
 import co.id.sofcograha.training.repositories.SaldoKasTitipanRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +25,7 @@ public class MasterMembershipService extends BaseService {
 		return repo.findByBK(namaMembership);
 	}
 
-	public MasterMembershipEntity findByPoint(String namaMembership) {
+	public MembershipGetSaldoKasEntity findByPoint(String namaMembership) {
 		return repo.findByPoint(namaMembership);
 	}
 	
@@ -36,8 +37,8 @@ public class MasterMembershipService extends BaseService {
 		return repo.search(searchParameter);
 	}
 
-	public MasterMembershipPojo getByPoint(String namaMember) {
-		return MasterMembershipPojo.fromEntity(repo.findByPoint(namaMember));
+	public MembershipGetSaldoKasPojo getByPoint(String namaMember) {
+		return MembershipGetSaldoKasPojo.fromEntity(repo.findByPoint(namaMember));
 	}
 
 	public MasterMembershipPojo findByNamaMember(String namaMembership) {
