@@ -175,6 +175,10 @@ public class TrxHeaderService extends BaseService {
 			toBeSaved.setTotalPembelianBuku(newValues.getTotalPembelianBuku());
 			toBeSaved.setNilaiDiskonHeader(newValues.getNilaiDiskonHeader());
 			toBeSaved.setFlagDapatPromo5Pertama(newValues.getFlagDapatPromo5Pertama());
+			toBeSaved.setFlagKembalian(newValues.getFlagKembalian());
+			toBeSaved.setPPN(newValues.getPPN());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+			toBeSaved.setDPP(newValues.getDPP());
 			toBeSaved.setDataMembership(newValues.getDataMembership());
 			toBeSaved.setDataJenisTransaksi(newValues.getDataJenisTransaksi());
 
