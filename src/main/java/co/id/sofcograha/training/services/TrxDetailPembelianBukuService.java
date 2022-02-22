@@ -40,7 +40,7 @@ public class TrxDetailPembelianBukuService extends BaseService {
 
 
 	@Transactional
-    public TrxDetailPembelianBukuEntity add(TrxDetailPembelianBukuPojo pojo) {
+    public TrxDetailPembelianBukuEntity validasiOnAdd(TrxDetailPembelianBukuPojo pojo) {
 
 		TrxDetailPembelianBukuEntity entity = pojo.toEntity();
 

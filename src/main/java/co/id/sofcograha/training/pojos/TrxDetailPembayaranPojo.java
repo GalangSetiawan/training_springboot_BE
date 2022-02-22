@@ -1,6 +1,7 @@
 package co.id.sofcograha.training.pojos;
 
 import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
 import co.id.sofcograha.base.utils.TimeUtil;
 import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
 import co.id.sofcograha.training.entities.MasterMembershipEntity;
@@ -25,7 +26,13 @@ public class TrxDetailPembayaranPojo {
 
 	public TrxHeaderPojo transaksiHeader;
 
+	// untuk keperluan matching error message di front end (bila input di grid)
+	public String keyIn;
+
 	public boolean isSelect;
+
+	// Untuk menampung message error di grid
+	public ArrayList<Message> errorMsg;
 
     public TrxDetailPembayaran toEntity() {
 

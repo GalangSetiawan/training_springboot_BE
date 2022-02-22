@@ -1,6 +1,7 @@
 package co.id.sofcograha.training.pojos;
 
 import co.id.sofcograha.base.constants.BaseConstants;
+import co.id.sofcograha.base.utils.Message;
 import co.id.sofcograha.base.utils.searchData.SearchFieldMapping;
 import co.id.sofcograha.training.entities.MasterBukuEntity;
 import co.id.sofcograha.training.entities.TrxDetailPembelianBukuEntity;
@@ -28,7 +29,8 @@ public class TrxDetailPembelianBukuPojo {
 	public Double nilaiDiscProposional;
 	public MasterBukuPojo dataBuku;
 	public TrxHeaderPojo dataTrxHeader;
-    
+    public ArrayList<Message> errorMsg;
+
     public TrxDetailPembelianBukuEntity toEntity() {
 
 		TrxDetailPembelianBukuEntity entity = new TrxDetailPembelianBukuEntity();
@@ -88,8 +90,8 @@ public class TrxDetailPembelianBukuPojo {
 			pojo.hargaSetelahDiscHeader = entity.getHargaSetelahDiscHeader();
 			pojo.nilaiDiscProposional = entity.getNilaiDiscProposional();
 			pojo.version = entity.getVersion();
-			pojo.dataBuku = MasterBukuPojo.fromEntity(entity.getDataBuku());
-			pojo.dataTrxHeader = TrxHeaderPojo.fromEntity(entity.getDataHeader());
+			pojo.dataBuku = MasterBukuPojo.fromEntity(entity.getDataBuku(),1);
+			pojo.dataTrxHeader = TrxHeaderPojo.fromEntity(entity.getDataHeader(),1);
 
 		}
 
