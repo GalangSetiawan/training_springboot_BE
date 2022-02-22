@@ -4,6 +4,7 @@ import co.id.sofcograha.base.utils.ApiResponse;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.training.entities.MasterMembershipEntity;
+import co.id.sofcograha.training.entities.MembershipGetSaldoKasEntity;
 import co.id.sofcograha.training.pojos.MasterMembershipPojo;
 import co.id.sofcograha.training.services.MasterMembershipService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -66,7 +67,7 @@ public class MasterMembershipController {
 
 	@GetMapping(value = "/get-by-point")
 	public ApiResponse getByPoint(@RequestParam String namaMember) throws JsonProcessingException {
-		MasterMembershipEntity data = masterMembershipService.findByPoint(namaMember);
+		MembershipGetSaldoKasEntity data = masterMembershipService.findByPoint(namaMember);
 		return ApiResponse.data("item", data);
 	}
 }

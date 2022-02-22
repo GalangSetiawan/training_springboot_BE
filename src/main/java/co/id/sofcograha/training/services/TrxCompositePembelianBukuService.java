@@ -76,7 +76,6 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 		}
 
-
 		TrxHeaderEntity addedHeaderEntity = repoTrxHeader.add(entity);
 
 		isErrorDetail = false;
@@ -85,9 +84,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		hitungPembelianBuku(pojo ,addedHeaderEntity );
 
 		// Evi
-		//hitungPembayaranBuku(addedHeaderEntity, pojo);
-		// di comment dulu sementara biar work service nya
-
+//		hitungPembayaranBuku(addedHeaderEntity, pojo);
 
 		if (isErrorDetail) {
 			batchErrorWithData("trx.pembelian.buku.error.in.detail", pojo);
@@ -415,10 +412,14 @@ public class TrxCompositePembelianBukuService extends BaseService {
 			toBeSaved.setNamaPembeli(newValues.getNamaPembeli());
 			toBeSaved.setDiscountHeader(newValues.getDiscountHeader());
 			toBeSaved.setNilaiKembalian(newValues.getNilaiKembalian());
-			toBeSaved.setTotalPembayaran(newValues.getTotalPembayaran()); // bukan nya ini bentuknya ga sesimpel ini? kan bayarnya gacuma bentuk duit, tp bisa duit & poin
+			toBeSaved.setTotalPembayaran(newValues.getTotalPembayaran());
 			toBeSaved.setTotalPembelianBuku(newValues.getTotalPembelianBuku());
 			toBeSaved.setNilaiDiskonHeader(newValues.getNilaiDiskonHeader());
 			toBeSaved.setFlagDapatPromo5Pertama(newValues.getFlagDapatPromo5Pertama());
+			toBeSaved.setFlagKembalian(newValues.getFlagKembalian());
+			toBeSaved.setPPN(newValues.getPPN());
+			toBeSaved.setKeterangan(newValues.getKeterangan());
+			toBeSaved.setDPP(newValues.getDPP());
 			toBeSaved.setDataMembership(newValues.getDataMembership());
 			toBeSaved.setDataJenisTransaksi(newValues.getDataJenisTransaksi());
 
@@ -601,7 +602,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		RangePointEntity rangePoint =rangePointRepository.findByTotal(entityHeader.getTotalPembelianBuku());
 		Integer point = rangePoint.getPoint();
 
-		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
 
 		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(masterMembershipEntity.getId());
 		saldoKasTitipanEntity.setNilaiPoint(point);
@@ -610,7 +611,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	private void updateKasTitipan(TrxHeaderEntity entityHeader){
-		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
 
 		SaldoKasTitipanEntity saldoKasTitipanEntity = saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
 		Double nilaiKembalian = entityHeader.getNilaiKembalian();
@@ -629,7 +630,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	public void validasiSaldoPointMencukupi(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
-		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
 
 		SaldoKasTitipanEntity saldoPoint = saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
 
@@ -644,7 +645,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	public void kurangiPoint(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
-		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
 
 		SaldoKasTitipanEntity saldoPoint =saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
 		Integer point = saldoPoint.getNilaiPoint();
@@ -657,7 +658,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	public void validasiSaldoKasTitipanMencukupi(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
-		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
 
 		SaldoKasTitipanEntity saldoKasTitipan =saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
 
@@ -671,7 +672,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	public void kurangiKasTitipan(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
-		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
 
 		SaldoKasTitipanEntity saldoKasTitipan =saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
 		Double nilaiTitipan = saldoKasTitipan.getNilaiTitipan();
@@ -684,7 +685,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	private void updatePoint(TrxHeaderEntity entityHeader){
-		MasterMembershipEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
 
 		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(masterMembershipEntity.getId());
 
