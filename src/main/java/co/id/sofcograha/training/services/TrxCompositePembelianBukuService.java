@@ -8,6 +8,7 @@ import co.id.sofcograha.base.utils.VersionUtil;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.base.utils.threadlocals.LocalErrors;
+import co.id.sofcograha.domain.invoicing.transaksi.invoice.data.pojos.InvoiceDetailLainLain;
 import co.id.sofcograha.training.entities.*;
 import co.id.sofcograha.training.pojos.TrxDetailPembelianBukuPojo;
 import co.id.sofcograha.training.pojos.TrxDetailPembayaranPojo;
@@ -84,7 +85,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		hitungPembelianBuku(pojo ,addedHeaderEntity );
 
 		// Evi
-//		hitungPembayaranBuku(addedHeaderEntity, pojo);
+		addDetailPembayaranBuku(addedHeaderEntity, pojo);
 
 		if (isErrorDetail) {
 			batchErrorWithData("trx.pembelian.buku.error.in.detail", pojo);
@@ -219,42 +220,47 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 
 	@Transactional
-	public void hitungPembayaranBuku (TrxHeaderEntity trxHeaderEntity, TrxHeaderPojo trxHeaderPojo){
-		if(trxHeaderEntity.getDataMembership() != null){
+	public void addDetailPembayaranBuku (TrxHeaderEntity trxHeaderEntity, TrxHeaderPojo trxHeaderPojo){
+		boolean isTunai = false;
+		Double totalBayar= 0.0;
+			for(TrxDetailPembayaranPojo detailPembayaranPojo : trxHeaderPojo.listPembayaran) {
 
-				//tambah point untuk setiap pembelian buku
-				addPointPembayaran(trxHeaderEntity);
-
-			for(TrxDetailPembayaranPojo detailPembayaranPojo : trxHeaderPojo.trxDetailPembayaranPojo) {
 				TrxDetailPembayaran entityDetailBayar = detailPembayaranPojo.toEntity();
 
-					if(entityDetailBayar.getJenisPembayaran() == "Tunai"){
-						//update kas titipan
-						updateKasTitipan(trxHeaderEntity);
-					}
+				//bila detail pembayaran = point, maka pembeli harus membership
+				validasiMembership(trxHeaderEntity);
 
-					if(entityDetailBayar.getJenisPembayaran() == "Point"){
-						//validasi point ada atau tidak
-						validasiSaldoPointMencukupi(trxHeaderEntity, entityDetailBayar);
+				//bila detail pembayaran = point, cek saldo point
+				validasiSaldoPointMencukupi(trxHeaderEntity);
 
-						//update kas titipan
-						kurangiPoint(trxHeaderEntity, entityDetailBayar);
-					}
+				//bila detail pembayaran = kas titipan, cek saldo kas titipan
+				validasiSaldoKasTitipanMencukupi(trxHeaderEntity);
 
-					if(entityDetailBayar.getJenisPembayaran() == "Kas titipan"){
-						//validasi kas titipan ada atau tidak
-						validasiSaldoKasTitipanMencukupi(trxHeaderEntity, entityDetailBayar);
+				//bila detail pembayaran = kas titipan, cek saldo kas titipan
+				hitungKursPembayaran(entityDetailBayar);
 
-						//update kas titipan
-						kurangiKasTitipan(trxHeaderEntity, entityDetailBayar);
-					}
+				//update saldo kas titipan
+				kurangiKasTitipan(trxHeaderEntity, entityDetailBayar);
 
-					if(entityDetailBayar.getJenisPembayaran() == "Transfer"){
-						//update point
-						updatePoint(trxHeaderEntity);
-					}
+				//update point
+				kurangiPoint(trxHeaderEntity, entityDetailBayar);
 
 				trxDetailPembayaranRepository.save(entityDetailBayar);
+
+				//total jumlah pembayaran seluruhnya
+				hitungTotalPembayaran(trxHeaderEntity, entityDetailBayar);
+
+				//update jumlah total bayar di header
+				totalBayar = totalBayar + entityDetailBayar.getNilaiRupiah();
+
+				//update jumlah kembalian
+				hitungJumlahKembalian(trxHeaderEntity);
+
+				//bila pembeli member dan membayar menggunakan tunai dan ada kembalian
+				updateKasTitipan(trxHeaderEntity);
+
+				updateSaldoPoint(trxHeaderEntity);
+
 
 				if (isAnyBatchErrors()) {
 					isErrorDetail = true;
@@ -292,8 +298,6 @@ public class TrxCompositePembelianBukuService extends BaseService {
 					// satu satu sampai anak ter dalam
 				}
 			}
-
-		}
 	}
 
 	@Transactional
@@ -597,6 +601,73 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 	}
 
+	private void validasiMembership(TrxHeaderEntity entityHeader){
+		MasterMembershipEntity masterMembershipEntity = repoMember.findByBK(entityHeader.getDataMembership().getId());
+		if(masterMembershipEntity == null){
+			batchError("pembeli.tidak.terdaftar.di.membership", masterMembershipEntity.getNamaMembership());
+		}
+	}
+
+	private void validasiSaldoPointMencukupi(TrxHeaderEntity entityHeader){
+		MembershipGetSaldoKasEntity saldoPointMembership =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+		if(saldoPointMembership.getNilaiPoint() <= 0){
+			batchError("saldo.point.tidak.mencukupi,.sisa.saldo.kas.titipan.saat.ini", saldoPointMembership.getNilaiPoint());
+		}
+	}
+
+	private void validasiSaldoKasTitipanMencukupi(TrxHeaderEntity entityHeader){
+		MembershipGetSaldoKasEntity saldoKasTitipanMembership =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+		if(saldoKasTitipanMembership.getNilaiTitipan() <= 0){
+			batchError("saldo.kas.titipan.tidak.mencukupi,.sisa.saldo.kas.titipan.saat.ini", saldoKasTitipanMembership.getNilaiTitipan());
+		}
+	}
+
+	public void hitungKursPembayaran(TrxDetailPembayaran entityDetailBayar){
+		Integer jumlahPoint = entityDetailBayar.getJumlahPoint();
+		Double totalNilaiKurs = Double.valueOf(jumlahPoint * 200);
+
+	}
+
+	public void kurangiKasTitipan(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
+		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+
+		SaldoKasTitipanEntity saldoKasTitipan =saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
+		Double nilaiTitipan = saldoKasTitipan.getNilaiTitipan();
+
+		nilaiTitipan = nilaiTitipan - entityDetailBayar.getNilaiRupiah();
+
+		saldoKasTitipan.setNilaiTitipan(nilaiTitipan);
+
+		saldoKasTitipanRepository.save(saldoKasTitipan);
+	}
+
+	public void kurangiPoint(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
+		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
+
+		SaldoKasTitipanEntity saldoPoint =saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
+		Integer point = saldoPoint.getNilaiPoint();
+
+		point = point - entityDetailBayar.getJumlahPoint();
+
+		saldoPoint.setNilaiPoint(point);
+
+		saldoKasTitipanRepository.save(saldoPoint);
+	}
+
+	public void hitungTotalPembayaran(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
+		Double total = entityDetailBayar.getNilaiRupiah();
+
+
+	}
+
+	public void hitungJumlahKembalian(TrxHeaderEntity entityHeader){
+		Double totalPembelianBuku = entityHeader.getTotalPembelianBuku();
+		Double totalBayar = entityHeader.getTotalPembayaran();
+
+		Double nilaiKembalian = totalPembelianBuku - totalBayar;
+
+		entityHeader.setNilaiKembalian(nilaiKembalian);
+	}
 
 	private void addPointPembayaran(TrxHeaderEntity entityHeader){
 		RangePointEntity rangePoint =rangePointRepository.findByTotal(entityHeader.getTotalPembelianBuku());
@@ -616,75 +687,20 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		SaldoKasTitipanEntity saldoKasTitipanEntity = saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
 		Double nilaiKembalian = entityHeader.getNilaiKembalian();
 
-			saldoKasTitipanEntity.setNilaiTitipan(nilaiKembalian);
+		saldoKasTitipanEntity.setNilaiTitipan(nilaiKembalian);
 
-			entityHeader.setNilaiKembalian(0.0);
+		entityHeader.setNilaiKembalian(0.0);
 
-			RangePointEntity rangePoint =rangePointRepository.findByTotal(entityHeader.getTotalPembelianBuku());
-			Integer point = rangePoint.getPoint();
+		RangePointEntity rangePoint =rangePointRepository.findByTotal(entityHeader.getTotalPembelianBuku());
+		Integer point = rangePoint.getPoint();
 
-			saldoKasTitipanEntity.setNilaiPoint(point);
+		saldoKasTitipanEntity.setNilaiPoint(point);
 
 
 		saldoKasTitipanRepository.save(saldoKasTitipanEntity);
 	}
 
-	public void validasiSaldoPointMencukupi(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
-		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
-
-		SaldoKasTitipanEntity saldoPoint = saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
-
-		if(saldoPoint.getNilaiPoint() - entityDetailBayar.getJumlahPoint() <= 0){
-			throw new BusinessException(
-					"saldo.point.tidak.mencukupi,.sisa.saldo.point.saat.ini",
-					entityDetailBayar.getJumlahPoint(),
-					saldoPoint.getNilaiPoint()
-			);
-
-		}
-	}
-
-	public void kurangiPoint(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
-		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
-
-		SaldoKasTitipanEntity saldoPoint =saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
-		Integer point = saldoPoint.getNilaiPoint();
-
-		point = point - entityDetailBayar.getJumlahPoint();
-
-		saldoPoint.setNilaiPoint(point);
-
-		saldoKasTitipanRepository.save(saldoPoint);
-	}
-
-	public void validasiSaldoKasTitipanMencukupi(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
-		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
-
-		SaldoKasTitipanEntity saldoKasTitipan =saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
-
-		if(saldoKasTitipan.getNilaiTitipan() - entityDetailBayar.getNilaiRupiah() <= 0){
-			throw new BusinessException(
-					"saldo.kas.titipan.tidak.mencukupi,.sisa.saldo.kas.titipan.saat.ini",
-					entityDetailBayar.getNilaiRupiah(),
-					saldoKasTitipan.getNilaiTitipan()
-			);
-		}
-	}
-
-	public void kurangiKasTitipan(TrxHeaderEntity entityHeader, TrxDetailPembayaran entityDetailBayar){
-		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
-
-		SaldoKasTitipanEntity saldoKasTitipan =saldoKasTitipanRepository.findByIdMember(masterMembershipEntity.getId());
-		Double nilaiTitipan = saldoKasTitipan.getNilaiTitipan();
-
-		nilaiTitipan = nilaiTitipan - entityDetailBayar.getNilaiRupiah();
-
-		saldoKasTitipan.setNilaiTitipan(nilaiTitipan);
-
-		saldoKasTitipanRepository.save(saldoKasTitipan);
-	}
-
-	private void updatePoint(TrxHeaderEntity entityHeader){
+	private void updateSaldoPoint(TrxHeaderEntity entityHeader){
 		MembershipGetSaldoKasEntity masterMembershipEntity =repoMember.findByPoint(entityHeader.getDataMembership().getNamaMembership());
 
 		SaldoKasTitipanEntity saldoKasTitipanEntity =saldoKasTitipanRepository.findByBK(masterMembershipEntity.getId());
@@ -696,5 +712,11 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 		saldoKasTitipanRepository.save(saldoKasTitipanEntity);
 	}
+
+
+
+
+
+
 
 }
