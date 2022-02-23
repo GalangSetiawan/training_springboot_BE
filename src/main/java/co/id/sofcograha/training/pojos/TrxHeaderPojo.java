@@ -34,7 +34,7 @@ public class TrxHeaderPojo {
 	public MasterMembershipPojo dataMembership;
 	public List<TrxDetailPembelianBukuPojo> listBuku;
 	public MasterJenisTransaksiPojo dataJenisTransaksi;
-	public List<TrxDetailPembayaranPojo> trxDetailPembayaranPojo;
+	public List<TrxDetailPembayaranPojo> listPembayaran;
 
     public TrxHeaderEntity toEntity() {
 
