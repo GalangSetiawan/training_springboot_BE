@@ -4,12 +4,10 @@ import co.id.sofcograha.base.utils.QueryUtil;
 import co.id.sofcograha.base.utils.searchData.HqlSimpleSearchBuilder;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
-import co.id.sofcograha.training.entities.MasterGenreEntity;
-import co.id.sofcograha.training.entities.MasterMembershipEntity;
-import co.id.sofcograha.training.entities.MembershipGetSaldoKasEntity;
-import co.id.sofcograha.training.entities.TrxHeaderEntity;
+import co.id.sofcograha.training.entities.*;
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
@@ -129,4 +127,23 @@ public class TrxHeaderRepository extends SimpleJpaRepository<TrxHeaderEntity, St
 			return null;
 		}
 	}
+
+	@Transactional
+	public List<TrxPembelianBukuLaporanEntity> getLaporanPenjualan() {
+
+		Query query;
+
+		StringBuilder queryStringBuilder = new StringBuilder();
+		queryStringBuilder.append("select 	public.sys_guid() as id, EXTRACT(MONTH FROM A.tanggal_bon ) as bulan, sum(B.qty) as total_qty_penjualan, sum(B.total_harga) as total_nominal_penjualan \n");
+		queryStringBuilder.append("from 	tbl_galang_trx_header A \n");
+		queryStringBuilder.append("left join tbl_trx_detail_pembelian_buku B on B.id_header = A.id \n");
+		queryStringBuilder.append("group by bulan \n");
+
+		query = em.createNativeQuery(queryStringBuilder.toString(), TrxPembelianBukuLaporanEntity.class);
+
+		List<TrxPembelianBukuLaporanEntity> list = query.getResultList();
+
+		return list;
+	}
+
 }
