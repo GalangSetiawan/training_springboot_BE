@@ -5,10 +5,7 @@ import co.id.sofcograha.base.extendables.BaseService;
 import co.id.sofcograha.base.utils.VersionUtil;
 import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
-import co.id.sofcograha.training.entities.MasterBukuEntity;
-import co.id.sofcograha.training.entities.MasterGenreEntity;
-import co.id.sofcograha.training.entities.TrxDetailPembayaran;
-import co.id.sofcograha.training.entities.TrxDetailPembelianBukuEntity;
+import co.id.sofcograha.training.entities.*;
 import co.id.sofcograha.training.pojos.TrxDetailPembelianBukuPojo;
 import co.id.sofcograha.training.repositories.MasterBukuRepository;
 import co.id.sofcograha.training.repositories.TrxDetailPembelianBukuRepository;
@@ -21,6 +18,7 @@ public class TrxDetailPembelianBukuService extends BaseService {
 
 	@Autowired private TrxDetailPembelianBukuRepository repo;
 	@Autowired private MasterBukuRepository masterBukuRepository;
+	@Autowired private TrxHeaderService trxHeaderService;
 
 	public TrxDetailPembelianBukuEntity findByBk(String nomorTrxHeader) {
 		return repo.findByBK(nomorTrxHeader);
@@ -114,8 +112,9 @@ public class TrxDetailPembelianBukuService extends BaseService {
 	}
 	
     protected void defineDefaultValuesOnAdd(TrxDetailPembelianBukuEntity entity) {
-//		if (entity.getFlakt() == null) entity.setFlakt(BaseConstants.YA);
-		if (entity.getVersion() == null) entity.setVersion((long) 1);
+		if (entity.getVersion() == null) {
+			entity.setVersion(1L);
+		}
 	}
     
     protected void valRequiredValues(TrxDetailPembelianBukuEntity entity) {
@@ -124,8 +123,6 @@ public class TrxDetailPembelianBukuService extends BaseService {
     
     protected void manageMinMaxValues(TrxDetailPembelianBukuEntity entity) {
 		valMaxInteger(entity.getQty(), 200, "trx.pembelian.buku.qty.max.length");
-//		valMaxString(entity.getNamaMembership(), 200, "trx.header.namaMembership.max.length");
-
 	}
     
     protected void manageReferences(TrxDetailPembelianBukuEntity entity) {
@@ -133,12 +130,14 @@ public class TrxDetailPembelianBukuService extends BaseService {
 		if(entity.getDataBuku() == null){
 			batchError("Data buku tidak ditemukan");
 		}else{
-
 			MasterBukuEntity dataBuku = masterBukuRepository.getOne(entity.getDataBuku().getId());
 			entity.setDataBuku(dataBuku);
-
 		}
 
+		if (entity.getDataHeader() != null) {
+			TrxHeaderEntity headerEntity = trxHeaderService.findById(entity.getDataHeader().getId());
+			entity.setDataHeader(headerEntity);
+		}
 	}
 
     protected void valUniquenessOnAdd(TrxDetailPembelianBukuEntity addedEntity) {

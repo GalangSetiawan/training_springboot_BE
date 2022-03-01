@@ -15,6 +15,10 @@ public class TrxDetailPembelianBukuEntity implements Cloneable{
 	@Column(name="id")
 	private String id;
 
+	@OneToOne
+	@JoinColumn(name = "id_header", referencedColumnName = "id")
+	private TrxHeaderEntity dataHeader;
+
 	@Version
 	@Column(name="version")
 	private Long version;
@@ -51,10 +55,6 @@ public class TrxDetailPembelianBukuEntity implements Cloneable{
 
 	@Column(name="nilai_disc_proposional")
 	private Double nilaiDiscProposional;
-
-	@ManyToOne
-	@JoinColumn(name = "id_header", referencedColumnName = "id")
-	private TrxHeaderEntity dataHeader;
 
 	@OneToOne
 	@JoinColumn(name = "id_buku", referencedColumnName = "id")

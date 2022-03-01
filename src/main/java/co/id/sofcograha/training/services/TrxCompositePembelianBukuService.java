@@ -14,6 +14,7 @@ import co.id.sofcograha.training.pojos.TrxDetailPembelianBukuPojo;
 import co.id.sofcograha.training.pojos.TrxDetailPembayaranPojo;
 import co.id.sofcograha.training.pojos.TrxHeaderPojo;
 import co.id.sofcograha.training.repositories.*;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 
 @Service("trxCompositePembelianBukuService")
 public class TrxCompositePembelianBukuService extends BaseService {
@@ -60,26 +62,13 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	@Transactional
     public TrxHeaderEntity add(TrxHeaderPojo pojo) {
 
-		TrxHeaderEntity entity = trxHeaderService.add(pojo);
+		TrxHeaderEntity addedHeaderEntity = trxHeaderService.add(pojo.toEntity());
 
-		//Generate nomor bon
-		generateNomorBon(entity);
-
-		//Patch tanggal bon
-		entity.setTanggalBon(new Date());
-
-
-		for(TrxDetailPembelianBukuPojo trxDetailPembelianBukuPojo: pojo.listBuku){
-
-			TrxDetailPembelianBukuEntity trxDetailPembelianBukuEntity = trxDetailPembelianBukuPojo.toEntity();
-
-			trxDetailPembelianBukuService.validasiOnAdd(trxDetailPembelianBukuPojo);
-
-		}
-
-		TrxHeaderEntity addedHeaderEntity = repoTrxHeader.add(entity);
-
-		isErrorDetail = false;
+//		// validasi detail pembelian buku
+//		for(TrxDetailPembelianBukuPojo trxDetailPembelianBukuPojo: pojo.listBuku){
+//			TrxDetailPembelianBukuEntity trxDetailPembelianBukuEntity = trxDetailPembelianBukuPojo.toEntity();
+//			trxDetailPembelianBukuService.validasiOnAdd(trxDetailPembelianBukuPojo);
+//		}
 
 		// Galang
 		hitungPembelianBuku(pojo ,addedHeaderEntity );
@@ -91,11 +80,8 @@ public class TrxCompositePembelianBukuService extends BaseService {
 			batchErrorWithData("trx.pembelian.buku.error.in.detail", pojo);
 		}
 
-
-
 		throwBatchError();
 		return addedHeaderEntity;
-		
     }
 
 
@@ -108,15 +94,9 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 		for (TrxDetailPembelianBukuPojo detailBukuPojo : trxHeaderPojo.listBuku) {
 
-
 			// inisialisasi detail entity
 			TrxDetailPembelianBukuEntity detailEntity = detailBukuPojo.toEntity();
-
 			detailEntity.setDataHeader(addedHeaderEntity);
-
-			MasterBukuEntity dataBuku = null;
-			dataBuku = repoMasterBuku.findById(detailEntity.getDataBuku().getId());
-			detailEntity.setDataBuku(dataBuku);
 
 			// validasi detail buku
 			validasiDetailBuku(detailEntity);
@@ -136,45 +116,42 @@ public class TrxCompositePembelianBukuService extends BaseService {
 			// tampung list Detail pembelian buku kedalam array untuk looping ke 2
 			listBukuAfterValidation.add(detailEntity);
 
-			// update saldo buku
-			updateSaldoBuku(detailEntity, "kurang");
-
-			if (isAnyBatchErrors()) {
-				isErrorDetail = true;
-
-				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini
-
-				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
-
-					// khusus untuk error yang muncul di grid
-					Message message = new Message();
-					ArrayList<Object> newParameters = new ArrayList<Object>();
-
-					for (Object object : businessException.getMessageParameters()) {
-						newParameters.add(object);
-					}
-
-					message.setCode(businessException.getMessageCode());
-					message.setArgs(newParameters);
-
-					if (detailBukuPojo.errorMsg == null) {
-						detailBukuPojo.errorMsg = new ArrayList<Message>();
-					}
-
-					detailBukuPojo.errorMsg.clear();
-					detailBukuPojo.errorMsg.add(message);
-				}
-
-				// bersihkan error yang ada di LocalError
-				removeBatchErrors();
-
-				continue;
-				// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
-				// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
-				// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik
-				// satu satu sampai anak ter dalam
-			}
+//			if (isAnyBatchErrors()) {
+//				isErrorDetail = true;
+//
+//				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini
+//				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+//
+//					// khusus untuk error yang muncul di grid
+//					Message message = new Message();
+//					ArrayList<Object> newParameters = new ArrayList<Object>();
+//
+//					for (Object object : businessException.getMessageParameters()) {
+//						newParameters.add(object);
+//					}
+//
+//					message.setCode(businessException.getMessageCode());
+//					message.setArgs(newParameters);
+//
+//					if (detailBukuPojo.errorMsg == null) {
+//						detailBukuPojo.errorMsg = new ArrayList<Message>();
+//					}
+//
+//					detailBukuPojo.errorMsg.clear();
+//					detailBukuPojo.errorMsg.add(message);
+//				}
+//
+//				// bersihkan error yang ada di LocalError
+//				removeBatchErrors();
+//
+//				continue;
+//				// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
+//				// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
+//				// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik
+//				// satu satu sampai anak ter dalam
+//			}
 		}
+		throwBatchError();
 
 		//loop ke 2
 		Double totalPembelianBuku = totalHargaSetelahDiscGenre;
@@ -190,6 +167,9 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 			//save TrxDetail
 			repoTrxDetailBuku.save(detailBuku);
+
+			// update saldo buku
+			updateSaldoBuku(detailBuku, "kurang");
 		}
 
 		addedHeaderEntity.setTotalPembelianBuku(totalPembelianBuku);
@@ -199,7 +179,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		if(addedHeaderEntity.getDataMembership() != null){
 			Boolean flagDapatPromo = checkLimaPembeliPertamaByNomorBonDanDate(addedHeaderEntity);
 
-			if(flagDapatPromo == true){
+			if(flagDapatPromo){
 				kurangiSaldoBukuTulis(addedHeaderEntity);
 				tambahkanBukuTulisPadaDetailTransaksi(addedHeaderEntity);
 				addedHeaderEntity.setFlagDapatPromo5Pertama(true);
@@ -223,81 +203,81 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	public void addDetailPembayaranBuku (TrxHeaderEntity trxHeaderEntity, TrxHeaderPojo trxHeaderPojo){
 		boolean isTunai = false;
 		Double totalBayar= 0.0;
-			for(TrxDetailPembayaranPojo detailPembayaranPojo : trxHeaderPojo.listPembayaran) {
+		for(TrxDetailPembayaranPojo detailPembayaranPojo : trxHeaderPojo.listPembayaran) {
 
-				TrxDetailPembayaran entityDetailBayar = detailPembayaranPojo.toEntity();
+			TrxDetailPembayaran entityDetailBayar = detailPembayaranPojo.toEntity();
 
-				//bila detail pembayaran = point, maka pembeli harus membership
-				validasiMembership(trxHeaderEntity);
+			//bila detail pembayaran = point, maka pembeli harus membership
+			validasiMembership(trxHeaderEntity);
 
-				//bila detail pembayaran = point, cek saldo point
-				validasiSaldoPointMencukupi(trxHeaderEntity);
+			//bila detail pembayaran = point, cek saldo point
+			validasiSaldoPointMencukupi(trxHeaderEntity);
 
-				//bila detail pembayaran = kas titipan, cek saldo kas titipan
-				validasiSaldoKasTitipanMencukupi(trxHeaderEntity);
+			//bila detail pembayaran = kas titipan, cek saldo kas titipan
+			validasiSaldoKasTitipanMencukupi(trxHeaderEntity);
 
-				//bila detail pembayaran = kas titipan, cek saldo kas titipan
-				hitungKursPembayaran(entityDetailBayar);
+			//bila detail pembayaran = kas titipan, cek saldo kas titipan
+			hitungKursPembayaran(entityDetailBayar);
 
-				//update saldo kas titipan
-				kurangiKasTitipan(trxHeaderEntity, entityDetailBayar);
+			//update saldo kas titipan
+			kurangiKasTitipan(trxHeaderEntity, entityDetailBayar);
 
-				//update point
-				kurangiPoint(trxHeaderEntity, entityDetailBayar);
+			//update point
+			kurangiPoint(trxHeaderEntity, entityDetailBayar);
 
-				trxDetailPembayaranRepository.save(entityDetailBayar);
+			trxDetailPembayaranRepository.save(entityDetailBayar);
 
-				//total jumlah pembayaran seluruhnya
-				hitungTotalPembayaran(trxHeaderEntity, entityDetailBayar);
+			//total jumlah pembayaran seluruhnya
+			hitungTotalPembayaran(trxHeaderEntity, entityDetailBayar);
 
-				//update jumlah total bayar di header
-				totalBayar = totalBayar + entityDetailBayar.getNilaiRupiah();
+			//update jumlah total bayar di header
+			totalBayar = totalBayar + entityDetailBayar.getNilaiRupiah();
 
-				//update jumlah kembalian
-				hitungJumlahKembalian(trxHeaderEntity);
+			//update jumlah kembalian
+			hitungJumlahKembalian(trxHeaderEntity);
 
-				//bila pembeli member dan membayar menggunakan tunai dan ada kembalian
-				updateKasTitipan(trxHeaderEntity);
+			//bila pembeli member dan membayar menggunakan tunai dan ada kembalian
+			updateKasTitipan(trxHeaderEntity);
 
-				updateSaldoPoint(trxHeaderEntity);
+			updateSaldoPoint(trxHeaderEntity);
 
 
-				if (isAnyBatchErrors()) {
-					isErrorDetail = true;
+			if (isAnyBatchErrors()) {
+				isErrorDetail = true;
 
-					// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini
+				// ambil error-error yang sudah terkumpul di batchError, lalu masukkan ke errorMsg di pojo ini
 
-					for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
+				for (BusinessException businessException : LocalErrors.getErrors().getBusinessExceptions()) {
 
-						// khusus untuk error yang muncul di grid
-						Message message = new Message();
-						ArrayList<Object> newParameters = new ArrayList<Object>();
+					// khusus untuk error yang muncul di grid
+					Message message = new Message();
+					ArrayList<Object> newParameters = new ArrayList<Object>();
 
-						for (Object object : businessException.getMessageParameters()) {
-							newParameters.add(object);
-						}
-
-						message.setCode(businessException.getMessageCode());
-						message.setArgs(newParameters);
-
-						if (detailPembayaranPojo.errorMsg == null) {
-							detailPembayaranPojo.errorMsg = new ArrayList<Message>();
-						}
-
-						detailPembayaranPojo.errorMsg.clear();
-						detailPembayaranPojo.errorMsg.add(message);
+					for (Object object : businessException.getMessageParameters()) {
+						newParameters.add(object);
 					}
 
-					// bersihkan error yang ada di LocalError
-					removeBatchErrors();
+					message.setCode(businessException.getMessageCode());
+					message.setArgs(newParameters);
 
-					continue;
-					// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
-					// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
-					// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik
-					// satu satu sampai anak ter dalam
+					if (detailPembayaranPojo.errorMsg == null) {
+						detailPembayaranPojo.errorMsg = new ArrayList<Message>();
+					}
+
+					detailPembayaranPojo.errorMsg.clear();
+					detailPembayaranPojo.errorMsg.add(message);
 				}
+
+				// bersihkan error yang ada di LocalError
+				removeBatchErrors();
+
+				continue;
+				// ini artinya kalau ada error di detail sub detail tidak dijalankan (ngga apa apa sih)
+				// tapi bagaimana bila sub detail yang ada error, apakah detail nya juga ditandai error agar tampilan di layar
+				// nanti di 'depan' (display browse detail) ada tanda merah (sebab kan ngga lucu juga kalo user harus klik
+				// satu satu sampai anak ter dalam
 			}
+		}
 	}
 
 	@Transactional
@@ -449,43 +429,51 @@ public class TrxCompositePembelianBukuService extends BaseService {
 	}
 
 	public void validasiBukuAdaDimasterDanAktif(TrxDetailPembelianBukuEntity trxDetailBuku){
-
-		if( trxDetailBuku.getDataBuku() == null){
-			batchError("buku.yang.diinput.tidak.ada.pada.database",trxDetailBuku.getDataBuku().getId());
-			throwBatchError();
+		if(trxDetailBuku.getDataBuku() == null){
+			batchError("buku.yang.diinput.tidak.ada");
+		} else {
+			MasterBukuEntity masterBukuEntity = repoMasterBuku.findById(trxDetailBuku.getDataBuku().getId());
+			if (masterBukuEntity == null)  {
+				batchError("buku.yang.diinput.tidak.ada.pada.database",trxDetailBuku.getDataBuku().getId());
+			} else {
+				trxDetailBuku.setDataBuku(masterBukuEntity);
+			}
 		}
 	}
 
 	public void validasiBukuHarusAdaDisaldo(TrxDetailPembelianBukuEntity trxDetailBuku){
-		SaldoBukuEntity saldoBuku = null;
-		saldoBuku = repoSaldoBuku.findByDataBuku(trxDetailBuku.getDataBuku());
+		if (trxDetailBuku.getDataBuku() != null) {
+			SaldoBukuEntity saldoBuku = null;
+			saldoBuku = repoSaldoBuku.findByDataBuku(trxDetailBuku.getDataBuku());
 
-		if(saldoBuku == null){
-			batchError("tidak.terdapat.saldo.pada.buku",trxDetailBuku.getDataBuku().getNamaBuku());
+			if(saldoBuku == null){
+				batchError("tidak.terdapat.saldo.pada.buku",trxDetailBuku.getDataBuku().getNamaBuku());
+			}
 		}
 	}
 
 	public void validasiSaldoBukuMencukupi(TrxDetailPembelianBukuEntity trxDetailBuku){
-		SaldoBukuEntity saldoBuku = null;
-		saldoBuku = repoSaldoBuku.findByDataBuku(trxDetailBuku.getDataBuku());
+		if (trxDetailBuku.getDataBuku() != null) {
+			SaldoBukuEntity saldoBuku = null;
+			saldoBuku = repoSaldoBuku.findByDataBuku(trxDetailBuku.getDataBuku());
 
-		if(saldoBuku.getSaldoBuku() - trxDetailBuku.getQty() <= 0){
-
-			batchError("saldo.buku.tidak.mencukupi,.sisa.saldo.buku.saat.ini", trxDetailBuku.getDataBuku().getNamaBuku());
-
+			if(saldoBuku.getSaldoBuku() - trxDetailBuku.getQty() <= 0){
+				batchError("saldo.buku.tidak.mencukupi,.sisa.saldo.buku.saat.ini", trxDetailBuku.getDataBuku().getNamaBuku());
+			}
 		}
 	}
 
 	public void hitungDiscountBuku(TrxDetailPembelianBukuEntity trxDetailBuku){
-		Double hargaBuku = trxDetailBuku.getDataBuku().getHargaBuku();
-		Integer persenDiscBuku = trxDetailBuku.getPersenDiscBuku();
+		if (trxDetailBuku.getDataBuku() != null) {
+			Double hargaBuku = trxDetailBuku.getDataBuku().getHargaBuku();
+			Integer persenDiscBuku = trxDetailBuku.getPersenDiscBuku();
 
-		Double nilaiDiscBuku = ( hargaBuku * persenDiscBuku ) / 100;
-		Double hargaSetelahDiscBuku = hargaBuku - nilaiDiscBuku;
+			Double nilaiDiscBuku = ( hargaBuku * persenDiscBuku ) / 100;
+			Double hargaSetelahDiscBuku = hargaBuku - nilaiDiscBuku;
 
-		trxDetailBuku.setNilaiDiscBuku(nilaiDiscBuku);
-		trxDetailBuku.setHargaSetelahDiscBuku(hargaSetelahDiscBuku);
-
+			trxDetailBuku.setNilaiDiscBuku(nilaiDiscBuku);
+			trxDetailBuku.setHargaSetelahDiscBuku(hargaSetelahDiscBuku);
+		}
 	}
 
 	public void hitungHargaSetelahDiscBukuVsQty(TrxDetailPembelianBukuEntity trxDetailBuku){
@@ -500,16 +488,18 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 	public void hitungTotalHargaBukuVsDiscountGenre(TrxDetailPembelianBukuEntity trxDetailBuku){
 
-		MasterGenreEntity dataGenre = null;
-		dataGenre = repoGenre.getOne(trxDetailBuku.getDataBuku().getGenreBuku().getId());
+		if (trxDetailBuku.getDataBuku() != null) {
+			MasterGenreEntity dataGenre = null;
+			dataGenre = repoGenre.getOne(trxDetailBuku.getDataBuku().getGenreBuku().getId());
 
-		Integer persenDiscGenre = dataGenre.getDiskonGenre();
-		Double totalHarga = trxDetailBuku.getTotalHarga();
-		Double nilaiDiscGenre = ( totalHarga * persenDiscGenre ) / 100;
-		Double hargaSetelahDiscGenre = totalHarga - nilaiDiscGenre;
+			Integer persenDiscGenre = dataGenre.getDiskonGenre();
+			Double totalHarga = trxDetailBuku.getTotalHarga();
+			Double nilaiDiscGenre = ( totalHarga * persenDiscGenre ) / 100;
+			Double hargaSetelahDiscGenre = totalHarga - nilaiDiscGenre;
 
-		trxDetailBuku.setNilaiDiscGenre(nilaiDiscGenre);
-		trxDetailBuku.setHargaSetelahDiscGenre(hargaSetelahDiscGenre);
+			trxDetailBuku.setNilaiDiscGenre(nilaiDiscGenre);
+			trxDetailBuku.setHargaSetelahDiscGenre(hargaSetelahDiscGenre);
+		}
 
 	}
 
@@ -526,7 +516,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 		saldoBuku.setSaldoBuku(sisaSaldoBukuTersedia);
 
-		repoSaldoBuku.save(saldoBuku);
+		repoSaldoBuku.edit(saldoBuku);
 	}
 
 	public void hitungNilaiDiscountHeaderProposional(TrxHeaderEntity header, TrxDetailPembelianBukuEntity trxDetailBuku, Double totalHargaSetelahDiscGenre){
@@ -541,29 +531,23 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 	public Boolean checkLimaPembeliPertamaByNomorBonDanDate(TrxHeaderEntity headerEntity) {
 		List <TrxHeaderEntity> listPembeli = repoTrxHeader.get5DataPertamaByTanggalTrx(headerEntity.getTanggalBon());
-
-		Integer countGaDapatPromo = 0;
-		Boolean flagDapatpromo = true;
-
 		String currentInputMemberId = headerEntity.getDataMembership().getId();
 
-		if(listPembeli.size() >= 5 ){
-			countGaDapatPromo++;
-		}else{
-			for(TrxHeaderEntity eachData : listPembeli){
-				if(!currentInputMemberId.equals(eachData.getDataMembership().getId())){
-					if(eachData.getDataMembership().getId().equals(currentInputMemberId)){
-						countGaDapatPromo++;
-					}
+		if (listPembeli.size() >= 5) {
+			return false;
+		} else {
+			boolean isPembeliSame = false;
+			for (TrxHeaderEntity loopData : listPembeli) {
+				if (loopData.getDataMembership().getId().equals(currentInputMemberId)) {
+					isPembeliSame = true;
 				}
 			}
+			if (isPembeliSame) {
+				return false;
+			} else {
+				return true;
+			}
 		}
-
-		if(countGaDapatPromo > 0){
-			flagDapatpromo = false;
-		}
-
-		return flagDapatpromo;
 	}
 
 	public void kurangiSaldoBukuTulis(TrxHeaderEntity trxHeaderEntity){
@@ -595,11 +579,6 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 	}
 
-	public void generateNomorBon(TrxHeaderEntity entity){
-		String nomorBonGenerated = "Trx-Nomor-Bon-" + TimeUtil.getSystemDateTime() ;
-		entity.setNomorBon(nomorBonGenerated);
-
-	}
 
 	private void validasiMembership(TrxHeaderEntity entityHeader){
 		MasterMembershipEntity masterMembershipEntity = repoMember.findByBK(entityHeader.getDataMembership().getId());

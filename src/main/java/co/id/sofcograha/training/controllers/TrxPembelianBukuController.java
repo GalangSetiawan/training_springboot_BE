@@ -7,6 +7,7 @@ import co.id.sofcograha.training.entities.MasterGenreEntity;
 import co.id.sofcograha.training.entities.TrxHeaderEntity;
 import co.id.sofcograha.training.pojos.MasterGenrePojo;
 import co.id.sofcograha.training.pojos.TrxHeaderPojo;
+import co.id.sofcograha.training.pojos.TrxPembelianBukuPromoPojo;
 import co.id.sofcograha.training.services.MasterGenreService;
 import co.id.sofcograha.training.services.TrxCompositePembelianBukuService;
 import co.id.sofcograha.training.services.TrxHeaderService;
@@ -34,9 +35,7 @@ public class TrxPembelianBukuController {
 	// -------------------Retrieve Some ---------------------------------------------
 	@GetMapping(value = "/search")
 	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
-
 		SearchResult<TrxHeaderEntity> searchResult = trxCompositePembelianBukuService.search(SearchParameter.generate(searchParameter, MasterGenrePojo.getFieldMappings()));
-
 		return ApiResponse.dataWithPaging("items", TrxHeaderPojo.fromEntities(searchResult.getResult()),
 				searchResult.getPaging());
 	}
@@ -44,25 +43,20 @@ public class TrxPembelianBukuController {
 	// -------------------Retrieve Single Data ------------------------------------------
 	@GetMapping
 	public ApiResponse get(@RequestParam String nama) throws JsonProcessingException {
-
 		TrxHeaderEntity entity = trxHeaderService.findByBk(nama);
 		return ApiResponse.data("item", TrxHeaderPojo.fromEntity(entity));
-
 	}
 
     @PostMapping
     public ApiResponse add(@RequestBody TrxHeaderPojo pojo) {
-
 		TrxHeaderEntity result = trxCompositePembelianBukuService.add(pojo);
 		return ApiResponse.data("item", TrxHeaderPojo.fromEntity(result));
     }
     
 	@PutMapping
 	public ApiResponse edit(@RequestBody TrxHeaderPojo pojo) {
-
 		TrxHeaderEntity result = trxHeaderService.edit(pojo.toEntity());
 		return ApiResponse.data("item", TrxHeaderPojo.fromEntity(result));
-
 	}
 
 	@DeleteMapping
@@ -72,8 +66,8 @@ public class TrxPembelianBukuController {
 	}
 
 	@GetMapping(value = "/check-lima-pembeli-pertama")
-	public ApiResponse getByNama(@RequestParam String idMembership) throws JsonProcessingException {
-		Boolean data = trxHeaderService.check5pembeliPertama(idMembership);
+	public ApiResponse getByNama(@RequestParam String idMembership) {
+		TrxPembelianBukuPromoPojo data = trxHeaderService.check5pembeliPertama(idMembership);
 		return ApiResponse.data("item", data);
 	}
 

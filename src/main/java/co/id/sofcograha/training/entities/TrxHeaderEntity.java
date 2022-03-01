@@ -10,7 +10,7 @@ import java.util.UUID;
 @Entity
 @Access(AccessType.FIELD)
 @Table(name = "tbl_galang_trx_header", uniqueConstraints = @UniqueConstraint(columnNames = { "nomor_bon" }))
-public class TrxHeaderEntity implements Cloneable{
+public class TrxHeaderEntity implements Cloneable {
 
 	@Id
 	@Column(name="id")

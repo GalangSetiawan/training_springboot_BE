@@ -9,7 +9,9 @@ import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.training.entities.*;
 import co.id.sofcograha.training.pojos.MasterMembershipPojo;
 import co.id.sofcograha.training.pojos.TrxHeaderPojo;
+import co.id.sofcograha.training.pojos.TrxPembelianBukuPromoPojo;
 import co.id.sofcograha.training.repositories.*;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ public class TrxHeaderService extends BaseService {
 	@Autowired private TrxHeaderRepository repo;
 	@Autowired private MasterMembershipRepository masterMembershipRepository;
 	@Autowired private TrxCompositePembelianBukuService trxCompositePembelianBukuService;
+	@Autowired private MasterJenisTransaksiRepository masterJenisTransaksiRepository;
 
 	public TrxHeaderEntity findByBk(String nomorTrxHeader) {
 		return repo.findByBK(nomorTrxHeader);
@@ -41,9 +44,7 @@ public class TrxHeaderService extends BaseService {
 
 
 	@Transactional
-    public TrxHeaderEntity add(TrxHeaderPojo pojo) {
-
-		TrxHeaderEntity entity = pojo.toEntity();
+    public TrxHeaderEntity add(TrxHeaderEntity entity) {
 
 		entity.setId(null);
 
@@ -62,8 +63,10 @@ public class TrxHeaderService extends BaseService {
 		throwBatchError();
 
 		throwBatchError();
+
+		entity = repo.save(entity);
+
 		return entity;
-		
     }
        
 	@Transactional
@@ -111,10 +114,18 @@ public class TrxHeaderService extends BaseService {
 		
 		throwBatchError();
 	}
-	
+
     protected void defineDefaultValuesOnAdd(TrxHeaderEntity entity) {
-//		if (entity.getFlakt() == null) entity.setFlakt(BaseConstants.YA);
-		if (entity.getVersion() == null) entity.setVersion((long) 1);
+		// generate nomor bon
+		generateNomorBon(entity);
+
+		//Patch tanggal bon
+		entity.setTanggalBon(TimeUtil.getSystemDateTime());
+
+		// version
+		if (entity.getVersion() == null) {
+			entity.setVersion(1L);
+		}
 	}
     
     protected void valRequiredValues(TrxHeaderEntity entity) {
@@ -128,10 +139,15 @@ public class TrxHeaderService extends BaseService {
 	}
     
     protected void manageReferences(TrxHeaderEntity entity) {
+
 		if(entity.getDataMembership() != null){
 			MasterMembershipEntity dataMember = masterMembershipRepository.getOne(entity.getDataMembership().getId());
 			entity.setDataMembership(dataMember);
 		}
+
+		MasterJenisTransaksiEntity jenisTransaksiEntity = masterJenisTransaksiRepository.findOne("1");
+		entity.setDataJenisTransaksi(jenisTransaksiEntity);
+
 	}
 
     protected void valUniquenessOnAdd(TrxHeaderEntity addedEntity) {
@@ -163,30 +179,21 @@ public class TrxHeaderService extends BaseService {
 	}
 	
 	protected void defineEditableValues(TrxHeaderEntity newValues, TrxHeaderEntity toBeSaved) {
-		
-		if (toBeSaved != null) {
-			toBeSaved.setNomorBon(newValues.getNomorBon());
-			toBeSaved.setTanggalBon(newValues.getTanggalBon());
-
-			toBeSaved.setNamaPembeli(newValues.getNamaPembeli());
-			toBeSaved.setDiscountHeader(newValues.getDiscountHeader());
-			toBeSaved.setNilaiKembalian(newValues.getNilaiKembalian());
-			toBeSaved.setTotalPembayaran(newValues.getTotalPembayaran()); // bukan nya ini bentuknya ga sesimpel ini? kan bayarnya gacuma bentuk duit, tp bisa duit & poin
-			toBeSaved.setTotalPembelianBuku(newValues.getTotalPembelianBuku());
-			toBeSaved.setNilaiDiskonHeader(newValues.getNilaiDiskonHeader());
-			toBeSaved.setFlagDapatPromo5Pertama(newValues.getFlagDapatPromo5Pertama());
-			toBeSaved.setFlagKembalian(newValues.getFlagKembalian());
-			toBeSaved.setPPN(newValues.getPPN());
-			toBeSaved.setKeterangan(newValues.getKeterangan());
-			toBeSaved.setDPP(newValues.getDPP());
-			toBeSaved.setDataMembership(newValues.getDataMembership());
-			toBeSaved.setDataJenisTransaksi(newValues.getDataJenisTransaksi());
-
-		}
-		else if (toBeSaved == null) {
-			defineDefaultValuesOnAdd(newValues);
-		}
-
+		toBeSaved.setNomorBon(newValues.getNomorBon());
+		toBeSaved.setTanggalBon(newValues.getTanggalBon());
+		toBeSaved.setNamaPembeli(newValues.getNamaPembeli());
+		toBeSaved.setDiscountHeader(newValues.getDiscountHeader());
+		toBeSaved.setNilaiKembalian(newValues.getNilaiKembalian());
+		toBeSaved.setTotalPembayaran(newValues.getTotalPembayaran());
+		toBeSaved.setTotalPembelianBuku(newValues.getTotalPembelianBuku());
+		toBeSaved.setNilaiDiskonHeader(newValues.getNilaiDiskonHeader());
+		toBeSaved.setFlagDapatPromo5Pertama(newValues.getFlagDapatPromo5Pertama());
+		toBeSaved.setFlagKembalian(newValues.getFlagKembalian());
+		toBeSaved.setPPN(newValues.getPPN());
+		toBeSaved.setKeterangan(newValues.getKeterangan());
+		toBeSaved.setDPP(newValues.getDPP());
+		toBeSaved.setDataMembership(newValues.getDataMembership());
+		toBeSaved.setDataJenisTransaksi(newValues.getDataJenisTransaksi());
 	}
 	
 	protected void valDelete(TrxHeaderEntity toBeDeleted) {	}
@@ -195,21 +202,30 @@ public class TrxHeaderService extends BaseService {
 		return repo.getOne(id);
 	}
 
-	public boolean check5pembeliPertama(String idMembership) {
-
+	public TrxPembelianBukuPromoPojo check5pembeliPertama(String idMembership) {
+		TrxPembelianBukuPromoPojo result = new TrxPembelianBukuPromoPojo();
 		MasterMembershipEntity dataMember = masterMembershipRepository.getOne(idMembership);
 
 		if(dataMember != null){
 			TrxHeaderEntity trxHeaderEntityDummy = new TrxHeaderEntity();
-			trxHeaderEntityDummy.setTanggalBon(new Date());
+			trxHeaderEntityDummy.setTanggalBon(TimeUtil.getSystemDate());
 			trxHeaderEntityDummy.setDataMembership(dataMember);
 
-			return trxCompositePembelianBukuService.checkLimaPembeliPertamaByNomorBonDanDate(trxHeaderEntityDummy);
-		}else{
+			result.flagDapatPromo5PembeliPertama = trxCompositePembelianBukuService.checkLimaPembeliPertamaByNomorBonDanDate(trxHeaderEntityDummy);
+		} else {
 			batchError("idMembership.tidak.ditemukan");
-			return false;
+			result.flagDapatPromo5PembeliPertama = false;
 		}
 
+		return result;
+	}
 
+	public TrxHeaderEntity getLastData() {
+		return repo.getLastData();
+	}
+
+	public void generateNomorBon(TrxHeaderEntity entity){
+		String nomorBonGenerated = "TRX-" + RandomStringUtils.random(6);
+		entity.setNomorBon(nomorBonGenerated);
 	}
 }

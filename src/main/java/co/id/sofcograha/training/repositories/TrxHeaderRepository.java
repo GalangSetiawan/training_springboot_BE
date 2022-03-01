@@ -6,12 +6,14 @@ import co.id.sofcograha.base.utils.searchData.SearchParameter;
 import co.id.sofcograha.base.utils.searchData.SearchResult;
 import co.id.sofcograha.training.entities.MasterGenreEntity;
 import co.id.sofcograha.training.entities.MasterMembershipEntity;
+import co.id.sofcograha.training.entities.MembershipGetSaldoKasEntity;
 import co.id.sofcograha.training.entities.TrxHeaderEntity;
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.stereotype.Repository;
 
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
+import javax.persistence.Query;
 import java.util.Date;
 import java.util.List;
 
@@ -34,7 +36,6 @@ public class TrxHeaderRepository extends SimpleJpaRepository<TrxHeaderEntity, St
 		try {
 			return em.createQuery(query, TrxHeaderEntity.class)
 					.setParameter("tanggalBon", tanggalBon)
-					.setMaxResults(5)
 					.getResultList();
 		} catch (NoResultException e) {
 			return null;
@@ -107,5 +108,26 @@ public class TrxHeaderRepository extends SimpleJpaRepository<TrxHeaderEntity, St
 
 	public TrxHeaderEntity edit(TrxHeaderEntity entity) {
 		return save(entity);
+	}
+
+	public TrxHeaderEntity getLastData() {
+
+		Query query;
+
+		StringBuilder queryStringBuilder = new StringBuilder();
+		queryStringBuilder.append("SELECT 	* \n");
+		queryStringBuilder.append("FROM 	tbl_galang_trx_header \n");
+		queryStringBuilder.append("order by	nomor_bon desc \n");
+		queryStringBuilder.append("limit 1 \n");
+
+		query = em.createNativeQuery(queryStringBuilder.toString(), TrxHeaderEntity.class);
+
+		List<TrxHeaderEntity> list = query.getResultList();
+
+		if (!list.isEmpty()) {
+			return list.get(0);
+		} else {
+			return null;
+		}
 	}
 }

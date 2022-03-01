@@ -15,6 +15,10 @@ public class TrxDetailPembayaran implements Cloneable{
 	@Column(name="id")
 	private String id;
 
+	@OneToOne
+	@JoinColumn(name = "id_header", referencedColumnName = "id")
+	private TrxHeaderEntity transaksiHeader;
+
 	@Version
 	@Column(name="version")
 	private Long version;
@@ -27,10 +31,6 @@ public class TrxDetailPembayaran implements Cloneable{
 
 	@Column(name="jumlah_point")
 	private Integer jumlahPoint;
-
-	@ManyToOne
-	@JoinColumn(name = "id_header", referencedColumnName = "id")
-	private TrxHeaderEntity transaksiHeader;
 
 	public String getId() {
 		return id;
