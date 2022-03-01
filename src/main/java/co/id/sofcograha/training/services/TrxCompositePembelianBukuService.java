@@ -74,7 +74,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 		hitungPembelianBuku(pojo ,addedHeaderEntity );
 
 		// Evi
-//		addDetailPembayaranBuku(addedHeaderEntity, pojo);
+		addDetailPembayaranBuku(addedHeaderEntity, pojo);
 
 		if (isErrorDetail) {
 			batchErrorWithData("trx.pembelian.buku.error.in.detail", pojo);
