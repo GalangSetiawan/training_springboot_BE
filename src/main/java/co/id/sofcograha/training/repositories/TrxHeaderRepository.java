@@ -82,7 +82,10 @@ public class TrxHeaderRepository extends SimpleJpaRepository<TrxHeaderEntity, St
 
 		String kodeGenre = (String) searchParameter.getValueFromMappedParam("kodeGenre");
 		String namaGenre = (String) searchParameter.getValueFromMappedParam("namaGenre");
-
+		// nomorBon
+		// namaPembeli
+		// tanggalAwal
+		// tanggalAkhir
 
 		if (!QueryUtil.isAll(kodeGenre)) {
             search.addWhere("AND LOWER(kodeGenre) LIKE LOWER(:kodeGenre) ");

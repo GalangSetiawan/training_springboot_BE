@@ -27,7 +27,7 @@ public class TrxDetailPembelianBukuPojo {
 	public Double nilaiDiscHeader;
 	public Double hargaSetelahDiscHeader;
 	public Double nilaiDiscProposional;
-	public MasterBukuPojo dataBuku;
+	public MasterBukuPojo daftarBuku;
 	public TrxHeaderPojo dataTrxHeader;
     public ArrayList<Message> errorMsg;
 
@@ -47,9 +47,9 @@ public class TrxDetailPembelianBukuPojo {
 		entity.setHargaSetelahDiscHeader(hargaSetelahDiscHeader);
 		entity.setNilaiDiscProposional(nilaiDiscProposional);
 
-		if(dataBuku != null && !dataBuku.id.equals("")){
+		if(daftarBuku != null && !daftarBuku.id.equals("")){
 			MasterBukuEntity entityRef = new MasterBukuEntity();
-			entityRef.setId(dataBuku.id);
+			entityRef.setId(daftarBuku.id);
 			entity.setDataBuku(entityRef);
 		}else{
 			entity.setDataBuku(null);
@@ -90,7 +90,7 @@ public class TrxDetailPembelianBukuPojo {
 			pojo.hargaSetelahDiscHeader = entity.getHargaSetelahDiscHeader();
 			pojo.nilaiDiscProposional = entity.getNilaiDiscProposional();
 			pojo.version = entity.getVersion();
-			pojo.dataBuku = MasterBukuPojo.fromEntity(entity.getDataBuku(),1);
+			pojo.daftarBuku = MasterBukuPojo.fromEntity(entity.getDataBuku(),1);
 			pojo.dataTrxHeader = TrxHeaderPojo.fromEntity(entity.getDataHeader(),1);
 
 		}
