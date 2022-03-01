@@ -47,13 +47,16 @@ public class TrxHeaderEntity implements Cloneable {
 	private Boolean flagKembalian;
 
 	@Column(name="ppn")
-	private Integer PPN;
+	private Double PPN;
 
 	@Column(name="keterangan")
 	private String keterangan;
 
 	@Column(name="dpp")
 	private Double DPP;
+
+	@Column(name="netto")
+	private Double netto;
 
 	@Version
 	@Column(name="version")
@@ -161,12 +164,20 @@ public class TrxHeaderEntity implements Cloneable {
 		this.flagKembalian = flagKembalian;
 	}
 
-	public Integer getPPN() {
+	public Double getPPN() {
 		return PPN;
 	}
 
-	public void setPPN(Integer PPN) {
+	public void setPPN(Double PPN) {
 		this.PPN = PPN;
+	}
+
+	public Double getNetto() {
+		return netto;
+	}
+
+	public void setNetto(Double netto) {
+		this.netto = netto;
 	}
 
 	public String getKeterangan() {

@@ -20,16 +20,17 @@ public class TrxHeaderPojo {
 	public Date tanggalBon;
 	public String nomorBon;
 	public String namaPembeli;
+	public Double totalPembelianBuku; // bruto
 	public Integer discountHeader;
-	public Double nilaiKembalian;
-	public Double totalPembayaran;
-	public Double totalPembelianBuku;
 	public Double nilaiDiskonHeader;
-	public Boolean flagDapatPromo5Pertama;
-	public Boolean flagKembalian;
-	public Integer PPN;
-	public String keterangan;
 	public Double DPP;
+	public Double PPN;
+	public Double netto;
+	public Double totalPembayaran;
+	public Double nilaiKembalian;
+	public Boolean flagDapatPromo5Pertama;
+	public String keterangan;
+
 	public Long version;
 	public MasterMembershipPojo dataMembership;
 	public List<TrxDetailPembelianBukuPojo> listBuku;
@@ -50,11 +51,11 @@ public class TrxHeaderPojo {
 		entity.setTotalPembelianBuku(totalPembelianBuku);
 		entity.setNilaiKembalian(nilaiDiskonHeader);
 		entity.setFlagDapatPromo5Pertama(flagDapatPromo5Pertama);
-		entity.setFlagKembalian(flagKembalian);
 		entity.setNilaiKembalian(nilaiKembalian);
 		entity.setPPN(PPN);
 		entity.setKeterangan(keterangan);
 		entity.setDPP(DPP);
+		entity.setNetto(netto);
   		entity.setVersion(version);
 
 		if(dataMembership != null && !dataMembership.id.equals("")){
@@ -93,10 +94,10 @@ public class TrxHeaderPojo {
 			pojo.totalPembelianBuku = entity.getTotalPembelianBuku();
 			pojo.nilaiDiskonHeader = entity.getNilaiDiskonHeader();
 			pojo.flagDapatPromo5Pertama = entity.getFlagDapatPromo5Pertama();
-			pojo.flagKembalian = entity.getFlagKembalian();
 			pojo.PPN = entity.getPPN();
 			pojo.keterangan = entity.getKeterangan();
 			pojo.DPP = entity.getDPP();
+			pojo.netto = entity.getNetto();
 			pojo.version = entity.getVersion();
 			pojo.dataMembership = MasterMembershipPojo.fromEntity(entity.getDataMembership());
 
