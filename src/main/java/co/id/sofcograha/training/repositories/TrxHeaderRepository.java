@@ -80,24 +80,20 @@ public class TrxHeaderRepository extends SimpleJpaRepository<TrxHeaderEntity, St
 	public SearchResult<TrxHeaderEntity> search(SearchParameter searchParameter) {
 		HqlSimpleSearchBuilder<TrxHeaderEntity> search = new HqlSimpleSearchBuilder<>(TrxHeaderEntity.class, em);
 
-		String kodeGenre = (String) searchParameter.getValueFromMappedParam("kodeGenre");
-		String namaGenre = (String) searchParameter.getValueFromMappedParam("namaGenre");
-		// nomorBon
-		// namaPembeli
-		// tanggalAwal
-		// tanggalAkhir
+		String nomorBon = (String) searchParameter.getValueFromMappedParam("nomorBon");
+		String namaPembeli = (String) searchParameter.getValueFromMappedParam("namaPembeli");
+		Date tanggalAwal = (Date) searchParameter.getValueFromMappedParam("tanggalAwal");
+		Date tanggalAkhir = (Date) searchParameter.getValueFromMappedParam("tanggalAkhir");
 
-		if (!QueryUtil.isAll(kodeGenre)) {
-            search.addWhere("AND LOWER(kodeGenre) LIKE LOWER(:kodeGenre) ");
-            search.addParameter("kodeGenre", QueryUtil.formatStringForLikeFilter(kodeGenre));
+		if (!QueryUtil.isAll(nomorBon)) {
+            search.addWhere("AND LOWER(nomorBon) LIKE LOWER(:nomorBon) ");
+            search.addParameter("nomorBon", QueryUtil.formatStringForLikeFilter(nomorBon));
         }
 
-		if (!QueryUtil.isAll(namaGenre)) {
-            search.addWhere("AND LOWER(namaGenre) LIKE LOWER(:namaGenre) ");
-            search.addParameter("namaGenre", QueryUtil.formatStringForLikeFilter(namaGenre));
+		if (!QueryUtil.isAll(namaPembeli)) {
+            search.addWhere("AND LOWER(namaPembeli) LIKE LOWER(:namaPembeli) ");
+            search.addParameter("namaPembeli", QueryUtil.formatStringForLikeFilter(namaPembeli));
         }
-
-
 
 		search.setSort(searchParameter.getSort());
 		search.setPaging(searchParameter.getPagination());

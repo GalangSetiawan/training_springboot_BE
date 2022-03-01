@@ -83,7 +83,6 @@ public class TrxHeaderPojo {
 		if (depthLevel > 0) {
 			depthLevel--;
 
-
 			pojo.id = entity.getId();
 			pojo.tanggalBon = entity.getTanggalBon();
 			pojo.nomorBon = entity.getNomorBon();
@@ -102,7 +101,6 @@ public class TrxHeaderPojo {
 			pojo.dataMembership = MasterMembershipPojo.fromEntity(entity.getDataMembership());
 
 //			pojo.listBuku = TrxDetailPembelianBukuPojo.fromEntities(entity.getTrxDetailPembelianBuku(),1);
-
 
 		}
 
@@ -128,8 +126,8 @@ public class TrxHeaderPojo {
 	public static List<SearchFieldMapping> getFieldMappings() {
 		List<SearchFieldMapping> mappings = new ArrayList<>();
 	
-		mappings.add(new SearchFieldMapping("kodeBuku", "kodeBuku"));
-		mappings.add(new SearchFieldMapping("namaBuku", "namaBuku"));
+		mappings.add(new SearchFieldMapping("nomorBon", "nomorBon"));
+		mappings.add(new SearchFieldMapping("namaPembeli", "namaPembeli"));
 
 	
 		return mappings;

@@ -48,7 +48,7 @@ public class SaldoKasTitipanRepository extends SimpleJpaRepository<SaldoKasTitip
 
 		try {
 			entity = em.createQuery("FROM SaldoKasTitipanEntity e " +
-		                            "WHERE e.dataMembership = :idMember ", SaldoKasTitipanEntity.class)
+		                            "WHERE e.dataMembership.id = :idMember ", SaldoKasTitipanEntity.class)
 					.setParameter("idMember", idMember)
 					.getSingleResult();
 		} catch (NoResultException e) {
