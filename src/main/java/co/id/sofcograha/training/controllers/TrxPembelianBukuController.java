@@ -35,7 +35,7 @@ public class TrxPembelianBukuController {
 	// -------------------Retrieve Some ---------------------------------------------
 	@GetMapping(value = "/search")
 	public ApiResponse search(@RequestParam Map<String, String> searchParameter) {
-		SearchResult<TrxHeaderEntity> searchResult = trxCompositePembelianBukuService.search(SearchParameter.generate(searchParameter, MasterGenrePojo.getFieldMappings()));
+		SearchResult<TrxHeaderEntity> searchResult = trxCompositePembelianBukuService.search(SearchParameter.generate(searchParameter, TrxHeaderPojo.getFieldMappings()));
 		return ApiResponse.dataWithPaging("items", TrxHeaderPojo.fromEntities(searchResult.getResult()),
 				searchResult.getPaging());
 	}

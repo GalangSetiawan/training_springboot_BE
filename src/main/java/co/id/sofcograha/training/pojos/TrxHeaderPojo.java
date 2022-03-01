@@ -129,6 +129,9 @@ public class TrxHeaderPojo {
 		mappings.add(new SearchFieldMapping("nomorBon", "nomorBon"));
 		mappings.add(new SearchFieldMapping("namaPembeli", "namaPembeli"));
 
+		mappings.add(new SearchFieldMapping("nomorBon", "nomorBon", String.class).sortOnly());
+		mappings.add(new SearchFieldMapping("namaPembeli", "namaPembeli", String.class).sortOnly());
+
 	
 		return mappings;
 	} 
