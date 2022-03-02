@@ -71,7 +71,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 //		}
 
 		// Galang
-		hitungPembelianBuku(pojo ,addedHeaderEntity );
+		addDetailHitungPembelianBuku(pojo ,addedHeaderEntity );
 
 		// Evi
 		addDetailPembayaranBuku(addedHeaderEntity, pojo);
@@ -86,7 +86,7 @@ public class TrxCompositePembelianBukuService extends BaseService {
 
 
 	@Transactional
-	public void hitungPembelianBuku (TrxHeaderPojo trxHeaderPojo ,TrxHeaderEntity addedHeaderEntity){
+	public void addDetailHitungPembelianBuku (TrxHeaderPojo trxHeaderPojo ,TrxHeaderEntity addedHeaderEntity){
 
 		Double totalHargaSetelahDiscGenre = 0.0;
 
